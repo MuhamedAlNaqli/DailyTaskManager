@@ -34,5 +34,21 @@ namespace DailyTaskManager.Core.Services
                 await context.SaveChangesAsync();
             }
         }
+
+        public static async Task UpdateTaskAsync(DailyTask task)
+        {
+            using (var db = new DailyTaskManagerDbContext())
+            {
+                var existing = await db.DailyTasks.FindAsync(task.Id);
+                if (existing != null)
+                {
+                    existing.Description = task.Description;
+                    existing.Hours = task.Hours;
+                    existing.Date = task.Date;
+                    await db.SaveChangesAsync();
+                }
+            }
+        }
+
     }
 }

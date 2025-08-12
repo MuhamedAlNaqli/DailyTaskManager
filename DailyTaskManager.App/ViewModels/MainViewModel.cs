@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
+using DailyTaskManager.App;
 
 namespace DailyTaskManager.ViewModels
 {
@@ -104,6 +105,8 @@ namespace DailyTaskManager.ViewModels
         public ICommand DeleteCommand { get; }
         public ICommand LoadTasksCommand { get; }
         public ICommand ExportTasksCommand { get; }
+        public ICommand EditCommand { get; }
+
 
         public MainViewModel()
         {
@@ -112,6 +115,8 @@ namespace DailyTaskManager.ViewModels
             DeleteCommand = new RelayCommand(DeleteTask, _ => SelectedTask != null);
             LoadTasksCommand = new RelayCommand(async _ => await LoadTasksAsync());
             ExportTasksCommand = new RelayCommand(async _ => await ExportTasksAsync());
+            EditCommand = new RelayCommand(EditTask);
+
 
             // Setup filtered view
             _filteredTasksView = CollectionViewSource.GetDefaultView(Tasks);
@@ -233,6 +238,20 @@ namespace DailyTaskManager.ViewModels
                 IsLoading = false;
             }
         }
+
+        private void EditTask(object obj)
+        {
+            if (obj is DailyTask taskToEdit)
+            {
+                var editWindow = new EditTaskWindow(taskToEdit);
+                if (editWindow.ShowDialog() == true)
+                {
+                    // After editing, reload tasks to reflect changes
+                    _ = LoadTasksAsync();
+                }
+            }
+        }
+
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
