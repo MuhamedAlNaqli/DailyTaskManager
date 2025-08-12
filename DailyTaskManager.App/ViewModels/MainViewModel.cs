@@ -18,6 +18,8 @@ namespace DailyTaskManager.ViewModels
         private int _hours = 7;
         private DailyTask _selectedTask;
         private string _searchText = String.Empty;
+        private DateTime? _dateFrom;
+        private DateTime? _dateTo;
         private readonly ICollectionView _filteredTasksView;
         private bool _isLoading;
 
@@ -35,6 +37,34 @@ namespace DailyTaskManager.ViewModels
                     _searchText = value;
                     OnPropertyChanged();
                     _filteredTasksView.Refresh(); // trigger filter
+                }
+            }
+        }
+
+        public DateTime? DateFrom
+        {
+            get => _dateFrom;
+            set
+            {
+                if (_dateFrom != value)
+                {
+                    _dateFrom = value;
+                    OnPropertyChanged();
+                    _filteredTasksView.Refresh();
+                }
+            }
+        }
+
+        public DateTime? DateTo
+        {
+            get => _dateTo;
+            set
+            {
+                if (_dateTo != value)
+                {
+                    _dateTo = value;
+                    OnPropertyChanged();
+                    _filteredTasksView.Refresh();
                 }
             }
         }
@@ -94,14 +124,16 @@ namespace DailyTaskManager.ViewModels
         {
             if (obj is DailyTask task)
             {
-                if (string.IsNullOrWhiteSpace(SearchText))
-                    return true;
+                bool matchesSearch = string.IsNullOrWhiteSpace(SearchText)
+                    || task.Description.ToLower().Contains(SearchText.ToLower())
+                    || task.Date.ToString("d").Contains(SearchText)
+                    || task.Hours.ToString().Contains(SearchText);
 
-                return task.Description.ToLower().Contains(SearchText.ToLower())
-                       || task.Date.ToString("d").Contains(SearchText)
-                       || task.Hours.ToString().Contains(SearchText);
+                bool matchesDateFrom = !DateFrom.HasValue || task.Date >= DateFrom.Value;
+                bool matchesDateTo = !DateTo.HasValue || task.Date <= DateTo.Value;
+
+                return matchesSearch && matchesDateFrom && matchesDateTo;
             }
-
             return false;
         }
 
