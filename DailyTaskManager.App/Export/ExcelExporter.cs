@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ClosedXML.Excel;
 using DailyTaskManager.Core.Models;
 
@@ -23,6 +24,9 @@ namespace DailyTaskManager.Export
             int total = 0;
             int index = 1;
 
+            // Sort by date
+            tasks = tasks.OrderBy(t => t.Date);
+
             foreach (var task in tasks)
             {
                 ws.Cell(row, 1).Value = index++;
@@ -36,7 +40,7 @@ namespace DailyTaskManager.Export
             ws.Cell(row, 3).Value = "Ukupno sati";
             ws.Cell(row, 4).Value = total;
 
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"TaskReport_{DateTime.Now:yyyy_MM}.xlsx");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Pregled utošenih sati - MA - {DateTime.Now:MMyy}.xlsx");
             wb.SaveAs(path);
         }
     }
