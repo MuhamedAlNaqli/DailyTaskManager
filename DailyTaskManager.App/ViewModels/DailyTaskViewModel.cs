@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
 using DailyTaskManager.App;
+using System.Windows;
 
 namespace DailyTaskManager.ViewModels
 {
@@ -161,6 +162,12 @@ namespace DailyTaskManager.ViewModels
                 await LoadTasksAsync();
                 ClearFields();
 
+                // Force UI refresh to prevent rendering issues
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _filteredTasksView.Refresh();
+                }), System.Windows.Threading.DispatcherPriority.Background);
+
                 IsLoading = false;
             }
             finally
@@ -186,10 +193,15 @@ namespace DailyTaskManager.ViewModels
                 {
                     return;
                 }
-                
+
                 await DatabaseService.RemoveTaskAsync(SelectedTask.Id);
                 await LoadTasksAsync();
-                _filteredTasksView.Refresh();
+
+                // Force UI refresh to prevent rendering issues
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _filteredTasksView.Refresh();
+                }), System.Windows.Threading.DispatcherPriority.Background);
 
                 IsLoading = false;
             }
@@ -210,6 +222,12 @@ namespace DailyTaskManager.ViewModels
 
                 foreach (var task in tasks)
                     Tasks.Add(task);
+
+                // Force UI refresh after loading
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _filteredTasksView.Refresh();
+                }), System.Windows.Threading.DispatcherPriority.Background);
 
                 IsLoading = false;
             }

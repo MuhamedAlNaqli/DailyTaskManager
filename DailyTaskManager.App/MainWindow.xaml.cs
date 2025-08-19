@@ -5,6 +5,9 @@ namespace DailyTaskManager.App
 {
     public partial class MainWindow : Window
     {
+        private DailyTasksView _dailyTasksView;
+        private SettingsView _settingsView;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -22,15 +25,22 @@ namespace DailyTaskManager.App
         {
             ShowSettings();
         }
-
         private void ShowDailyTasks()
         {
-            ContentRegion.Content = new DailyTasksView();
+            if (_dailyTasksView == null)
+            {
+                _dailyTasksView = new DailyTasksView();
+            }
+            ContentRegion.Content = _dailyTasksView;
         }
 
         private void ShowSettings()
         {
-            ContentRegion.Content = new SettingsView();
+            if (_settingsView == null)
+            {
+                _settingsView = new SettingsView();
+            }
+            ContentRegion.Content = _settingsView;
         }
     }
 }

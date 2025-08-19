@@ -175,22 +175,35 @@
                               SelectionMode="Single"
                               CanUserAddRows="False"
                               CanUserResizeColumns="True"
-                              CanUserResizeRows="True"
+                              CanUserResizeRows="False"
                               HeadersVisibility="Column"
                               RowHeight="{x:Static sys:Double.NaN}"
-                              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                              VirtualizingPanel.VirtualizationMode="Standard"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.IsContainerVirtualizable="True"
                               AlternatingRowBackground="#F9F9F9"
                               IsReadOnly="True"
                               BorderThickness="0"
                               Style="{StaticResource MaterialDesignDataGrid}"
                               ColumnHeaderHeight="40"
+                              EnableRowVirtualization="True"
+                              EnableColumnVirtualization="False"
+                              ScrollViewer.CanContentScroll="True"
                               Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=RenderSize.Height}">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Binding="{Binding Id}" Header="ID" Width="Auto"/>
-                                <DataGridTextColumn Binding="{Binding Date, StringFormat=d}" Header="Date" Width="*"/>
-                                <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="2*"/>
-                                <DataGridTextColumn Binding="{Binding Hours}" Header="Hours" Width="Auto"/>
-                                <DataGridTemplateColumn Header="Actions" Width="Auto">
+                                <DataGridTextColumn Binding="{Binding Id}" Header="ID" Width="Auto" MinWidth="50"/>
+                                <DataGridTextColumn Binding="{Binding Date, StringFormat=d}" Header="Date" Width="*" MinWidth="100"/>
+                                <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="2*" MinWidth="200">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                            <Setter Property="VerticalAlignment" Value="Top"/>
+                                            <Setter Property="Padding" Value="5,2"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding Hours}" Header="Hours" Width="Auto" MinWidth="60"/>
+                                <DataGridTemplateColumn Header="Actions" Width="Auto" MinWidth="120">
                                     <DataGridTemplateColumn.HeaderStyle>
                                         <Style TargetType="DataGridColumnHeader" 
                                                 BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
@@ -199,16 +212,18 @@
                                     </DataGridTemplateColumn.HeaderStyle>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <Button Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
-                                                        Margin="5">
-                                                    <materialDesign:PackIcon Kind="Pencil"/>
+                                                        Margin="2" Padding="5"
+                                                        Style="{StaticResource MaterialDesignIconButton}">
+                                                    <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16"/>
                                                 </Button>
                                                 <Button Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
-                                                        Margin="5">
-                                                    <materialDesign:PackIcon Kind="DeleteOutline"/>
+                                                        Margin="2" Padding="5"
+                                                        Style="{StaticResource MaterialDesignIconButton}">
+                                                    <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"/>
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>
