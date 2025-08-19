@@ -1,0 +1,224 @@
+﻿<UserControl x:Class="DailyTaskManager.App.Views.DailyTasksView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:viewModels ="clr-namespace:DailyTaskManager.ViewModels"
+        Background="{DynamicResource MaterialDesignPaper}" Padding="20">
+
+    <UserControl.DataContext>
+        <viewModels:DailyTaskViewModel/>
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <!-- Button Hover Animation -->
+        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" 
+                                                 To="1.05" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" 
+                                                 To="1.05" Duration="0:0:0.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" 
+                                                 To="1" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" 
+                                                 To="1" Duration="0:0:0.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Main Content with Fade Animation -->
+        <Grid Grid.Row="1">
+            <Grid.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="0" To="1" Duration="0:0:0.5"/>
+                            <ThicknessAnimation Storyboard.TargetProperty="Margin"
+                                                From="0,30,0,0" To="0" Duration="0:0:0.5"
+                                                DecelerationRatio="0.8"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Grid.Triggers>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Task Input Card -->
+            <materialDesign:Card Padding="20" Grid.Column="0">
+                <StackPanel>
+                    <TextBox materialDesign:HintAssist.Hint="Description"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Height="100"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" 
+                             Margin="0 0 0 15"
+                             Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
+
+                    <Grid Margin="0 0 0 15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <DatePicker materialDesign:HintAssist.Hint="Date" 
+                                    SelectedDate="{Binding SelectedDate}"
+                                    Style="{StaticResource MaterialDesignDatePicker}" />
+                        <TextBox Grid.Column="2" 
+                                 Text="{Binding Hours, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                 materialDesign:HintAssist.Hint="Hours" 
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Padding="10 5"
+                                Command="{Binding ClearCommand}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Broom" Width="20" Height="20" Margin="0 0 3 0"/>
+                                <TextBlock Text="Clear" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Background="{DynamicResource PrimaryHueMidBrush}" 
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="10 5"
+                                Margin="5 0 0 0"
+                                Command="{Binding SaveCommand}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="ContentSaveOutline" Width="20" Height="20" Margin="0 0 3 0"/>
+                                <TextBlock Text="Save" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Task List -->
+            <StackPanel Grid.Column="1" Margin="5 0 0 0">
+                <!-- Export Panel (Upper) -->
+                <StackPanel Orientation="Horizontal" Margin="0 0 0 10" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Background="{DynamicResource SecondaryHueMidBrush}"
+                            Command="{Binding ExportTasksCommand}"
+                            Padding="10 5"
+                            HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="FileExcelOutline" Width="20" Height="20" Margin="0 0 3 0"/>
+                            <TextBlock Text="Export to excel" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <!-- Filter Panel (Lower, closer to table) -->
+                <StackPanel Orientation="Horizontal" Margin="0 0 0 10">
+                    <TextBox materialDesign:HintAssist.Hint="Search..." 
+                             Width="150"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" 
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <DatePicker materialDesign:HintAssist.Hint="Date From"
+                                Width="130"
+                                Margin="10,0,0,0"
+                                SelectedDate="{Binding DateFrom, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <DatePicker materialDesign:HintAssist.Hint="Date To"
+                                Width="130"
+                                Margin="10,0,0,0"
+                                SelectedDate="{Binding DateTo, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+
+                <StackPanel Grid.Column="1">
+                    <!-- Loading Spinner -->
+                    <ProgressBar IsIndeterminate="True"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                 Height="4" Margin="0 0 0 5"
+                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+                        <DataGrid ItemsSource="{Binding FilteredTasks, Mode=OneWay}"
+                              SelectedItem="{Binding SelectedTask}"
+                              AutoGenerateColumns="False"
+                              CanUserSortColumns="True"
+                              SelectionMode="Single"
+                              CanUserAddRows="False"
+                              CanUserResizeColumns="True"
+                              CanUserResizeRows="True"
+                              HeadersVisibility="Column"
+                              RowHeight="{x:Static sys:Double.NaN}"
+                              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                              AlternatingRowBackground="#F9F9F9"
+                              IsReadOnly="True"
+                              BorderThickness="0"
+                              Style="{StaticResource MaterialDesignDataGrid}"
+                              ColumnHeaderHeight="40"
+                              Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=RenderSize.Height}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Id}" Header="ID" Width="Auto"/>
+                                <DataGridTextColumn Binding="{Binding Date, StringFormat=d}" Header="Date" Width="*"/>
+                                <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="2*"/>
+                                <DataGridTextColumn Binding="{Binding Hours}" Header="Hours" Width="Auto"/>
+                                <DataGridTemplateColumn Header="Actions" Width="Auto">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" 
+                                                BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="5">
+                                                    <materialDesign:PackIcon Kind="Pencil"/>
+                                                </Button>
+                                                <Button Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="5">
+                                                    <materialDesign:PackIcon Kind="DeleteOutline"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
