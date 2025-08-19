@@ -8,5 +8,6 @@ namespace DailyTaskManager.Core
         public DailyTaskManagerDbContext() : base("PostgresConnection") { }
 
         public DbSet<DailyTask> DailyTasks { get; set; }
+        public DbSet<Setting> Settings { get; set; }
     }
 }

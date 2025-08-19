@@ -1,0 +1,87 @@
+﻿<UserControl x:Class="DailyTaskManager.App.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:DailyTaskManager.App.ViewModels"
+             Padding="20">
+    <UserControl.DataContext>
+        <vm:SettingsViewModel />
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <!-- Button Hover Animation -->
+        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" 
+                                                 To="1.05" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" 
+                                                 To="1.05" Duration="0:0:0.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" 
+                                                 To="1" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" 
+                                                 To="1" Duration="0:0:0.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel>
+            <!-- App.config (read-only) -->
+            <TextBlock Text="App.config Settings" FontWeight="Bold" Margin="0,0,0,8"/>
+            <DataGrid ItemsSource="{Binding AppSettings}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          materialDesign:DataGridAssist.CellPadding="8,4"
+                          Style="{StaticResource MaterialDesignDataGrid}"
+                      Margin="0 0 0 50">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
+                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="2*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- DB settings -->
+            <DockPanel>
+                <TextBlock Text="Database Settings" FontWeight="Bold" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" >
+                    <Button Command="{Binding AddSettingCommand}" Content="Add" Margin="0,0,8,0"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                    <Button Command="{Binding SaveCommand}" Content="Save"
+                                Style="{StaticResource MaterialDesignRaisedButton}"/>
+                </StackPanel>
+            </DockPanel>
+
+            <DataGrid ItemsSource="{Binding DbSettings}" AutoGenerateColumns="False" CanUserAddRows="True" IsReadOnly="False"
+                          materialDesign:DataGridAssist.CellPadding="8,4"
+                          Style="{StaticResource MaterialDesignDataGrid}" Margin="0,8,0,0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                    <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+    </Grid>
+</UserControl>
