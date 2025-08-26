@@ -32,7 +32,7 @@
     <TargetCulture>en</TargetCulture>
     <ProductName>Daily Task Manager</ProductName>
     <PublisherName>Smart Point</PublisherName>
-    <ApplicationRevision>4</ApplicationRevision>
+    <ApplicationRevision>6</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <CreateDesktopShortcut>true</CreateDesktopShortcut>
@@ -174,9 +174,13 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AddTaskWindow.xaml.cs">
+      <DependentUpon>AddTaskWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="EditTaskWindow.xaml.cs">
       <DependentUpon>EditTaskWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ViewModels\AddTaskViewModel.cs" />
     <Compile Include="ViewModels\EditTaskViewModel.cs" />
     <Compile Include="ViewModels\DailyTaskViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
@@ -188,6 +192,10 @@
     <Compile Include="Views\SettingsView.xaml.cs">
       <DependentUpon>SettingsView.xaml</DependentUpon>
     </Compile>
+    <Page Include="AddTaskWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="EditTaskWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

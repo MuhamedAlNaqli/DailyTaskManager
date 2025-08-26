@@ -2,7 +2,7 @@
 using System;
 using System.Windows.Input;
 
-namespace DailyTaskManager.ViewModels
+namespace DailyTaskManager.App.ViewModels
 {
     public class RelayCommand : ICommand
     {

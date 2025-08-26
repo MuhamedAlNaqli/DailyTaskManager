@@ -9,15 +9,13 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
 using DailyTaskManager.App;
+using DailyTaskManager.App.ViewModels;
 using System.Windows;
 
-namespace DailyTaskManager.ViewModels
+namespace DailyTaskManager.App.ViewModels
 {
     public class DailyTaskViewModel : INotifyPropertyChanged
     {
-        private string _description = String.Empty;
-        private DateTime _selectedDate = DateTime.Now;
-        private int _hours = 7;
         private DailyTask _selectedTask;
         private string _searchText = String.Empty;
         private DateTime? _dateFrom;
@@ -71,23 +69,6 @@ namespace DailyTaskManager.ViewModels
             }
         }
 
-        public string Description
-        {
-            get => _description;
-            set { _description = value; OnPropertyChanged(); }
-        }
-
-        public DateTime SelectedDate
-        {
-            get => _selectedDate;
-            set { _selectedDate = value; OnPropertyChanged(); }
-        }
-
-        public int Hours
-        {
-            get => _hours;
-            set { _hours = value; OnPropertyChanged(); }
-        }
 
         public DailyTask SelectedTask
         {
@@ -101,8 +82,7 @@ namespace DailyTaskManager.ViewModels
             set { _isLoading = value; OnPropertyChanged(); }
         }
 
-        public ICommand SaveCommand { get; }
-        public ICommand ClearCommand { get; }
+        public ICommand AddNewTaskCommand { get; }
         public ICommand DeleteCommand { get; }
         public ICommand LoadTasksCommand { get; }
         public ICommand ExportTasksCommand { get; }
@@ -111,8 +91,7 @@ namespace DailyTaskManager.ViewModels
 
         public DailyTaskViewModel()
         {
-            SaveCommand = new RelayCommand(async _ => await SaveTask());
-            ClearCommand = new RelayCommand(_ => ClearFields());
+            AddNewTaskCommand = new RelayCommand(_ => OpenAddTaskWindow());
             DeleteCommand = new RelayCommand(DeleteTask, _ => SelectedTask != null);
             LoadTasksCommand = new RelayCommand(async _ => await LoadTasksAsync());
             ExportTasksCommand = new RelayCommand(async _ => await ExportTasksAsync());
@@ -143,44 +122,16 @@ namespace DailyTaskManager.ViewModels
             return false;
         }
 
-        private async Task SaveTask()
+        private void OpenAddTaskWindow()
         {
-            try
+            var addTaskWindow = new AddTaskWindow();
+            addTaskWindow.Owner = Application.Current.MainWindow;
+            
+            if (addTaskWindow.ShowDialog() == true)
             {
-                IsLoading = true;
-
-                if (string.IsNullOrWhiteSpace(Description)) return;
-
-                var task = new DailyTask
-                {
-                    Description = Description,
-                    Date = SelectedDate,
-                    Hours = Hours
-                };
-
-                await DatabaseService.AddTaskAsync(task);
-                await LoadTasksAsync();
-                ClearFields();
-
-                // Force UI refresh to prevent rendering issues
-                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    _filteredTasksView.Refresh();
-                }), System.Windows.Threading.DispatcherPriority.Background);
-
-                IsLoading = false;
+                // Task was saved successfully, refresh the list
+                _ = LoadTasksAsync();
             }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        private void ClearFields()
-        {
-            Description = string.Empty;
-            Hours = 7;
-            SelectedDate = DateTime.Now;
         }
 
         private async void DeleteTask(object obj)

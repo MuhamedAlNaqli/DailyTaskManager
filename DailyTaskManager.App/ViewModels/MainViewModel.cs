@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace DailyTaskManager.ViewModels
+namespace DailyTaskManager.App.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {

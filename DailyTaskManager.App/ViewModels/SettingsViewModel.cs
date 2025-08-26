@@ -1,6 +1,6 @@
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Core.Services;
-using DailyTaskManager.ViewModels;
+using DailyTaskManager.App.ViewModels;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Configuration;

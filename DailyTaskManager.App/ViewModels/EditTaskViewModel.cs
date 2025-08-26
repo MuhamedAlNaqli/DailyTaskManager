@@ -1,6 +1,6 @@
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Core.Services;
-using DailyTaskManager.ViewModels;
+using DailyTaskManager.App.ViewModels;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
