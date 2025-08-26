@@ -194,9 +194,9 @@
                               ScrollViewer.CanContentScroll="True"
 >
                             <DataGrid.Columns>
-                                <DataGridTextColumn Binding="{Binding Id}" Header="ID" Width="Auto" MinWidth="50"/>
-                                <DataGridTextColumn Binding="{Binding Date, StringFormat=d}" Header="Date" Width="*" MinWidth="100"/>
-                                <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="2*" MinWidth="200">
+                                <DataGridTextColumn Binding="{Binding Id}" Header="ID" Width="Auto" MinWidth="50" SortMemberPath="Id"/>
+                                <DataGridTextColumn Binding="{Binding Date, StringFormat=d}" Header="Date" Width="*" MinWidth="100" SortMemberPath="Date"/>
+                                <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="2*" MinWidth="200" SortMemberPath="Description">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -205,8 +205,8 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Binding="{Binding Hours}" Header="Hours" Width="Auto" MinWidth="60"/>
-                                <DataGridTemplateColumn Header="Actions" Width="Auto" MinWidth="120">
+                                <DataGridTextColumn Binding="{Binding Hours}" Header="Hours" Width="Auto" MinWidth="60" SortMemberPath="Hours"/>
+                                <DataGridTemplateColumn Header="Actions" Width="Auto" MinWidth="120" CanUserSort="False">
                                     <DataGridTemplateColumn.HeaderStyle>
                                         <Style TargetType="DataGridColumnHeader" 
                                                 BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">

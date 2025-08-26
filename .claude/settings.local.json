@@ -9,7 +9,9 @@
       "Bash(powershell:*)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" DailyTaskManager.sln /p:Configuration=Debug /verbosity:minimal)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" -help)",
-      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" DailyTaskManager.sln -p:Configuration=Debug -verbosity:minimal)"
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" DailyTaskManager.sln -p:Configuration=Debug -verbosity:minimal)",
+      "Bash(start:*)",
+      "Bash(\"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.App\\bin\\Debug\\DailyTaskManager.exe\")"
     ],
     "deny": [],
     "ask": []
