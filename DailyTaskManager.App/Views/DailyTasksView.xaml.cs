@@ -1,4 +1,5 @@
-﻿using System.Windows.Controls;
+﻿using System.Windows;
+using System.Windows.Controls;
 
 namespace DailyTaskManager.App.Views
 {
@@ -10,6 +11,16 @@ namespace DailyTaskManager.App.Views
         public DailyTasksView()
         {
             InitializeComponent();
+        }
+
+        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.ContextMenu != null)
+            {
+                button.ContextMenu.PlacementTarget = button;
+                button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                button.ContextMenu.IsOpen = true;
+            }
         }
     }
 }

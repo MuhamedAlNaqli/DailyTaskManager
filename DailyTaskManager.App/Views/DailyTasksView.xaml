@@ -97,17 +97,46 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Export Button (Right) -->
-                    <Button Grid.Column="1"
+                    <!-- Export Dropdown Menu (Right) -->
+                    <Button Grid.Column="1" 
                             Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Background="{DynamicResource SecondaryHueMidBrush}"
-                            Command="{Binding ExportTasksCommand}"
-                            Padding="12,8"
-                            MinHeight="36">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="FileExcelOutline" Width="20" Height="20" Margin="0,0,5,0"/>
-                            <TextBlock Text="Export to Excel" VerticalAlignment="Center"/>
+                            Padding="16,8"
+                            ContextMenuService.IsEnabled="True"
+                            Click="ExportButton_Click"
+                            ToolTip="Export Options">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FileExport" 
+                                                     Width="18" Height="18" 
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,8,0"/>
+                            <TextBlock Text="Export To" 
+                                       VerticalAlignment="Center"
+                                       FontWeight="Medium"/>
+                            <materialDesign:PackIcon Kind="ChevronDown" 
+                                                     Width="16" Height="16" 
+                                                     VerticalAlignment="Center"
+                                                     Margin="8,0,0,0"/>
                         </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Export to Excel" 
+                                          Command="{Binding ExportToExcelCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="FileExcelOutline" 
+                                                                 Width="16" Height="16" 
+                                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Export to PDF" 
+                                          Command="{Binding ExportToPdfCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="FilePdfBox" 
+                                                                 Width="16" Height="16" 
+                                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                 </Grid>
                 <!-- Filter Panel (Lower, closer to table) -->

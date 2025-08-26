@@ -1,5 +1,4 @@
 using DailyTaskManager.Core.Models;
-using DailyTaskManager.Export;
 using DailyTaskManager.Core.Services;
 using System;
 using System.Collections.ObjectModel;
@@ -16,6 +15,7 @@ namespace DailyTaskManager.App.ViewModels
 {
     public class DailyTaskViewModel : INotifyPropertyChanged
     {
+        private readonly IExportService _exportService;
         private DailyTask _selectedTask;
         private string _searchText = String.Empty;
         private DateTime? _dateFrom;
@@ -85,16 +85,20 @@ namespace DailyTaskManager.App.ViewModels
         public ICommand AddNewTaskCommand { get; }
         public ICommand DeleteCommand { get; }
         public ICommand LoadTasksCommand { get; }
-        public ICommand ExportTasksCommand { get; }
+        public ICommand ExportToExcelCommand { get; }
+        public ICommand ExportToPdfCommand { get; }
         public ICommand EditCommand { get; }
 
 
         public DailyTaskViewModel()
         {
+            _exportService = new ExportService();
+            
             AddNewTaskCommand = new RelayCommand(_ => OpenAddTaskWindow());
             DeleteCommand = new RelayCommand(DeleteTask, _ => SelectedTask != null);
             LoadTasksCommand = new RelayCommand(async _ => await LoadTasksAsync());
-            ExportTasksCommand = new RelayCommand(async _ => await ExportTasksAsync());
+            ExportToExcelCommand = new RelayCommand(async _ => await ExportToExcelAsync());
+            ExportToPdfCommand = new RelayCommand(async _ => await ExportToPdfAsync());
             EditCommand = new RelayCommand(EditTask);
 
 
@@ -188,19 +192,43 @@ namespace DailyTaskManager.App.ViewModels
             }
         }
 
-        private async Task ExportTasksAsync()
+        private async Task ExportToExcelAsync()
         {
             try
             {
                 IsLoading = true;
-
-                await Task.Run(() =>
-                {
-                    ExcelExporter exporter = new ExcelExporter();
-                    exporter.ExportToExcel(Tasks);
-                });
-
+                await _exportService.ExportToExcelAsync(Tasks);
+                
+                // Show success message
+                MessageBox.Show("Excel export completed successfully!", "Export Complete", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting to Excel: {ex.Message}", "Export Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
                 IsLoading = false;
+            }
+        }
+
+        private async Task ExportToPdfAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                await _exportService.ExportToPdfAsync(Tasks);
+                
+                // Show success message
+                MessageBox.Show("PDF export completed successfully!", "Export Complete", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting to PDF: {ex.Message}", "Export Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

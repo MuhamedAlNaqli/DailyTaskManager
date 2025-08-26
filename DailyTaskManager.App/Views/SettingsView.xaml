@@ -50,38 +50,134 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel>
-            <!-- App.config (read-only) -->
-            <TextBlock Text="App.config Settings" FontWeight="Bold" Margin="0,0,0,8"/>
-            <DataGrid ItemsSource="{Binding AppSettings}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                          materialDesign:DataGridAssist.CellPadding="8,4"
-                          Style="{StaticResource MaterialDesignDataGrid}"
-                      Margin="0 0 0 50">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
-                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="2*"/>
-                </DataGrid.Columns>
-            </DataGrid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- PDF Export Settings -->
+                <materialDesign:Card Margin="0,0,0,24" Padding="16">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,16">
+                            <materialDesign:PackIcon Kind="FilePdfBox" 
+                                                     Width="24" Height="24" 
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                     Margin="0,0,8,0"/>
+                            <TextBlock Text="PDF Export Customization" 
+                                       FontWeight="Bold" 
+                                       FontSize="16"
+                                       VerticalAlignment="Center"/>
+                            <Button Command="{Binding SavePdfSettingsCommand}" 
+                                    Content="Save PDF Settings"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    HorizontalAlignment="Right"
+                                    DockPanel.Dock="Right"/>
+                        </DockPanel>
 
-            <!-- DB settings -->
-            <DockPanel>
-                <TextBlock Text="Database Settings" FontWeight="Bold" DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" >
-                    <Button Command="{Binding AddSettingCommand}" Content="Add" Margin="0,0,8,0"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"/>
-                    <Button Command="{Binding SaveCommand}" Content="Save"
-                                Style="{StaticResource MaterialDesignRaisedButton}"/>
-                </StackPanel>
-            </DockPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-            <DataGrid ItemsSource="{Binding DbSettings}" AutoGenerateColumns="False" CanUserAddRows="True" IsReadOnly="False"
-                          materialDesign:DataGridAssist.CellPadding="8,4"
-                          Style="{StaticResource MaterialDesignDataGrid}" Margin="0,8,0,0">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-                    <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </StackPanel>
+                            <!-- Left Column - Header Settings -->
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Header Settings" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Company Name"
+                                         Text="{Binding PdfSettings.CompanyName, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Company ID"
+                                         Text="{Binding PdfSettings.CompanyId, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Address Line 1"
+                                         Text="{Binding PdfSettings.AddressLine1, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Address Line 2"
+                                         Text="{Binding PdfSettings.AddressLine2, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Phone"
+                                         Text="{Binding PdfSettings.Phone, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Email"
+                                         Text="{Binding PdfSettings.Email, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                            </StackPanel>
+
+                            <!-- Right Column - Client & Document Settings -->
+                            <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                                <TextBlock Text="Client and Document Settings" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Client Name"
+                                         Text="{Binding PdfSettings.ClientName, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Client ID"
+                                         Text="{Binding PdfSettings.ClientId, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Document Title"
+                                         Text="{Binding PdfSettings.DocumentTitle, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <TextBox materialDesign:HintAssist.Hint="Contract Number Prefix"
+                                         Text="{Binding PdfSettings.ContractPrefix, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,12"/>
+                                
+                                <CheckBox Content="Show Company Logo Border"
+                                          IsChecked="{Binding PdfSettings.ShowLogoBorder, UpdateSourceTrigger=PropertyChanged}"
+                                          Margin="0,0,0,12"/>
+                                
+                                <CheckBox Content="Include Signature Section"
+                                          IsChecked="{Binding PdfSettings.IncludeSignatures, UpdateSourceTrigger=PropertyChanged}"
+                                          Margin="0,0,0,12"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Preview Button -->
+                        <Button Command="{Binding PreviewPdfCommand}" 
+                                Content="Preview PDF"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                HorizontalAlignment="Center"
+                                Margin="0,16,0,0"/>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- App.config (read-only) -->
+                <TextBlock Text="App.config Settings" FontWeight="Bold" Margin="0,0,0,8"/>
+                <DataGrid ItemsSource="{Binding AppSettings}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                              materialDesign:DataGridAssist.CellPadding="8,4"
+                              Style="{StaticResource MaterialDesignDataGrid}"
+                          Margin="0 0 0 50">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
+                        <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="2*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- DB settings -->
+                <DockPanel>
+                    <TextBlock Text="Database Settings" FontWeight="Bold" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" >
+                        <Button Command="{Binding AddSettingCommand}" Content="Add" Margin="0,0,8,0"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                        <Button Command="{Binding SaveCommand}" Content="Save"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <DataGrid ItemsSource="{Binding DbSettings}" AutoGenerateColumns="False" CanUserAddRows="True" IsReadOnly="False"
+                              materialDesign:DataGridAssist.CellPadding="8,4"
+                              Style="{StaticResource MaterialDesignDataGrid}" Margin="0,8,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>
