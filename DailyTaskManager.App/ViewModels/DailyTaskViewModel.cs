@@ -106,7 +106,11 @@ namespace DailyTaskManager.App.ViewModels
             _filteredTasksView = CollectionViewSource.GetDefaultView(Tasks);
             _filteredTasksView.Filter = FilterTasks;
 
-            _ = LoadTasksAsync(); // Auto load on startup
+            // Delay the initial load to ensure UI is fully initialized
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                await LoadTasksAsync();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private bool FilterTasks(object obj)
@@ -170,21 +174,37 @@ namespace DailyTaskManager.App.ViewModels
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: Starting LoadTasksAsync...");
                 IsLoading = true;
                 Tasks.Clear();
 
+                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: Calling DatabaseService.GetTasksAsync()...");
                 var tasks = await DatabaseService.GetTasksAsync();
+                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: Retrieved {tasks.Count} tasks from database");
 
                 foreach (var task in tasks)
                     Tasks.Add(task);
+
+                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: Added {Tasks.Count} tasks to ObservableCollection");
 
                 // Force UI refresh after loading
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     _filteredTasksView.Refresh();
+                    System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: UI refresh completed");
                 }), System.Windows.Threading.DispatcherPriority.Background);
 
                 IsLoading = false;
+                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: LoadTasksAsync completed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: LoadTasksAsync failed with exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                // Show error to user
+                MessageBox.Show($"Failed to load daily tasks: {ex.Message}", "Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

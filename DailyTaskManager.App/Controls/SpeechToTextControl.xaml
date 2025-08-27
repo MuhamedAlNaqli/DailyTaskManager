@@ -1,0 +1,64 @@
+﻿<UserControl x:Class="DailyTaskManager.App.Controls.SpeechToTextControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Target TextBox (bound from parent) -->
+        <TextBox x:Name="TargetTextBox"
+                 Grid.Column="0"
+                 Text="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Text, UpdateSourceTrigger=PropertyChanged}"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 materialDesign:HintAssist.Hint="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=HintText}"
+                 TextWrapping="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=TextWrapping}"
+                 AcceptsReturn="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=AcceptsReturn}"
+                 MaxLines="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=MaxLines}"/>
+
+        <!-- Speech Recognition Button -->
+        <Button Grid.Column="1"
+                x:Name="SpeechButton"
+                Style="{StaticResource MaterialDesignIconButton}"
+                Margin="5,0,0,0"
+                ToolTip="Click to start/stop dictation"
+                Click="SpeechButton_Click"
+                VerticalAlignment="Center">
+            <materialDesign:PackIcon x:Name="MicrophoneIcon" 
+                                   Kind="Microphone" 
+                                   Width="20" Height="20"/>
+            
+            <!-- Animation for listening state -->
+            <Button.Resources>
+                <Storyboard x:Key="ListeningAnimation" RepeatBehavior="Forever">
+                    <DoubleAnimation Storyboard.TargetName="MicrophoneIcon"
+                                   Storyboard.TargetProperty="Opacity"
+                                   From="1.0" To="0.3" Duration="0:0:1"
+                                   AutoReverse="True"/>
+                </Storyboard>
+            </Button.Resources>
+        </Button>
+
+        <!-- Status Indicator -->
+        <Border Grid.Column="1"
+                Background="{DynamicResource PrimaryHueLightBrush}"
+                CornerRadius="10"
+                Padding="8,2"
+                Margin="5,0,0,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Visibility="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=IsListening, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="Listening..."
+                      FontSize="10"
+                      Foreground="White"
+                      FontWeight="Bold"/>
+        </Border>
+    </Grid>
+</UserControl>

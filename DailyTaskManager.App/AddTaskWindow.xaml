@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:viewModels="clr-namespace:DailyTaskManager.App.ViewModels"
+        xmlns:controls="clr-namespace:DailyTaskManager.App.Controls"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -53,13 +54,14 @@
 
     <materialDesign:Card Padding="20">
         <StackPanel>
-            <TextBox materialDesign:HintAssist.Hint="Description"
-                     AcceptsReturn="True"
+            <controls:SpeechToTextControl 
+                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                     HintText="Description (type or dictate)"
                      TextWrapping="Wrap"
-                     Height="100"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}" 
+                     AcceptsReturn="True"
+                     MaxLines="5"
                      Margin="0 0 0 15"
-                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
+                     Height="100"/>
 
             <Grid Margin="0 0 0 15">
                 <Grid.ColumnDefinitions>
