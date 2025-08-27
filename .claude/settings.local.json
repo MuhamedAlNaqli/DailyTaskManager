@@ -18,7 +18,11 @@
       "Bash(move:*)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.sln\" -p:Configuration=Debug -verbosity:minimal)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.sln\" -t:Restore -verbosity:minimal)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Read(/C:\\Users\\muham\\Downloads/**)",
+      "Bash(nuget install:*)",
+      "Bash(copy:*)",
+      "WebFetch(domain:developers.google.com)"
     ],
     "deny": [],
     "ask": []

@@ -113,6 +113,11 @@ namespace DailyTaskManager.Core.Services
         {
             var container = Instance;
             
+            // Register authentication services
+            container.RegisterSingleton<IUserService, UserService>();
+            container.RegisterSingleton<IAuthenticationService, AuthenticationService>();
+            container.RegisterSingleton<IOAuthService, OAuthService>();
+            
             // Register speech recognition service with fallback mechanism
             container.RegisterSingleton<ISpeechRecognitionService>(() => CreateSpeechRecognitionService());
             

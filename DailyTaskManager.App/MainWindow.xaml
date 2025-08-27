@@ -25,31 +25,55 @@
                 <!-- App header -->
                 <Border DockPanel.Dock="Top" Height="64" Padding="16"
                         Background="{DynamicResource MaterialDesignPaper}">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="ClipboardText" Width="22" Height="22" Margin="0,0,8,0"/>
-                        <TextBlock Text="Daily Task Manager"
-                                   VerticalAlignment="Center"
-                                   FontWeight="SemiBold"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ClipboardText" Width="22" Height="22" Margin="0,0,8,0"/>
+                            <TextBlock Text="Daily Task Manager"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <TextBlock x:Name="UserDisplayName" 
+                                   Text="Welcome, User" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Nav -->
-                <StackPanel Margin="8" VerticalAlignment="Top" >
-                    <Button x:Name="BtnDailyTasks"
-                            Click="BtnDailyTasks_Click"
-                            Margin="0,4,0,0" Padding="10" Height="Auto">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="CalendarCheck" Width="20" Height="20" Margin="0,0,8,0"/>
-                            <TextBlock Text="Daily Tasks" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                <StackPanel Margin="8">
+                    <StackPanel VerticalAlignment="Top">
+                        <Button x:Name="BtnDailyTasks"
+                                Click="BtnDailyTasks_Click"
+                                Margin="0,4,0,0" Padding="10" Height="Auto">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CalendarCheck" Width="20" Height="20" Margin="0,0,8,0"/>
+                                <TextBlock Text="Daily Tasks" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
-                    <Button x:Name="BtnSettings"
-                            Click="BtnSettings_Click"
-                            Margin="0,4,0,0" Padding="10" Height="Auto">
+                        <Button x:Name="BtnSettings"
+                                Click="BtnSettings_Click"
+                                Margin="0,4,0,0" Padding="10" Height="Auto">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Cog" Width="20" Height="20" Margin="0,0,8,0"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    
+                    <!-- Logout Button -->
+                    <Button x:Name="BtnLogout"
+                            Click="BtnLogout_Click"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="0,20,0,0" 
+                            Padding="10" 
+                            Height="Auto"
+                            Foreground="{DynamicResource ValidationErrorBrush}"
+                            BorderBrush="{DynamicResource ValidationErrorBrush}">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Cog" Width="20" Height="20" Margin="0,0,8,0"/>
-                            <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            <materialDesign:PackIcon Kind="Logout" Width="20" Height="20" Margin="0,0,8,0"/>
+                            <TextBlock Text="Logout" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

@@ -12,6 +12,10 @@ namespace DailyTaskManager.Core.Models
         [Column("id")]
         public int Id { get; set; }
 
+        [Required]
+        [Column("user_id")]
+        public int UserId { get; set; }
+
         [Column("task_date")]
         public DateTime Date { get; set; } = DateTime.Today;
 
@@ -20,5 +24,8 @@ namespace DailyTaskManager.Core.Models
 
         [Column("total_hours")]
         public int Hours { get; set; } = 7;
+
+        [ForeignKey("UserId")]
+        public virtual User User { get; set; }
     }
 }

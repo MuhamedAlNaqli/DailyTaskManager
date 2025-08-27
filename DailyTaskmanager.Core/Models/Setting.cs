@@ -12,6 +12,10 @@ namespace DailyTaskManager.Core.Models
         public int Id { get; set; }
 
         [Required]
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        [Required]
         [MaxLength(100)]
         [Column("key")]
         public string Key { get; set; }
@@ -20,5 +24,8 @@ namespace DailyTaskManager.Core.Models
         [MaxLength(255)]
         [Column("value")]
         public string Value { get; set; }
+
+        [ForeignKey("UserId")]
+        public virtual User User { get; set; }
     }
 }
