@@ -13,7 +13,7 @@ namespace DailyTaskManager.Core.Models
         public int Id { get; set; }
 
         [Required]
-        [Column("user_id")]
+        [Column("UserId")]
         public int UserId { get; set; }
 
         [Column("task_date")]
@@ -23,7 +23,7 @@ namespace DailyTaskManager.Core.Models
         public string Description { get; set; } = "";
 
         [Column("total_hours")]
-        public int Hours { get; set; } = 7;
+        public decimal Hours { get; set; } = 7;
 
         [ForeignKey("UserId")]
         public virtual User User { get; set; }

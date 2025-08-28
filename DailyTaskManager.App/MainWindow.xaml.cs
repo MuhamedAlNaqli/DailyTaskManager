@@ -12,11 +12,7 @@ namespace DailyTaskManager.App
         public MainWindow()
         {
             InitializeComponent();
-            
-            // Update user display name
             UpdateUserDisplay();
-
-            // Load default view
             ShowDailyTasks();
         }
 
@@ -75,19 +71,14 @@ namespace DailyTaskManager.App
                 var authService = ServiceContainer.Instance.Resolve<IAuthenticationService>();
                 authService.LogoutAsync().Wait();
                 
-                // Change shutdown mode to explicit to prevent app shutdown
                 Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-                
-                // Close current window first
                 this.Close();
                 
-                // Show login window
                 var loginWindow = new LoginWindow();
                 var loginResult = loginWindow.ShowDialog();
                 
                 if (loginResult == true)
                 {
-                    // User logged in successfully, show main window again
                     var newMainWindow = new MainWindow();
                     Application.Current.MainWindow = newMainWindow;
                     Application.Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
@@ -95,7 +86,6 @@ namespace DailyTaskManager.App
                 }
                 else
                 {
-                    // User canceled login, shut down application
                     Application.Current.Shutdown();
                 }
             }

@@ -22,7 +22,12 @@
       "Read(/C:\\Users\\muham\\Downloads/**)",
       "Bash(nuget install:*)",
       "Bash(copy:*)",
-      "WebFetch(domain:developers.google.com)"
+      "WebFetch(domain:developers.google.com)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\csc.exe\" /reference:\"packages\\EntityFramework.6.5.1\\lib\\net45\\EntityFramework.dll\" /reference:\"packages\\Npgsql.4.1.14\\lib\\net461\\Npgsql.dll\" /reference:\"DailyTaskmanager.Core\\bin\\Debug\\DailyTaskmanager.Core.dll\" /reference:\"System.dll\" /reference:\"System.Core.dll\" /reference:\"System.Data.dll\" /reference:\"System.ComponentModel.DataAnnotations.dll\" MigrationRunner.cs /out:MigrationRunner.exe)",
+      "Bash(cmd /c:*)",
+      "Bash(del nul)",
+      "Read(C:\\Users\\muham\\Desktop/**)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []

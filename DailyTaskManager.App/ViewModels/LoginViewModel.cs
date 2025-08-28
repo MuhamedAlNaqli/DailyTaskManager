@@ -1,12 +1,9 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
-using DailyTaskManager.App.ViewModels;
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Core.Services;
 
@@ -39,7 +36,6 @@ namespace DailyTaskManager.App.ViewModels
         }
 
         public event EventHandler LoginSuccessful;
-        public event EventHandler RequestClose;
 
         #region Properties
 
@@ -172,7 +168,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 ClearError();
 
-                Debug.WriteLine($"LoginViewModel: Attempting login for user: {Username}");
 
                 var loginRequest = new LoginRequest
                 {
@@ -185,18 +180,15 @@ namespace DailyTaskManager.App.ViewModels
 
                 if (result.IsSuccess)
                 {
-                    Debug.WriteLine("LoginViewModel: Login successful");
                     LoginSuccessful?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    Debug.WriteLine($"LoginViewModel: Login failed: {result.ErrorMessage}");
                     ErrorMessage = result.ErrorMessage;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"LoginViewModel: Login exception: {ex.Message}");
                 ErrorMessage = "An unexpected error occurred during login. Please try again.";
             }
             finally
@@ -214,7 +206,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 ClearError();
 
-                Debug.WriteLine($"LoginViewModel: Attempting registration for user: {Username}");
 
                 var result = await _authenticationService.RegisterAsync(
                     Username.Trim(), 
@@ -224,18 +215,15 @@ namespace DailyTaskManager.App.ViewModels
 
                 if (result.IsSuccess)
                 {
-                    Debug.WriteLine("LoginViewModel: Registration successful");
                     LoginSuccessful?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    Debug.WriteLine($"LoginViewModel: Registration failed: {result.ErrorMessage}");
                     ErrorMessage = result.ErrorMessage;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"LoginViewModel: Registration exception: {ex.Message}");
                 ErrorMessage = "An unexpected error occurred during registration. Please try again.";
             }
             finally
@@ -253,7 +241,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 ClearError();
 
-                Debug.WriteLine("LoginViewModel: Attempting Google OAuth authentication");
 
                 var oAuthResult = await _oAuthService.AuthenticateGoogleAsync();
                 
@@ -263,24 +250,20 @@ namespace DailyTaskManager.App.ViewModels
                     
                     if (authResult.IsSuccess)
                     {
-                        Debug.WriteLine("LoginViewModel: Google OAuth authentication successful");
                         LoginSuccessful?.Invoke(this, EventArgs.Empty);
                     }
                     else
                     {
-                        Debug.WriteLine($"LoginViewModel: Google OAuth authentication failed: {authResult.ErrorMessage}");
                         ErrorMessage = authResult.ErrorMessage;
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"LoginViewModel: Google OAuth failed: {oAuthResult.ErrorMessage}");
                     ErrorMessage = oAuthResult.ErrorMessage;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"LoginViewModel: Google login exception: {ex.Message}");
                 ErrorMessage = "An error occurred during Google authentication.";
             }
             finally
@@ -298,7 +281,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 ClearError();
 
-                Debug.WriteLine("LoginViewModel: Attempting Microsoft OAuth authentication");
 
                 var oAuthResult = await _oAuthService.AuthenticateMicrosoftAsync();
                 
@@ -308,24 +290,20 @@ namespace DailyTaskManager.App.ViewModels
                     
                     if (authResult.IsSuccess)
                     {
-                        Debug.WriteLine("LoginViewModel: Microsoft OAuth authentication successful");
                         LoginSuccessful?.Invoke(this, EventArgs.Empty);
                     }
                     else
                     {
-                        Debug.WriteLine($"LoginViewModel: Microsoft OAuth authentication failed: {authResult.ErrorMessage}");
                         ErrorMessage = authResult.ErrorMessage;
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"LoginViewModel: Microsoft OAuth failed: {oAuthResult.ErrorMessage}");
                     ErrorMessage = oAuthResult.ErrorMessage;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"LoginViewModel: Microsoft login exception: {ex.Message}");
                 ErrorMessage = "An error occurred during Microsoft authentication.";
             }
             finally

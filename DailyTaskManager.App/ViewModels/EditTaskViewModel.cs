@@ -13,7 +13,7 @@ namespace DailyTaskManager.App.ViewModels
     {
         private int _id;
         private string _description;
-        private int _hours;
+        private decimal _hours;
         private DateTime _date;
         private bool _isSubmitting;
 
@@ -29,7 +29,7 @@ namespace DailyTaskManager.App.ViewModels
             set { _description = value; OnPropertyChanged(); }
         }
 
-        public int Hours
+        public decimal Hours
         {
             get => _hours;
             set { _hours = value; OnPropertyChanged(); }

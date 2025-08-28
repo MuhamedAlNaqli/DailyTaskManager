@@ -5,7 +5,11 @@ namespace DailyTaskManager.Core
 {
     public class DailyTaskManagerDbContext : DbContext
     {
-        public DailyTaskManagerDbContext() : base("PostgresConnection") { }
+        public DailyTaskManagerDbContext() : base("PostgresConnection") 
+        {
+            // Configure PostgreSQL to use migrations instead of initializer
+            Database.SetInitializer<DailyTaskManagerDbContext>(null);
+        }
 
         public DbSet<User> Users { get; set; }
         public DbSet<DailyTask> DailyTasks { get; set; }
@@ -13,6 +17,9 @@ namespace DailyTaskManager.Core
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
+            // Configure default schema
+            modelBuilder.HasDefaultSchema("public");
+
             // Configure relationships
             modelBuilder.Entity<DailyTask>()
                 .HasRequired(d => d.User)
@@ -20,11 +27,6 @@ namespace DailyTaskManager.Core
                 .HasForeignKey(d => d.UserId)
                 .WillCascadeOnDelete(false);
 
-            modelBuilder.Entity<Setting>()
-                .HasRequired(s => s.User)
-                .WithMany()
-                .HasForeignKey(s => s.UserId)
-                .WillCascadeOnDelete(false);
 
             // Ensure unique constraints
             modelBuilder.Entity<User>()
@@ -34,6 +36,11 @@ namespace DailyTaskManager.Core
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            // Configure table names explicitly to ensure proper schema
+            modelBuilder.Entity<User>().ToTable("users", "public");
+            modelBuilder.Entity<DailyTask>().ToTable("daily_tasks", "public");
+            modelBuilder.Entity<Setting>().ToTable("settings", "public");
 
             base.OnModelCreating(modelBuilder);
         }

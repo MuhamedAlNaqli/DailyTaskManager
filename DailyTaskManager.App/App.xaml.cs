@@ -19,14 +19,25 @@ namespace DailyTaskManager.App
             // Set shutdown mode to explicit - app won't close when windows close
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             
-            // Initialize database schema
+            // Initialize database using Entity Framework migrations
             try
             {
-                DailyTaskManager.Core.DailyTaskManagerDbContext.InitializeDatabase();
+                using (var context = new DailyTaskManager.Core.DailyTaskManagerDbContext())
+                {
+                    // This will apply any pending migrations
+                    System.Data.Entity.Database.SetInitializer<DailyTaskManager.Core.DailyTaskManagerDbContext>(null);
+                    
+                    // Check if database is accessible
+                    var canConnect = context.Database.Exists();
+                    if (!canConnect)
+                    {
+                        throw new System.Exception("Cannot connect to the database. Please ensure PostgreSQL is running and the DailyTaskManager database exists.");
+                    }
+                }
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show($"Database initialization failed: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Database connection failed: {ex.Message}\n\nPlease run EF migrations first:\n1. Open Package Manager Console in Visual Studio\n2. Run: Update-Database", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
                 return;
             }

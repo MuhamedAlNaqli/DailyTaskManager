@@ -1,3 +1,4 @@
+#pragma warning disable CS4014
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Core.Services;
 using System;
@@ -7,8 +8,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
-using DailyTaskManager.App;
-using DailyTaskManager.App.ViewModels;
 using System.Windows;
 
 namespace DailyTaskManager.App.ViewModels
@@ -36,7 +35,7 @@ namespace DailyTaskManager.App.ViewModels
                 {
                     _searchText = value;
                     OnPropertyChanged();
-                    _filteredTasksView.Refresh(); // trigger filter
+                    _filteredTasksView.Refresh();
                 }
             }
         }
@@ -102,11 +101,9 @@ namespace DailyTaskManager.App.ViewModels
             EditCommand = new RelayCommand(EditTask);
 
 
-            // Setup filtered view
             _filteredTasksView = CollectionViewSource.GetDefaultView(Tasks);
             _filteredTasksView.Filter = FilterTasks;
 
-            // Delay the initial load to ensure UI is fully initialized
             System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
             {
                 await LoadTasksAsync();
@@ -137,7 +134,6 @@ namespace DailyTaskManager.App.ViewModels
             
             if (addTaskWindow.ShowDialog() == true)
             {
-                // Task was saved successfully, refresh the list
                 _ = LoadTasksAsync();
             }
         }
@@ -156,7 +152,6 @@ namespace DailyTaskManager.App.ViewModels
                 await DatabaseService.RemoveTaskAsync(SelectedTask.Id);
                 await LoadTasksAsync();
 
-                // Force UI refresh to prevent rendering issues
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     _filteredTasksView.Refresh();
@@ -174,35 +169,23 @@ namespace DailyTaskManager.App.ViewModels
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: Starting LoadTasksAsync...");
                 IsLoading = true;
                 Tasks.Clear();
 
-                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: Calling DatabaseService.GetTasksAsync()...");
                 var tasks = await DatabaseService.GetTasksAsync();
-                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: Retrieved {tasks.Count} tasks from database");
 
                 foreach (var task in tasks)
                     Tasks.Add(task);
 
-                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: Added {Tasks.Count} tasks to ObservableCollection");
-
-                // Force UI refresh after loading
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     _filteredTasksView.Refresh();
-                    System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: UI refresh completed");
                 }), System.Windows.Threading.DispatcherPriority.Background);
 
                 IsLoading = false;
-                System.Diagnostics.Debug.WriteLine("DailyTaskViewModel: LoadTasksAsync completed successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"DailyTaskViewModel: LoadTasksAsync failed with exception: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
-                // Show error to user
                 MessageBox.Show($"Failed to load daily tasks: {ex.Message}", "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -219,7 +202,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 await _exportService.ExportToExcelAsync(Tasks);
                 
-                // Show success message
                 MessageBox.Show("Excel export completed successfully!", "Export Complete", 
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -241,7 +223,6 @@ namespace DailyTaskManager.App.ViewModels
                 IsLoading = true;
                 await _exportService.ExportToPdfAsync(Tasks);
                 
-                // Show success message
                 MessageBox.Show("PDF export completed successfully!", "Export Complete", 
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -263,7 +244,6 @@ namespace DailyTaskManager.App.ViewModels
                 var editWindow = new EditTaskWindow(taskToEdit);
                 if (editWindow.ShowDialog() == true)
                 {
-                    // After editing, reload tasks to reflect changes
                     _ = LoadTasksAsync();
                 }
             }

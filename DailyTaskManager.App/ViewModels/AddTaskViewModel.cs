@@ -13,7 +13,7 @@ namespace DailyTaskManager.App.ViewModels
     {
         private string _description = string.Empty;
         private DateTime _selectedDate = DateTime.Today;
-        private int _hours = 7;
+        private decimal _hours = 7;
         private string _validationError = string.Empty;
         private bool _hasValidationError = false;
         private bool _isSaving = false;
@@ -44,7 +44,7 @@ namespace DailyTaskManager.App.ViewModels
             }
         }
 
-        public int Hours
+        public decimal Hours
         {
             get { return _hours; }
             set 
@@ -121,13 +121,11 @@ namespace DailyTaskManager.App.ViewModels
 
                 await DatabaseService.AddTaskAsync(task);
 
-                // Notify that task was saved successfully
                 if (TaskSaved != null)
                 {
                     TaskSaved(this, new TaskSavedEventArgs(task));
                 }
 
-                // Close the window
                 CloseWindow();
             }
             catch (Exception ex)

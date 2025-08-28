@@ -9,23 +9,11 @@ namespace DailyTaskManager.Core.Services
 {
     public class SettingsService
     {
-        private int GetCurrentUserId()
-        {
-            var authService = ServiceContainer.Instance.Resolve<IAuthenticationService>();
-            if (!authService.IsAuthenticated || authService.CurrentUser == null)
-                throw new InvalidOperationException("User must be authenticated to access settings");
-            
-            return authService.CurrentUser.Id;
-        }
-
         public async Task<List<Setting>> GetAllAsync()
         {
-            var userId = GetCurrentUserId();
-            
             using (var ctx = new DailyTaskManagerDbContext())
             {
                 return await ctx.Settings
-                    .Where(s => s.UserId == userId)
                     .OrderBy(s => s.Key)
                     .ToListAsync();
             }
@@ -33,19 +21,15 @@ namespace DailyTaskManager.Core.Services
 
         public async Task UpsertAsync(IEnumerable<Setting> settings)
         {
-            var userId = GetCurrentUserId();
-            
             using (var ctx = new DailyTaskManagerDbContext())
             {
                 foreach (var s in settings)
                 {
-                    s.UserId = userId;
-                    
                     if (s.Id == 0)
                     {
-                        // Check if setting already exists for this user
+                        // Check if setting already exists
                         var existing = await ctx.Settings
-                            .FirstOrDefaultAsync(setting => setting.Key == s.Key && setting.UserId == userId);
+                            .FirstOrDefaultAsync(setting => setting.Key == s.Key);
                         
                         if (existing != null)
                         {
@@ -61,9 +45,9 @@ namespace DailyTaskManager.Core.Services
                     }
                     else
                     {
-                        // Update setting if it belongs to current user
+                        // Update existing setting by ID
                         var existing = await ctx.Settings
-                            .FirstOrDefaultAsync(setting => setting.Id == s.Id && setting.UserId == userId);
+                            .FirstOrDefaultAsync(setting => setting.Id == s.Id);
                         
                         if (existing != null)
                         {

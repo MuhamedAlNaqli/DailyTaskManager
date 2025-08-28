@@ -8,48 +8,43 @@ namespace DailyTaskManager.Core.Models
     public class User
     {
         [Key]
-        [Column("id")]
+        [Column("Id")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
         [MaxLength(100)]
-        [Column("username")]
+        [Column("Username")]
         public string Username { get; set; }
 
         [Required]
         [MaxLength(255)]
-        [Column("email")]
+        [Column("Email")]
         public string Email { get; set; }
 
         [MaxLength(255)]
-        [Column("password_hash")]
+        [Column("PasswordHash")]
         public string PasswordHash { get; set; }
 
-        [MaxLength(100)]
-        [Column("salt")]
-        public string Salt { get; set; }
-
         [MaxLength(50)]
-        [Column("oauth_provider")]
+        [Column("OAuthProvider")]
         public string OAuthProvider { get; set; } // "google", "microsoft", null for local auth
 
         [MaxLength(255)]
-        [Column("oauth_id")]
+        [Column("OAuthId")]
         public string OAuthId { get; set; }
 
-        [Required]
         [MaxLength(100)]
-        [Column("display_name")]
+        [Column("DisplayName")]
         public string DisplayName { get; set; }
 
-        [Column("created_at")]
+        [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        [Column("updated_at")]
+        [Column("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        [Column("is_active")]
+        [Column("IsActive")]
         public bool IsActive { get; set; } = true;
     }
 }

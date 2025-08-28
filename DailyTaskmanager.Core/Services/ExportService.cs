@@ -48,7 +48,7 @@ namespace DailyTaskManager.Core.Services
                 ws.Cell(1, 4).Value = "Broj sati";
 
                 int row = 2;
-                int total = 0;
+                decimal total = 0;
                 int index = 1;
 
                 // Sort by date

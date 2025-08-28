@@ -12,7 +12,6 @@ namespace DailyTaskManager.App
             InitializeComponent();
             _viewModel = (LoginViewModel)DataContext;
             _viewModel.LoginSuccessful += OnLoginSuccessful;
-            _viewModel.RequestClose += OnRequestClose;
         }
 
         private void OnLoginSuccessful(object sender, System.EventArgs e)
@@ -21,11 +20,6 @@ namespace DailyTaskManager.App
             Close();
         }
 
-        private void OnRequestClose(object sender, System.EventArgs e)
-        {
-            DialogResult = false;
-            Close();
-        }
 
         private void LoginModeButton_Click(object sender, RoutedEventArgs e)
         {
@@ -66,7 +60,6 @@ namespace DailyTaskManager.App
             if (_viewModel != null)
             {
                 _viewModel.LoginSuccessful -= OnLoginSuccessful;
-                _viewModel.RequestClose -= OnRequestClose;
             }
             base.OnClosed(e);
         }
