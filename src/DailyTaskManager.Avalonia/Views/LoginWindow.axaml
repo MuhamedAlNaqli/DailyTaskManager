@@ -1,0 +1,230 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="using:Material.Icons.Avalonia"
+        xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+        x:Class="DailyTaskManager.Avalonia.Views.LoginWindow"
+        x:DataType="vm:LoginViewModel"
+        Title="Daily Task Manager - Login"
+        Width="450" Height="700"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+    <Design.DataContext>
+        <vm:LoginViewModel />
+    </Design.DataContext>
+
+    <Grid Background="#FFF8FAFC">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Border Background="White" 
+                    CornerRadius="12" 
+                    Margin="40" 
+                    Padding="40"
+                    BorderBrush="#FFE2E8F0"
+                    BorderThickness="1">
+                <StackPanel Spacing="20">
+                    
+                    <!-- Header -->
+                    <StackPanel HorizontalAlignment="Center" Spacing="16">
+                        <Border Background="#FF4C566A" 
+                                Width="64" 
+                                Height="64" 
+                                CornerRadius="32"
+                                HorizontalAlignment="Center">
+                            <TextBlock Text="📅" 
+                                       FontSize="28" 
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        
+                        <StackPanel HorizontalAlignment="Center" Spacing="8">
+                            <TextBlock Text="Daily Task Manager" 
+                                       FontSize="24" 
+                                       FontWeight="Bold" 
+                                       Foreground="#FF2E3440"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="Sign in to your account" 
+                                       FontSize="14" 
+                                       Foreground="#FF5E81AC"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Login Form -->
+                    <StackPanel Spacing="16">
+                        
+                        <!-- Username -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Username" 
+                                       FontSize="14" 
+                                       FontWeight="Medium" 
+                                       Foreground="#FF374151"/>
+                            <TextBox Text="{Binding Username}"
+                                     Watermark="Enter your username"
+                                     Background="White"
+                                     BorderBrush="#FFD1D5DB"
+                                     BorderThickness="1"
+                                     CornerRadius="8"
+                                     Padding="12,10"
+                                     FontSize="14"/>
+                        </StackPanel>
+                        
+                        <!-- Password -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Password" 
+                                       FontSize="14" 
+                                       FontWeight="Medium" 
+                                       Foreground="#FF374151"/>
+                            <TextBox Text="{Binding Password}"
+                                     Watermark="Enter your password"
+                                     PasswordChar="●"
+                                     Background="White"
+                                     BorderBrush="#FFD1D5DB"
+                                     BorderThickness="1"
+                                     CornerRadius="8"
+                                     Padding="12,10"
+                                     FontSize="14"/>
+                        </StackPanel>
+                        
+                        <!-- Remember Me -->
+                        <CheckBox Content="Remember me" 
+                                  IsChecked="{Binding RememberMe}"
+                                  Foreground="#FF374151"/>
+                        
+                        <!-- Error Message -->
+                        <Border Background="#FFEF4444" 
+                                CornerRadius="6" 
+                                Padding="12,8"
+                                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding ErrorMessage}" 
+                                       FontSize="14" 
+                                       Foreground="White"/>
+                        </Border>
+                        
+                        <!-- Login Button -->
+                        <Button Command="{Binding LoginCommand}"
+                                Classes="primary"
+                                Background="#FF4C566A"
+                                BorderBrush="Transparent"
+                                Foreground="White"
+                                CornerRadius="8"
+                                Padding="0,12"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding !IsLoading}">
+                            <Grid>
+                                <TextBlock Text="Sign In" 
+                                           HorizontalAlignment="Center"
+                                           IsVisible="{Binding !IsLoading}"/>
+                                <StackPanel Orientation="Horizontal" 
+                                           HorizontalAlignment="Center"
+                                           Spacing="8"
+                                           IsVisible="{Binding IsLoading}">
+                                    <ProgressBar IsIndeterminate="True" 
+                                                Width="16" 
+                                                Height="16"/>
+                                    <TextBlock Text="Signing in..." />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Divider -->
+                    <Grid>
+                        <Border Height="1" 
+                                Background="#FFE2E8F0" 
+                                VerticalAlignment="Center"/>
+                        <Border Background="White" 
+                                Padding="16,0" 
+                                HorizontalAlignment="Center">
+                            <TextBlock Text="Or continue with" 
+                                       FontSize="14" 
+                                       Foreground="#FF64748B"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- OAuth Buttons -->
+                    <StackPanel Spacing="12">
+                        
+                        <!-- Google Login -->
+                        <Button Command="{Binding LoginWithGoogleCommand}"
+                                Background="White"
+                                BorderBrush="#FFD1D5DB"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="0,12"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding !IsLoading}">
+                            <StackPanel Orientation="Horizontal" 
+                                       HorizontalAlignment="Center" 
+                                       Spacing="12">
+                                <Border Background="#FF4285F4" 
+                                        Width="20" 
+                                        Height="20" 
+                                        CornerRadius="10">
+                                    <TextBlock Text="G" 
+                                               FontWeight="Bold" 
+                                               FontSize="12"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center" 
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Continue with Google" 
+                                           Foreground="#FF374151" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <!-- Microsoft Login -->
+                        <Button Background="White"
+                                BorderBrush="#FFD1D5DB"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="0,12"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="False">
+                            <StackPanel Orientation="Horizontal" 
+                                       HorizontalAlignment="Center" 
+                                       Spacing="12">
+                                <Border Background="#FF00A1F1" 
+                                        Width="20" 
+                                        Height="20" 
+                                        CornerRadius="2">
+                                    <TextBlock Text="⊞" 
+                                               FontWeight="Bold" 
+                                               FontSize="12"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center" 
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Continue with Microsoft (Coming Soon)" 
+                                           Foreground="#FF9CA3AF" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Footer -->
+                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                        <TextBlock Text="Don't have an account?" 
+                                   FontSize="14" 
+                                   Foreground="#FF64748B"
+                                   HorizontalAlignment="Center"/>
+                        <Button Classes="secondary"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Foreground="#FF3B82F6"
+                                Padding="0"
+                                FontSize="14">
+                            <TextBlock Text="Contact your administrator"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+    </Grid>
+</Window>

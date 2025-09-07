@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.SpeechToTextView"
+             x:DataType="vm:SpeechToTextViewModel">
+
+    <Design.DataContext>
+        <vm:SpeechToTextViewModel/>
+    </Design.DataContext>
+
+    <ScrollViewer Margin="20">
+        <StackPanel Spacing="20">
+            <TextBlock Text="Speech Recognition" Classes="header"/>
+            
+            <Border Classes="card" IsVisible="{Binding !IsSupported}">
+                <StackPanel>
+                    <TextBlock Text="🎤❌" FontSize="32" 
+                               HorizontalAlignment="Center"
+                               Opacity="0.5"/>
+                    <TextBlock Text="Speech recognition is not supported on this platform" 
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+            
+            <Border Classes="card" IsVisible="{Binding IsSupported}">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Click the button below to start speech recognition" 
+                               Opacity="0.8"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Classes="primary"
+                                Command="{Binding StartListeningCommand}"
+                                IsEnabled="{Binding !IsListening}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🎤" FontSize="16" Margin="0,0,5,0"/>
+                                <TextBlock Text="Start Listening" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Classes="secondary"
+                                Command="{Binding StopListeningCommand}"
+                                IsEnabled="{Binding IsListening}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏹️" FontSize="16" Margin="0,0,5,0"/>
+                                <TextBlock Text="Stop" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Classes="secondary"
+                                Command="{Binding ClearTextCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🗑️" FontSize="16" Margin="0,0,5,0"/>
+                                <TextBlock Text="Clear" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    
+                    <TextBlock Text="{Binding Status}" 
+                               FontSize="14"
+                               Opacity="0.8"/>
+                               
+                    <TextBox Text="{Binding RecognizedText}"
+                             Watermark="Recognized text will appear here..."
+                             MinHeight="150"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Classes="field"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
