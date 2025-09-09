@@ -33,7 +33,7 @@ public partial class App : Application
         Console.WriteLine("DEBUG: OnFrameworkInitializationCompleted completed");
     }
 
-    private LoginWindow CreateLoginWindow()
+    public LoginWindow CreateLoginWindow()
     {
         if (ServiceProvider == null)
         {

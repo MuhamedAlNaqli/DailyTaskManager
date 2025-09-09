@@ -36,6 +36,9 @@ namespace DailyTaskManager.Infrastructure.Services
                 task.UserId = GetCurrentUserId();
                 task.CreatedAt = DateTime.UtcNow;
                 task.UpdatedAt = DateTime.UtcNow;
+                
+                // Convert Date to UTC to avoid PostgreSQL timezone issues
+                task.Date = DateTime.SpecifyKind(task.Date.Date, DateTimeKind.Utc);
 
                 _context.DailyTasks.Add(task);
                 await _context.SaveChangesAsync();
@@ -140,7 +143,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 }
 
                 // Update properties
-                existingTask.Date = task.Date;
+                existingTask.Date = DateTime.SpecifyKind(task.Date.Date, DateTimeKind.Utc);
                 existingTask.Description = task.Description;
                 existingTask.Hours = task.Hours;
                 existingTask.UpdateTimestamp();

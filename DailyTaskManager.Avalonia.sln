@@ -2,20 +2,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Core", "src\DailyTaskManager.Core\DailyTaskManager.Core.csproj", "{A8B5C7D9-1E2F-3456-789A-BCDEF0123456}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Infrastructure", "src\DailyTaskManager.Infrastructure\DailyTaskManager.Infrastructure.csproj", "{B9C6D8EA-2F30-4567-890B-CDEF01234567}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Avalonia", "src\DailyTaskManager.Avalonia\DailyTaskManager.Avalonia.csproj", "{CAD7E9FB-3041-5678-901C-DEF012345678}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Core.Tests", "tests\DailyTaskManager.Core.Tests\DailyTaskManager.Core.Tests.csproj", "{DBE8F0GC-4152-6789-012D-EF0123456789}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DailyTaskManager.UI.Tests", "tests\DailyTaskManager.UI.Tests\DailyTaskManager.UI.Tests.csproj", "{388BEF38-FFB2-E901-6B43-043F97C19B16}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Infrastructure.Tests", "tests\DailyTaskManager.Infrastructure.Tests\DailyTaskManager.Infrastructure.Tests.csproj", "{EC90F1HD-5263-7890-123E-F01234567890}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DailyTaskManager.Avalonia.Tests", "tests\DailyTaskManager.Avalonia.Tests\DailyTaskManager.Avalonia.Tests.csproj", "{FDA0G2IE-6374-8901-234F-012345678901}"
-EndProject
-
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,18 +28,10 @@ Global
 		{CAD7E9FB-3041-5678-901C-DEF012345678}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CAD7E9FB-3041-5678-901C-DEF012345678}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CAD7E9FB-3041-5678-901C-DEF012345678}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DBE8F0GC-4152-6789-012D-EF0123456789}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DBE8F0GC-4152-6789-012D-EF0123456789}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DBE8F0GC-4152-6789-012D-EF0123456789}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DBE8F0GC-4152-6789-012D-EF0123456789}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EC90F1HD-5263-7890-123E-F01234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EC90F1HD-5263-7890-123E-F01234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EC90F1HD-5263-7890-123E-F01234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EC90F1HD-5263-7890-123E-F01234567890}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDA0G2IE-6374-8901-234F-012345678901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDA0G2IE-6374-8901-234F-012345678901}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDA0G2IE-6374-8901-234F-012345678901}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDA0G2IE-6374-8901-234F-012345678901}.Release|Any CPU.Build.0 = Release|Any CPU
+		{388BEF38-FFB2-E901-6B43-043F97C19B16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{388BEF38-FFB2-E901-6B43-043F97C19B16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{388BEF38-FFB2-E901-6B43-043F97C19B16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{388BEF38-FFB2-E901-6B43-043F97C19B16}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

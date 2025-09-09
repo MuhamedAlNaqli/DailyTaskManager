@@ -21,6 +21,11 @@ namespace DailyTaskManager.Core.Interfaces
         Task<string> ExportTasksToPdfAsync(List<DailyTask> tasks, PdfSettings settings, string? filePath = null);
 
         /// <summary>
+        /// Exports tasks to PDF format with default settings
+        /// </summary>
+        Task<string> ExportTasksToPdfAsync(List<DailyTask> tasks, string? filePath = null);
+
+        /// <summary>
         /// Exports tasks to CSV format
         /// </summary>
         Task<string> ExportTasksToCsvAsync(List<DailyTask> tasks, string? filePath = null);

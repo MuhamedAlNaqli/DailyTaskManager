@@ -4,8 +4,9 @@
         x:Class="DailyTaskManager.Avalonia.Views.EditTaskDialog"
         x:DataType="vm:EditTaskViewModel"
         Title="Edit Task"
-        Width="400" Height="300"
-        MinWidth="350" MinHeight="250"
+        Width="450"
+        MinWidth="400"
+        SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
 
@@ -35,8 +36,13 @@
                            Classes="label" 
                            Margin="0,0,0,5"/>
                 <TextBox Text="{Binding Description}" 
-                         Watermark="Enter task description"
-                         Classes="primary"/>
+                         Watermark="Enter task description (supports multiple lines)"
+                         Classes="primary"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="80"
+                         MaxHeight="200"
+                         VerticalAlignment="Stretch"/>
             </StackPanel>
 
             <!-- Date and Hours -->
@@ -72,23 +78,33 @@
                        TextWrapping="Wrap"/>
         </StackPanel>
 
-        <!-- Action Buttons -->
+        <!-- Action Buttons - Fixed positioning to avoid overlap -->
         <StackPanel Grid.Row="2" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right" 
                     Spacing="10"
-                    Margin="0,20,0,0">
+                    Margin="0,25,0,0">
             
             <Button Content="Cancel" 
-                    Classes="secondary"
                     Command="{Binding CancelCommand}"
-                    MinWidth="80"/>
+                    Background="White"
+                    BorderBrush="#FFD1D5DB"
+                    BorderThickness="1"
+                    Foreground="#FF374151"
+                    CornerRadius="6"
+                    Padding="16,8"
+                    MinWidth="90"/>
                     
             <Button Content="Save Changes" 
-                    Classes="primary"
                     Command="{Binding SaveCommand}"
                     IsDefault="True"
-                    MinWidth="80"/>
+                    Background="#FF4C566A"
+                    BorderBrush="Transparent"
+                    Foreground="White"
+                    CornerRadius="6"
+                    Padding="16,8"
+                    FontWeight="Medium"
+                    MinWidth="110"/>
         </StackPanel>
     </Grid>
 </Window>

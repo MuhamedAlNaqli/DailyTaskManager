@@ -84,6 +84,44 @@ public partial class LoginViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task RegisterAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+            {
+                ErrorMessage = "Please enter username and password to register";
+                return;
+            }
+
+            var result = await _authService.RegisterAsync(Username, $"{Username}@example.com", Password);
+            
+            if (!result.IsSuccess)
+            {
+                ErrorMessage = result.ErrorMessage;
+                _logger.LogWarning("Registration failed for user {Username}: {Error}", Username, result.ErrorMessage);
+            }
+            else
+            {
+                _logger.LogInformation("User {Username} registered successfully", Username);
+                ErrorMessage = "SUCCESS: Registration successful! You can now login.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during registration");
+            ErrorMessage = "An unexpected error occurred during registration. Please try again.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task LoginWithGoogleAsync()
     {
         try

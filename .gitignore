@@ -361,3 +361,45 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Project-specific ignores
+**/appsettings.local.json
+**/appsettings.Development.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Avalonia-specific
+.avalonia/
+**/.avalonia/
+
+# Temporary files and exports
+*.tmp
+exports/
+temp/
+
+# Screenshots from UI tests
+screenshots/
+**/*screenshot*.png
+**/*debug*.png
+
+# Local development environment
+.env
+.env.local
+
+# IDE-specific files
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.DS_Store?
+
+# Linux
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

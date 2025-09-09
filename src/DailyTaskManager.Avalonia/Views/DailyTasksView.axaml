@@ -55,19 +55,35 @@
                         </StackPanel>
                     </Button>
                     
-                    <Button Classes="secondary" 
-                            Command="{Binding ExportToExcelCommand}"
-                            Background="Transparent"
-                            BorderBrush="#FFBFDBFE"
-                            Foreground="#FF3B82F6"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="16,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="📊" FontSize="14"/>
-                            <TextBlock Text="Export"/>
-                        </StackPanel>
-                    </Button>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="secondary" 
+                                Command="{Binding ExportToExcelCommand}"
+                                Background="Transparent"
+                                BorderBrush="#FFBFDBFE"
+                                Foreground="#FF3B82F6"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="16,10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="📊" FontSize="14"/>
+                                <TextBlock Text="Excel"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Classes="secondary" 
+                                Command="{Binding ExportToPdfCommand}"
+                                Background="Transparent"
+                                BorderBrush="#FFEF4444"
+                                Foreground="#FFEF4444"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="16,10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="📄" FontSize="14"/>
+                                <TextBlock Text="PDF"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
             
@@ -155,21 +171,12 @@
                     </Grid.RowDefinitions>
                     
                     <!-- Filter Header -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
                         <TextBlock Text="🔍" FontSize="16"/>
                         <TextBlock Text="Filters" 
                                    FontSize="16" 
                                    FontWeight="SemiBold" 
                                    Foreground="#FF374151"/>
-                        <Button Classes="secondary" 
-                                Command="{Binding ClearFiltersCommand}"
-                                Background="Transparent"
-                                BorderBrush="Transparent"
-                                Foreground="#FF6B7280"
-                                FontSize="12"
-                                Padding="8,4">
-                            <TextBlock Text="Clear all"/>
-                        </Button>
                     </StackPanel>
                     
                     <!-- Filter Controls -->
@@ -190,32 +197,39 @@
                                  BorderBrush="#FFD1D5DB"
                                  BorderThickness="1"
                                  CornerRadius="8"
-                                 Padding="12,10"
+                                 Padding="16,6"
                                  FontSize="14"
+                                 Height="34"
                                  Margin="0,0,16,0"/>
                         
                         <!-- Date From -->
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="From" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                            <DatePicker SelectedDate="{Binding DateFrom}"
+                            <DatePicker SelectedDate="{Binding DateFrom, Mode=TwoWay}"
                                        Background="White"
                                        BorderBrush="#FFD1D5DB"
                                        BorderThickness="1"
                                        CornerRadius="8"
-                                       Padding="10"
-                                       FontSize="14"/>
+                                       Padding="8,4"
+                                       FontSize="14"
+                                       Height="34"
+                                       SelectedDateChanged="DateFromPicker_SelectedDateChanged"
+                                       Name="DateFromPicker"/>
                         </StackPanel>
                         
                         <!-- Date To -->
                         <StackPanel Grid.Column="4" Spacing="4">
                             <TextBlock Text="To" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                            <DatePicker SelectedDate="{Binding DateTo}"
+                            <DatePicker SelectedDate="{Binding DateTo, Mode=TwoWay}"
                                        Background="White"
                                        BorderBrush="#FFD1D5DB"
                                        BorderThickness="1"
                                        CornerRadius="8"
-                                       Padding="10"
-                                       FontSize="14"/>
+                                       Padding="8,4"
+                                       FontSize="14"
+                                       Height="34"
+                                       SelectedDateChanged="DateToPicker_SelectedDateChanged"
+                                       Name="DateToPicker"/>
                         </StackPanel>
                     </Grid>
                 </Grid>

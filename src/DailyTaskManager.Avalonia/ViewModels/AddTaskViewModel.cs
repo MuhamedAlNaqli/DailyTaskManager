@@ -45,18 +45,18 @@ public partial class AddTaskViewModel : ObservableObject
                 return;
 
             IsLoading = true;
-            _logger.LogInformation("Saving new task: {Description}", Description);
+            _logger.LogInformation("Validating new task: {Description}", Description);
 
-            // Simulate save operation
-            await Task.Delay(500);
+            // Brief validation delay for UX
+            await Task.Delay(100);
 
-            _logger.LogInformation("Task saved successfully");
+            _logger.LogInformation("Task validation completed successfully");
             RequestClose?.Invoke(this, true); // Dialog result = true
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving task");
-            ShowValidationError("Failed to save task. Please try again.");
+            _logger.LogError(ex, "Error validating task");
+            ShowValidationError("Failed to validate task. Please try again.");
         }
         finally
         {

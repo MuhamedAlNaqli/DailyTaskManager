@@ -2,12 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:themes="clr-namespace:Material.Styles.Themes;assembly=Material.Styles"
              x:Class="DailyTaskManager.Avalonia.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
     
     <!-- Theme Configuration -->
     <Application.Styles>
-        <!-- Material Avalonia Theme -->
-        <themes:MaterialTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
+        <!-- Material Avalonia Theme - Single instance that responds to RequestedThemeVariant -->
+        <themes:MaterialTheme BaseTheme="Inherit" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
         
         <!-- Custom Application Styles -->
         <StyleInclude Source="Styles/App.axaml"/>

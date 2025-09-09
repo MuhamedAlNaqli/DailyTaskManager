@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Configuration for the test execution -->
+  <RunConfiguration>
+    <!-- Path relative to directory that contains .runsettings file-->
+    <ResultsDirectory>.\TestResults</ResultsDirectory>
+    
+    <!-- Maximum number of test runner processes -->
+    <MaxCpuCount>1</MaxCpuCount>
+    
+    <!-- Disable parallel execution -->
+    <DisableParallelization>true</DisableParallelization>
+  </RunConfiguration>
+  
+  <!-- Configuration for MSTest -->
+  <MSTest>
+    <!-- Disable parallel execution at method level -->
+    <Parallelize>
+      <Workers>1</Workers>
+      <Scope>MethodLevel</Scope>
+    </Parallelize>
+  </MSTest>
+</RunSettings>

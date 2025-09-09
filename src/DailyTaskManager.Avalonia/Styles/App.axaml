@@ -109,6 +109,35 @@
         <Setter Property="Margin" Value="0,0,0,15"/>
     </Style>
 
+    <!-- Theme-safe input control styles to ensure text readability -->
+    <Style Selector="TextBox">
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="CaretBrush" Value="Black"/>
+        <Setter Property="SelectionBrush" Value="#3390FF"/>
+        <Setter Property="SelectionForegroundBrush" Value="White"/>
+    </Style>
+    
+    <!-- DatePicker text readability -->
+    <Style Selector="DatePicker /template/ TextBox">
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="CaretBrush" Value="Black"/>
+        <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- ComboBox text readability -->
+    <Style Selector="ComboBox /template/ TextBox">
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="CaretBrush" Value="Black"/>
+        <Setter Property="Background" Value="White"/>
+    </Style>
+    
+    <!-- Global input control overrides to ensure readability -->
+    <Style Selector="TextBox, DatePicker, ComboBox">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
     <!-- Status indicators -->
     <Style Selector="Border.status-success">
         <Setter Property="Background" Value="#4CAF50"/>

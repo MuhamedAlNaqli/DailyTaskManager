@@ -31,14 +31,53 @@ public partial class DailyTasksViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading = false;
     
-    [ObservableProperty]
     private string _searchText = string.Empty;
     
-    [ObservableProperty]
-    private DateTime? _dateFrom;
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
+                ApplyFilters();
+            }
+        }
+    }
     
-    [ObservableProperty]
+    private DateTime? _dateFrom;
     private DateTime? _dateTo;
+    
+    public DateTime? DateFrom
+    {
+        get => _dateFrom;
+        set
+        {
+            if (_dateFrom != value)
+            {
+                _dateFrom = value;
+                OnPropertyChanged();
+                _logger.LogInformation("DateFrom property changed to: {DateFrom}", value);
+                ApplyFilters();
+            }
+        }
+    }
+    
+    public DateTime? DateTo
+    {
+        get => _dateTo;
+        set
+        {
+            if (_dateTo != value)
+            {
+                _dateTo = value;
+                OnPropertyChanged();
+                _logger.LogInformation("DateTo property changed to: {DateTo}", value);
+                ApplyFilters();
+            }
+        }
+    }
 
     public DailyTasksViewModel(
         IDatabaseService databaseService, 
@@ -55,9 +94,6 @@ public partial class DailyTasksViewModel : ObservableObject
         
         // Subscribe to authentication changes
         _authService.AuthenticationChanged += OnAuthenticationChanged;
-        
-        // Subscribe to property changes for filtering
-        PropertyChanged += OnPropertyChanged;
         
         // Always attempt to load tasks - LoadTasksAsync handles authentication check
         _ = LoadTasksAsync();
@@ -237,25 +273,52 @@ public partial class DailyTasksViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ExportToPdfAsync()
+    {
+        try
+        {
+            if (!FilteredTasks.Any())
+            {
+                await _dialogService.ShowInfoDialogAsync("No Data", "No tasks available to export.");
+                return;
+            }
+
+            IsLoading = true;
+            
+            // Export tasks to PDF with default settings
+            var filePath = await _exportService.ExportTasksToPdfAsync(FilteredTasks.ToList());
+            
+            await _dialogService.ShowInfoDialogAsync("Export Complete", $"PDF exported successfully to:\n{filePath}");
+            
+            _logger.LogInformation("PDF export completed successfully for {Count} tasks: {FilePath}", FilteredTasks.Count, filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting to PDF");
+            await _dialogService.ShowErrorDialogAsync("Export Error", $"Failed to export PDF: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task RefreshAsync()
     {
         await LoadTasksAsync();
     }
     
-    private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SearchText) || 
-            e.PropertyName == nameof(DateFrom) || 
-            e.PropertyName == nameof(DateTo))
-        {
-            ApplyFilters();
-        }
-    }
     
     private void ApplyFilters()
     {
+        _logger.LogInformation("ApplyFilters called. Total tasks: {TotalTasks}, DateFrom: {DateFrom}, DateTo: {DateTo}", 
+            Tasks.Count, DateFrom, DateTo);
+            
         var filtered = Tasks.Where(FilterTask).ToList();
         FilteredTasks = new ObservableCollection<DailyTask>(filtered);
+        
+        _logger.LogInformation("Filtering complete. Filtered tasks: {FilteredCount}", filtered.Count);
     }
     
     private bool FilterTask(DailyTask task)
@@ -268,11 +331,20 @@ public partial class DailyTasksViewModel : ObservableObject
             || task.Date.ToString("d").Contains(SearchText)
             || task.Hours.ToString().Contains(SearchText);
         
-        // Date range filters
-        bool matchesDateFrom = !DateFrom.HasValue || task.Date >= DateFrom.Value;
-        bool matchesDateTo = !DateTo.HasValue || task.Date <= DateTo.Value;
+        // Date range filters - compare date parts only
+        bool matchesDateFrom = !DateFrom.HasValue || task.Date.Date >= DateFrom.Value.Date;
+        bool matchesDateTo = !DateTo.HasValue || task.Date.Date <= DateTo.Value.Date;
         
-        return matchesSearch && matchesDateFrom && matchesDateTo;
+        var result = matchesSearch && matchesDateFrom && matchesDateTo;
+        
+        // Debug logging for date filters specifically
+        if (DateFrom.HasValue || DateTo.HasValue)
+        {
+            _logger.LogInformation("Task {TaskId} ({Date}): SearchMatch={SearchMatch}, DateFromMatch={DateFromMatch} (From: {DateFrom}), DateToMatch={DateToMatch} (To: {DateTo}), Result={Result}",
+                task.Id, task.Date.Date, matchesSearch, matchesDateFrom, DateFrom?.Date, matchesDateTo, DateTo?.Date, result);
+        }
+        
+        return result;
     }
     
     [RelayCommand]
@@ -281,5 +353,15 @@ public partial class DailyTasksViewModel : ObservableObject
         SearchText = string.Empty;
         DateFrom = null;
         DateTo = null;
+    }
+    
+    [RelayCommand]
+    private void TestDateFilter()
+    {
+        // Test by setting dates programmatically
+        _logger.LogInformation("TEST: Setting DateFrom to today and DateTo to tomorrow");
+        DateFrom = DateTime.Today;
+        DateTo = DateTime.Today.AddDays(1);
+        _logger.LogInformation("TEST: DateFrom={DateFrom}, DateTo={DateTo}", DateFrom, DateTo);
     }
 }

@@ -41,8 +41,19 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _loadingMessage = "Loading...";
 
-    [ObservableProperty]
     private bool _isDarkTheme = false;
+    
+    public bool IsDarkTheme
+    {
+        get => _isDarkTheme;
+        set
+        {
+            if (SetProperty(ref _isDarkTheme, value))
+            {
+                _logger.LogInformation("IsDarkTheme property changed to: {IsDarkTheme}", value);
+            }
+        }
+    }
 
     [ObservableProperty]
     private bool _isTasksViewSelected = true;
@@ -50,11 +61,6 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSettingsViewSelected = false;
 
-    [ObservableProperty]
-    private bool _isSpeechViewSelected = false;
-
-    [ObservableProperty]
-    private bool _speechRecognitionAvailable = false;
 
     public MainWindowViewModel(
         IAuthenticationService authService,
@@ -91,7 +97,6 @@ public partial class MainWindowViewModel : ObservableObject
             
             IsTasksViewSelected = true;
             IsSettingsViewSelected = false;
-            IsSpeechViewSelected = false;
 
             _logger.LogInformation("Navigated to Tasks view");
         }
@@ -118,7 +123,6 @@ public partial class MainWindowViewModel : ObservableObject
             
             IsTasksViewSelected = false;
             IsSettingsViewSelected = true;
-            IsSpeechViewSelected = false;
 
             _logger.LogInformation("Navigated to Settings view");
         }
@@ -133,53 +137,31 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task NavigateToSpeechAsync()
-    {
-        try
-        {
-            if (!SpeechRecognitionAvailable)
-                return;
-
-            IsLoading = true;
-            LoadingMessage = "Loading speech recognition...";
-
-            CurrentView = await _navigationService.CreateViewAsync<SpeechToTextView, SpeechToTextViewModel>();
-            
-            IsTasksViewSelected = false;
-            IsSettingsViewSelected = false;
-            IsSpeechViewSelected = true;
-
-            _logger.LogInformation("Navigated to Speech view");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error navigating to Speech view");
-            // TODO: Show error dialog
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
 
     [RelayCommand]
-    private async Task ToggleThemeAsync()
+    private void ToggleTheme()
     {
         try
         {
             IsDarkTheme = !IsDarkTheme;
             
             // Apply theme change
-            if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            if (App.Current != null)
             {
                 var theme = IsDarkTheme ? "Dark" : "Light";
                 App.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
                 
                 _logger.LogInformation("Theme changed to {Theme}", theme);
                 
-                // Save theme preference
-                // TODO: Save to settings
+                // Trigger property change notifications for theme-related properties
+                OnPropertyChanged(nameof(ThemeIcon));
+                OnPropertyChanged(nameof(ThemeText));
+                
+                // Force UI refresh by triggering property change for IsDarkTheme
+                OnPropertyChanged(nameof(IsDarkTheme));
+                
+                // Save theme preference to settings
+                // TODO: Implement settings persistence when settings service is available
             }
         }
         catch (Exception ex)
@@ -198,17 +180,54 @@ public partial class MainWindowViewModel : ObservableObject
 
             await _authService.LogoutAsync();
             
+            // Clear loading state before showing login window
+            IsLoading = false;
+            
             // Navigate to login window
-            // TODO: Show login window
+            ShowLoginWindow();
+            
             _logger.LogInformation("User logged out successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during logout");
-        }
-        finally
-        {
             IsLoading = false;
+        }
+    }
+
+    private void ShowLoginWindow()
+    {
+        try
+        {
+            // Get the current main window and close it
+            if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                var currentMainWindow = desktop.MainWindow;
+                
+                // Create a fresh login window with proper DI
+                var app = App.Current as App;
+                if (app != null)
+                {
+                    var loginWindow = app.CreateLoginWindow();
+                    loginWindow.Show();
+                    
+                    // Set the new login window as the main window
+                    desktop.MainWindow = loginWindow;
+                    
+                    // Close the current main window
+                    currentMainWindow?.Close();
+                    
+                    _logger.LogInformation("Redirected to login window with fresh ViewModel");
+                }
+                else
+                {
+                    _logger.LogError("Could not cast App.Current to App type");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error showing login window");
         }
     }
 
@@ -219,9 +238,8 @@ public partial class MainWindowViewModel : ObservableObject
             // Set app version from configuration
             AppVersion = _configuration["AppSettings:Version"] ?? "2.0.0";
 
-            // Check speech recognition availability
-            var speechService = App.GetOptionalService<ISpeechRecognitionService>();
-            SpeechRecognitionAvailable = speechService?.IsSupported ?? false;
+            // Initialize theme state based on current application theme
+            InitializeThemeState();
 
             // Update user info if authenticated
             UpdateUserInfo();
@@ -231,6 +249,24 @@ public partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initializing main window properties");
+        }
+    }
+
+    private void InitializeThemeState()
+    {
+        try
+        {
+            if (App.Current != null)
+            {
+                // Sync ViewModel state with actual application theme
+                IsDarkTheme = App.Current.RequestedThemeVariant == ThemeVariant.Dark;
+                
+                _logger.LogDebug("Theme state initialized: IsDarkTheme = {IsDarkTheme}", IsDarkTheme);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing theme state");
         }
     }
 
@@ -269,47 +305,4 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task TestGoogleLoginAsync()
-    {
-        try
-        {
-            IsLoading = true;
-            LoadingMessage = "Testing Google OAuth...";
-
-            _logger.LogInformation("Starting Google OAuth test");
-
-            // Test Google OAuth
-            var oauthResult = await _oauthService.AuthenticateGoogleAsync();
-
-            if (!oauthResult.IsSuccess)
-            {
-                _logger.LogError("Google OAuth test failed: {Error}", oauthResult.ErrorMessage);
-                // TODO: Show error dialog
-                return;
-            }
-
-            // Use the OAuth result to login through authentication service
-            var authResult = await _authService.LoginWithOAuthAsync(oauthResult);
-
-            if (!authResult.IsSuccess)
-            {
-                _logger.LogError("OAuth login test failed: {Error}", authResult.ErrorMessage);
-                // TODO: Show error dialog
-            }
-            else
-            {
-                _logger.LogInformation("Google OAuth test successful for user: {Email}", oauthResult.Email);
-                // The authentication should automatically update the UI
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during Google OAuth test");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
 }
