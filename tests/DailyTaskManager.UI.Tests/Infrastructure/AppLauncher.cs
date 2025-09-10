@@ -3,6 +3,7 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
 using System.Diagnostics;
 using System.Threading;
+using System.Drawing;
 
 namespace DailyTaskManager.UI.Tests.Infrastructure;
 
@@ -203,15 +204,123 @@ public class AppLauncher : IDisposable
     {
         try
         {
-            Console.WriteLine($"📸 Screenshot requested: {filename}");
-            // For now, just log the request - actual screenshot implementation can be added later
+            Console.WriteLine($"📸 Taking screenshot: {filename}");
+            
+            // Ensure the screenshots directory exists
+            var directory = Path.GetDirectoryName(filename);
+            if (string.IsNullOrEmpty(directory))
+            {
+                // If no directory specified, use TestResults
+                var testResultsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TestResults", "Screenshots");
+                Directory.CreateDirectory(testResultsDir);
+                filename = Path.Combine(testResultsDir, filename);
+            }
+            else if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
+            // Get all current windows
+            var windows = Application.GetAllTopLevelWindows(Automation);
+            var targetWindow = windows.FirstOrDefault(w => 
+                w.Title.Contains("Daily Task Manager") || 
+                w.Title.Contains("Login")) ?? windows.FirstOrDefault();
+            
+            if (targetWindow != null)
+            {
+                ScreenshotHelper.TakeWindowScreenshot(targetWindow, filename);
+            }
+            else
+            {
+                // Fallback to full screen screenshot
+                ScreenshotHelper.TakeFullScreenshot(filename);
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to take screenshot: {ex.Message}");
+            Console.WriteLine($"❌ Failed to take screenshot '{filename}': {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Takes a screenshot of a specific window
+    /// </summary>
+    public void TakeWindowScreenshot(Window window, string filename)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(filename);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
+            ScreenshotHelper.TakeWindowScreenshot(window, filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to take window screenshot '{filename}': {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Takes a screenshot of a specific UI element
+    /// </summary>
+    public void TakeElementScreenshot(AutomationElement element, string filename)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(filename);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
+            ScreenshotHelper.TakeElementScreenshot(element, filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to take element screenshot '{filename}': {ex.Message}");
         }
     }
 
+    /// <summary>
+    /// Takes a screenshot and saves the UI tree structure for comprehensive debugging
+    /// </summary>
+    public void CaptureUIStateForDebugging(string filename)
+    {
+        try
+        {
+            // Take screenshot
+            TakeScreenshot(filename);
+            
+            // Save UI tree to text file
+            var directory = Path.GetDirectoryName(filename) ?? "";
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(filename);
+            var uiTreeFile = Path.Combine(directory, $"{nameWithoutExt}_UITree.txt");
+            
+            using var writer = new StringWriter();
+            var originalConsoleOut = Console.Out;
+            Console.SetOut(writer);
+            
+            try
+            {
+                PrintUITree();
+            }
+            finally
+            {
+                Console.SetOut(originalConsoleOut);
+            }
+            
+            File.WriteAllText(uiTreeFile, writer.ToString());
+            Console.WriteLine($"🌳 UI tree saved: {uiTreeFile}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to capture UI state: {ex.Message}");
+        }
+    }
+    
     /// <summary>
     /// Prints the UI tree structure for debugging
     /// </summary>

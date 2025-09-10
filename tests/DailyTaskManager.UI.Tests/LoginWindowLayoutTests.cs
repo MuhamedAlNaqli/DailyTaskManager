@@ -8,11 +8,7 @@ using FlaUI.UIA3;
 namespace DailyTaskManager.UI.Tests
 {
     /// <summary>
-    /// Tests to validate login window layout and UI improvements:
-    /// - Window dimensions (no scrolling required)  
-    /// - Text box padding and spacing
-    /// - Card layout as window structure
-    /// - All interactive elements accessibility
+    /// Tests to validate login window layout and UI improvements with enhanced screenshot capture
     /// </summary>
     [TestClass]
     [TestCategory("UILayout")]
@@ -25,8 +21,8 @@ namespace DailyTaskManager.UI.Tests
             Assert.IsNotNull(MainWindow, "Login window should be available");
             Assert.IsTrue(MainWindow.Title.Contains("Login"), "Should be on login window");
 
-            // Take screenshot for visual verification
-            AppLauncher?.TakeScreenshot($"login-window-full-layout-{TestContext?.TestName}.png");
+            // Take enhanced screenshot for visual verification
+            await TakeScreenshotAsync("layout_verification", "Login window full layout with all elements visible");
 
             // Assert - Window dimensions should accommodate all content without scrolling
             var windowBounds = MainWindow.BoundingRectangle;
@@ -56,8 +52,8 @@ namespace DailyTaskManager.UI.Tests
             Assert.IsNotNull(usernameBox, "Username text box should be found");
             Assert.IsNotNull(passwordBox, "Password text box should be found");
 
-            // Take screenshot showing text box layout
-            AppLauncher?.TakeScreenshot($"login-textbox-padding-{TestContext?.TestName}.png");
+            // Take screenshot showing text box layout with padding measurements
+            await TakeScreenshotAsync("textbox_padding", "Text box padding and spacing verification");
 
             // Assert - Text boxes should have proper padding from window edges
             var windowBounds = MainWindow.BoundingRectangle;
@@ -73,7 +69,6 @@ namespace DailyTaskManager.UI.Tests
             Assert.IsTrue(rightPadding >= 30, $"Username box should have sufficient right padding. Actual: {rightPadding}px");
 
             // Verify internal padding of text boxes (text boxes should use Padding="12,10")
-            // This is verified by checking the text box bounds are reasonable for the content
             Assert.IsTrue(usernameBoxBounds.Height >= 30, "Username box should have sufficient height for padding");
             Assert.IsTrue(passwordBoxBounds.Height >= 30, "Password box should have sufficient height for padding");
 
@@ -87,14 +82,12 @@ namespace DailyTaskManager.UI.Tests
             Assert.IsTrue(MainWindow.Title.Contains("Login"), "Should be on login window");
 
             // Take screenshot for card layout verification
-            AppLauncher?.TakeScreenshot($"login-card-layout-{TestContext?.TestName}.png");
+            await TakeScreenshotAsync("card_layout", "Login window card-as-window design verification");
 
             // Assert - Window should have white background and rounded corners (card as window)
-            // The window itself should be the card, not contain a card
             var windowBounds = MainWindow.BoundingRectangle;
 
             // Verify window properties that indicate card-like behavior
-            // The window should be reasonably sized and centered
             Assert.IsTrue(windowBounds.Width == 400, "Window width should match card design");
             Assert.IsTrue(windowBounds.Height == 520, "Window height should match card design");
 
@@ -124,7 +117,7 @@ namespace DailyTaskManager.UI.Tests
             var cf = new ConditionFactory(new UIA3PropertyLibrary());
 
             // Take screenshot for interactive elements verification
-            AppLauncher?.TakeScreenshot($"login-interactive-elements-{TestContext?.TestName}.png");
+            await TakeScreenshotAsync("interactive_elements", "All interactive elements displayed and accessible");
 
             // Assert - All required interactive elements should be present and accessible
 
@@ -188,8 +181,8 @@ namespace DailyTaskManager.UI.Tests
             
             var cf = new ConditionFactory(new UIA3PropertyLibrary());
 
-            // Take screenshot for spacing verification
-            AppLauncher?.TakeScreenshot($"login-spacing-verification-{TestContext?.TestName}.png");
+            // Take screenshot for spacing verification with measurements
+            await TakeScreenshotAsync("spacing_verification", "Element spacing and layout measurements");
 
             // Find key elements for spacing verification
             var appIcon = MainWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.Text).And(cf.ByName("📅")));
@@ -239,7 +232,7 @@ namespace DailyTaskManager.UI.Tests
             Assert.IsTrue(MainWindow.Title.Contains("Login"), "Should be on login window");
 
             // Take screenshot for bottom element visibility verification
-            AppLauncher?.TakeScreenshot($"login-bottom-elements-visibility-{TestContext?.TestName}.png");
+            await TakeScreenshotAsync("bottom_elements_visibility", "Bottom elements fully visible without scrolling");
 
             var cf = new ConditionFactory(new UIA3PropertyLibrary());
 

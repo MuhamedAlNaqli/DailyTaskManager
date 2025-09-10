@@ -12,6 +12,24 @@
     <AssemblyCopyright>Copyright © 2024 Smart Point</AssemblyCopyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
+    
+    <!-- Publishing Properties -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    
+    <!-- Application Properties -->
+    <!-- <ApplicationIcon>Assets\app.ico</ApplicationIcon> -->
+    <Win32Resource></Win32Resource>
+    
+    <!-- Installer Properties -->
+    <ProductName>Daily Task Manager</ProductName>
+    <CompanyName>Smart Point</CompanyName>
+    <ProductVersion>2.0.0</ProductVersion>
+    <ApplicationIcon>Assets\Daily_Task_Manager_Icon.ico</ApplicationIcon>
+    <AssemblyName></AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -52,6 +70,7 @@
     <Content Include="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Daily_Task_Manager_Icon.ico" />
   </ItemGroup>
 
 </Project>

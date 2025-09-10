@@ -6,6 +6,7 @@ using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using System.Windows.Forms;
 using System.Linq;
+using System.Drawing;
 
 namespace DailyTaskManager.UI.Tests.Infrastructure;
 
@@ -17,11 +18,24 @@ public abstract class BaseUITest
 {
     protected AppLauncher? AppLauncher { get; private set; }
     protected Window? MainWindow { get; set; }
+    protected TestResultsManager? TestResultsManager { get; private set; }
+    protected TestMetadata? CurrentTestMetadata { get; private set; }
+    
+    private readonly List<string> _testScreenshots = new();
 
     [TestInitialize]
     public async Task TestInitialize()
     {
         Console.WriteLine("🚀 Setting up UI test...");
+        
+        // Initialize test results management
+        TestResultsManager = new TestResultsManager(TestContext);
+        CurrentTestMetadata = new TestMetadata
+        {
+            TestName = TestContext?.TestName ?? "UnknownTest",
+            StartTime = DateTime.Now,
+            Outcome = UnitTestOutcome.InProgress
+        };
         
         // Kill any existing instances with enhanced cleanup
         await AppLauncher.KillAllInstancesAsync();
@@ -33,10 +47,15 @@ public abstract class BaseUITest
         
         Console.WriteLine($"✅ Application launched. Main window: {MainWindow.Title}");
         
+        // Take pre-login screenshot
+        await TakeScreenshotAsync("01_application_startup", "Application launched, before any interaction");
+        
         // Check if we landed on login window and auto-login
         if (MainWindow.Title.Contains("Login", StringComparison.OrdinalIgnoreCase))
         {
             Console.WriteLine("🔐 Login window detected, performing automatic login...");
+            await TakeScreenshotAsync("02_login_window", "Login window displayed");
+            
             await LoginAsync("admin", "admin123");
             
             // Wait longer for the window transition and add more detailed logging
@@ -54,10 +73,12 @@ public abstract class BaseUITest
             }, 15000); // Increased timeout to 15 seconds
             
             Console.WriteLine($"✅ Login completed. Main window: {MainWindow.Title}");
+            await TakeScreenshotAsync("03_post_login", "Successfully logged in and main window displayed");
         }
-        
-        // Take initial screenshot
-        AppLauncher.TakeScreenshot($"test-start-{TestContext?.TestName}.png");
+        else
+        {
+            await TakeScreenshotAsync("02_main_window_direct", "Main window displayed directly (no login)");
+        }
         
         // Perform any additional setup
         await AdditionalSetup();
@@ -70,11 +91,36 @@ public abstract class BaseUITest
         
         try
         {
+            // Update test metadata with final outcome
+            if (CurrentTestMetadata != null)
+            {
+                CurrentTestMetadata.EndTime = DateTime.Now;
+                CurrentTestMetadata.Screenshots = _testScreenshots.ToList();
+                
+                // Determine test outcome based on TestContext
+                if (TestContext?.CurrentTestOutcome == UnitTestOutcome.Passed)
+                    CurrentTestMetadata.Outcome = UnitTestOutcome.Passed;
+                else if (TestContext?.CurrentTestOutcome == UnitTestOutcome.Failed)
+                    CurrentTestMetadata.Outcome = UnitTestOutcome.Failed;
+                else
+                    CurrentTestMetadata.Outcome = UnitTestOutcome.Inconclusive;
+                
+                // Save metadata
+                TestResultsManager?.SaveTestMetadata(CurrentTestMetadata.TestName, CurrentTestMetadata);
+            }
+            
             // Take final screenshot
-            AppLauncher?.TakeScreenshot($"test-end-{TestContext?.TestName}.png");
+            if (MainWindow != null && AppLauncher != null)
+            {
+                _ = TakeScreenshotAsync("99_test_completion", $"Test completed with outcome: {TestContext?.CurrentTestOutcome}");
+            }
             
             // Perform additional cleanup
             AdditionalCleanup();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error during test cleanup: {ex.Message}");
         }
         finally
         {
@@ -605,6 +651,244 @@ public abstract class BaseUITest
         AppLauncher?.PrintUITree();
         Console.WriteLine("=========================\n");
     }
+
+    #region Enhanced Screenshot Methods
+
+    /// <summary>
+    /// Takes a screenshot of the current window with descriptive naming and metadata
+    /// </summary>
+    protected async Task TakeScreenshotAsync(string step, string description = "", AutomationElement? element = null)
+    {
+        try
+        {
+            if (TestResultsManager == null || AppLauncher == null)
+            {
+                Console.WriteLine("⚠️ Cannot take screenshot: TestResultsManager or AppLauncher not initialized");
+                return;
+            }
+
+            var testName = CurrentTestMetadata?.TestName ?? TestContext?.TestName ?? "UnknownTest";
+            var screenshotPath = TestResultsManager.GetScreenshotPath(testName, $"{step}_{description}");
+            
+            if (element != null)
+            {
+                // Take screenshot of specific element
+                ScreenshotHelper.TakeElementScreenshot(element, screenshotPath);
+            }
+            else if (MainWindow != null)
+            {
+                // Wait for window to stabilize before screenshot
+                using var stableBitmap = await ScreenshotHelper.CaptureStableWindowAsync(MainWindow, 500, 3000);
+                ScreenshotHelper.SaveScreenshot(stableBitmap, screenshotPath);
+            }
+            else
+            {
+                // Fallback to full screen capture
+                ScreenshotHelper.TakeFullScreenshot(screenshotPath);
+            }
+            
+            _testScreenshots.Add(screenshotPath);
+            Console.WriteLine($"📸 Screenshot captured: {Path.GetFileName(screenshotPath)}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to take screenshot '{step}': {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Takes a screenshot and saves it for baseline comparison
+    /// </summary>
+    protected async Task TakeBaselineScreenshotAsync(string step, string description = "")
+    {
+        try
+        {
+            if (TestResultsManager == null || MainWindow == null)
+                return;
+
+            var testName = CurrentTestMetadata?.TestName ?? TestContext?.TestName ?? "UnknownTest";
+            var baselinePath = TestResultsManager.GetBaselinePath(testName, step);
+            
+            using var bitmap = await ScreenshotHelper.CaptureStableWindowAsync(MainWindow);
+            ScreenshotHelper.SaveScreenshot(bitmap, baselinePath);
+            
+            Console.WriteLine($"📝 Baseline screenshot saved: {Path.GetFileName(baselinePath)}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to save baseline screenshot: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Compares current screen with baseline and generates difference report
+    /// </summary>
+    protected async Task<double> CompareWithBaselineAsync(string step, double tolerancePercentage = 0.05)
+    {
+        try
+        {
+            if (TestResultsManager == null || MainWindow == null)
+                return 1.0;
+
+            var testName = CurrentTestMetadata?.TestName ?? TestContext?.TestName ?? "UnknownTest";
+            var baselinePath = TestResultsManager.GetBaselinePath(testName, step);
+            
+            if (!File.Exists(baselinePath))
+            {
+                Console.WriteLine($"⚠️ Baseline not found for {step}, creating new baseline");
+                await TakeBaselineScreenshotAsync(step);
+                return 0.0;
+            }
+            
+            // Take current screenshot
+            var currentPath = TestResultsManager.GetScreenshotPath(testName, $"{step}_current");
+            using var bitmap = await ScreenshotHelper.CaptureStableWindowAsync(MainWindow);
+            ScreenshotHelper.SaveScreenshot(bitmap, currentPath);
+            
+            // Compare with baseline
+            var diffPath = TestResultsManager.GetComparisonPath(testName, $"{step}_diff");
+            var difference = ScreenshotHelper.CompareScreenshots(baselinePath, currentPath, diffPath);
+            
+            // Create side-by-side comparison
+            var comparisonPath = TestResultsManager.GetComparisonPath(testName, $"{step}_comparison");
+            ScreenshotHelper.CreateComparisonImage(baselinePath, currentPath, comparisonPath, "Baseline", "Current");
+            
+            if (difference > tolerancePercentage)
+            {
+                Console.WriteLine($"⚠️ Visual regression detected! Difference: {difference:P2} (tolerance: {tolerancePercentage:P2})");
+                Console.WriteLine($"   📊 Diff image: {diffPath}");
+                Console.WriteLine($"   📊 Comparison: {comparisonPath}");
+            }
+            else
+            {
+                Console.WriteLine($"✅ Visual comparison passed. Difference: {difference:P2}");
+            }
+            
+            return difference;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to compare with baseline: {ex.Message}");
+            return 1.0;
+        }
+    }
+
+    /// <summary>
+    /// Takes a screenshot with failure context for debugging
+    /// </summary>
+    protected async Task TakeFailureScreenshotAsync(string reason, Exception? exception = null)
+    {
+        try
+        {
+            var description = $"FAILURE_{reason}";
+            if (exception != null)
+            {
+                description += $"_{exception.GetType().Name}";
+            }
+            
+            await TakeScreenshotAsync("FAILURE", description);
+            
+            // Also log UI tree for debugging
+            Console.WriteLine($"\n=== UI STATE AT FAILURE ({reason}) ===");
+            AppLauncher?.PrintUITree(MainWindow);
+            Console.WriteLine("=====================================\n");
+            
+            // Update test metadata with failure info
+            if (CurrentTestMetadata != null)
+            {
+                CurrentTestMetadata.ErrorMessage = exception?.Message ?? reason;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to capture failure screenshot: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Creates an annotated screenshot highlighting specific UI elements
+    /// </summary>
+    protected async Task TakeAnnotatedScreenshotAsync(string step, string description, params ScreenshotAnnotation[] annotations)
+    {
+        try
+        {
+            if (TestResultsManager == null || MainWindow == null)
+                return;
+
+            var testName = CurrentTestMetadata?.TestName ?? TestContext?.TestName ?? "UnknownTest";
+            
+            // Take base screenshot
+            var basePath = TestResultsManager.GetScreenshotPath(testName, $"{step}_base");
+            using var bitmap = await ScreenshotHelper.CaptureStableWindowAsync(MainWindow);
+            ScreenshotHelper.SaveScreenshot(bitmap, basePath);
+            
+            // Create annotated version
+            var annotatedPath = TestResultsManager.GetScreenshotPath(testName, $"{step}_{description}_annotated");
+            ScreenshotHelper.CreateAnnotatedScreenshot(basePath, annotatedPath, annotations);
+            
+            _testScreenshots.Add(annotatedPath);
+            Console.WriteLine($"📝 Annotated screenshot created: {Path.GetFileName(annotatedPath)}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to create annotated screenshot: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Takes a series of screenshots during a specific operation (useful for animations or multi-step processes)
+    /// </summary>
+    protected async Task TakeSequenceScreenshotsAsync(string operationName, Func<Task> operation, int intervalMs = 500)
+    {
+        var screenshots = new List<string>();
+        var sequenceTask = Task.Run(async () =>
+        {
+            int frameNumber = 0;
+            var startTime = DateTime.Now;
+            
+            while ((DateTime.Now - startTime).TotalSeconds < 30) // Max 30 seconds
+            {
+                try
+                {
+                    if (TestResultsManager != null && MainWindow != null)
+                    {
+                        var testName = CurrentTestMetadata?.TestName ?? TestContext?.TestName ?? "UnknownTest";
+                        var screenshotPath = TestResultsManager.GetScreenshotPath(testName, $"{operationName}_frame_{frameNumber:D3}");
+                        
+                        using var bitmap = ScreenshotHelper.CaptureWindow(MainWindow);
+                        ScreenshotHelper.SaveScreenshot(bitmap, screenshotPath);
+                        screenshots.Add(screenshotPath);
+                    }
+                    frameNumber++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Error capturing sequence frame {frameNumber}: {ex.Message}");
+                }
+                
+                await Task.Delay(intervalMs);
+            }
+        });
+        
+        // Start sequence capture
+        _ = sequenceTask;
+        
+        try
+        {
+            // Execute the operation
+            await operation();
+        }
+        finally
+        {
+            // Stop sequence capture
+            sequenceTask.Wait(5000); // Wait max 5 seconds for completion
+        }
+        
+        _testScreenshots.AddRange(screenshots);
+        Console.WriteLine($"🎬 Sequence capture completed: {screenshots.Count} frames for '{operationName}'");
+    }
+
+    #endregion
 
     #endregion
 }

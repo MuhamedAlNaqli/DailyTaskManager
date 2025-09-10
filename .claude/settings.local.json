@@ -59,7 +59,11 @@
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.Avalonia.sln\" -t:Restore -verbosity:minimal)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.Avalonia.sln\" -p:Configuration=Debug -verbosity:minimal)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\tests\\DailyTaskManager.UI.Tests\\DailyTaskManager.UI.Tests.csproj\" -p:Configuration=Debug -verbosity:minimal)",
-      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.Avalonia.sln\" -p:Configuration=Debug -verbosity:normal)"
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"D:\\Internal Projects\\DailyTaskManager\\DailyTaskManager.Avalonia.sln\" -p:Configuration=Debug -verbosity:normal)",
+      "Bash(wix:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet tool install:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
