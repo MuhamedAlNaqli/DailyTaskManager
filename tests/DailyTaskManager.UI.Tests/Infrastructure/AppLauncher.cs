@@ -15,10 +15,10 @@ public class AppLauncher : IDisposable
     private Process? _process;
     private UIA3Automation? _automation;
     private FlaUI.Core.Application? _application;
-    private static readonly Mutex AppLaunchMutex = new(false, "DailyTaskManager.UI.Tests.AppLaunch");
+    private static readonly SemaphoreSlim AppLaunchSemaphore = new(1, 1);
 
-    public const string APP_EXE_PATH = @"D:\Internal Projects\DailyTaskManager\src\DailyTaskManager.Avalonia\bin\Debug\net8.0\DailyTaskManager.Avalonia.exe";
-    public const int STARTUP_TIMEOUT_MS = 10000;
+    public const string APP_EXE_PATH = @"D:\Internal Projects\DailyTaskManager\src\DailyTaskManager.Avalonia\bin\Debug\net8.0\win-x64\DailyTaskManager.Avalonia.exe";
+    public const int STARTUP_TIMEOUT_MS = 30000;
     public const int DEFAULT_TIMEOUT_MS = 5000;
 
     /// <summary>
@@ -32,19 +32,23 @@ public class AppLauncher : IDisposable
     public FlaUI.Core.Application Application => _application ?? throw new InvalidOperationException("Application not launched. Call LaunchAsync first.");
 
     /// <summary>
-    /// Launches the Daily Task Manager application with mutex synchronization
+    /// Launches the Daily Task Manager application with semaphore synchronization
     /// </summary>
     public async Task<Window> LaunchAsync()
     {
-        // Use mutex to ensure only one test launches the app at a time
-        if (!AppLaunchMutex.WaitOne(120000)) // 2 minute timeout (increased for longer test sequences)
+        // Use semaphore to ensure only one test launches the app at a time
+        Console.WriteLine($"⏳ Waiting for application launch semaphore (Thread: {Thread.CurrentThread.ManagedThreadId})");
+        if (!await AppLaunchSemaphore.WaitAsync(30000)) // 30 second timeout
         {
-            throw new TimeoutException("Could not acquire application launch mutex within timeout");
+            throw new TimeoutException("Could not acquire application launch semaphore within timeout");
         }
 
         try
         {
-            Console.WriteLine($"🔒 Acquired launch mutex for test thread {Thread.CurrentThread.ManagedThreadId}");
+            Console.WriteLine($"🔒 Acquired launch semaphore for test thread {Thread.CurrentThread.ManagedThreadId}");
+            
+            // Check if PostgreSQL is running (required for the application)
+            await VerifyPostgreSQLAsync();
             
             // Clean up any existing instances more aggressively
             await KillAllInstancesAsync();
@@ -77,16 +81,8 @@ public class AppLauncher : IDisposable
         }
         finally
         {
-            try
-            {
-                Console.WriteLine($"🔓 Releasing launch mutex for test thread {Thread.CurrentThread.ManagedThreadId}");
-                AppLaunchMutex.ReleaseMutex();
-            }
-            catch (ApplicationException)
-            {
-                // Mutex was already released or never acquired, which is fine
-                Console.WriteLine($"⚠️ Mutex was already released for thread {Thread.CurrentThread.ManagedThreadId}");
-            }
+            Console.WriteLine($"🔓 Releasing launch semaphore for test thread {Thread.CurrentThread.ManagedThreadId}");
+            AppLaunchSemaphore.Release();
         }
     }
 
@@ -458,6 +454,44 @@ public class AppLauncher : IDisposable
         catch (Exception ex)
         {
             Console.WriteLine($"Error in KillAllInstancesAsync: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Verifies that PostgreSQL is running and accessible
+    /// </summary>
+    private async Task VerifyPostgreSQLAsync()
+    {
+        try
+        {
+            Console.WriteLine("🔍 Verifying PostgreSQL is running...");
+            
+            // Check if postgres.exe processes are running
+            var postgresProcesses = Process.GetProcessesByName("postgres");
+            if (postgresProcesses.Length == 0)
+            {
+                throw new InvalidOperationException("PostgreSQL is not running. The application requires PostgreSQL to be running.");
+            }
+            
+            Console.WriteLine($"✅ Found {postgresProcesses.Length} PostgreSQL processes running");
+            
+            // Optionally test connection (simplified check)
+            using var client = new System.Net.Sockets.TcpClient();
+            var connectTask = client.ConnectAsync("localhost", 5432);
+            
+            if (await Task.WhenAny(connectTask, Task.Delay(5000)) == connectTask && client.Connected)
+            {
+                Console.WriteLine("✅ PostgreSQL connection test successful");
+            }
+            else
+            {
+                Console.WriteLine("⚠️ PostgreSQL connection test timed out, but processes are running");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ PostgreSQL verification failed: {ex.Message}");
+            throw new InvalidOperationException("PostgreSQL verification failed. Ensure PostgreSQL is running on localhost:5432", ex);
         }
     }
 

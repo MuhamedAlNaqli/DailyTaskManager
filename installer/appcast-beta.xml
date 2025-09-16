@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Daily Task Manager Updates - Beta Channel</title>
+        <description>Beta software updates for Daily Task Manager</description>
+        <language>en</language>
+        <link>https://github.com/smartpointdevelopment/DailyTaskManager</link>
+
+        <!-- Beta Version Template -->
+        <!--
+        <item>
+            <title>Daily Task Manager X.X.X-beta.X</title>
+            <sparkle:version>X.X.X.X</sparkle:version>
+            <sparkle:shortVersionString>X.X.X-beta.X</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h3>Daily Task Manager X.X.X-beta.X</h3>
+                <p><strong>⚠️ BETA VERSION</strong></p>
+                <p>This is a pre-release version for testing purposes. Use at your own risk.</p>
+                <p><strong>New Features (Beta):</strong></p>
+                <ul>
+                    <li>Feature description</li>
+                </ul>
+                <p><strong>Known Issues:</strong></p>
+                <ul>
+                    <li>Issue description</li>
+                </ul>
+            ]]></description>
+            <pubDate>Date, DD MMM YYYY HH:MM:SS +0000</pubDate>
+            <link>https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/vX.X.X-beta.X/DailyTaskManager-vX.X.X.X-win-x64.msi</link>
+            <sparkle:releaseNotesLink>https://github.com/smartpointdevelopment/DailyTaskManager/releases/tag/vX.X.X-beta.X</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+            <sparkle:os>windows</sparkle:os>
+            <sparkle:channel>beta</sparkle:channel>
+            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <enclosure 
+                url="https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/vX.X.X-beta.X/DailyTaskManager-vX.X.X.X-win-x64.msi"
+                sparkle:version="X.X.X.X"
+                sparkle:shortVersionString="X.X.X-beta.X"
+                sparkle:os="windows"
+                sparkle:channel="beta"
+                type="application/octet-stream"
+                length="SIZE_IN_BYTES" />
+        </item>
+        -->
+    </channel>
+</rss>

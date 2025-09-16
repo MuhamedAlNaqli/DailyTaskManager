@@ -31,53 +31,14 @@ public partial class DailyTasksViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading = false;
     
+    [ObservableProperty]
     private string _searchText = string.Empty;
-    
-    public string SearchText
-    {
-        get => _searchText;
-        set
-        {
-            if (SetProperty(ref _searchText, value))
-            {
-                _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
-                ApplyFilters();
-            }
-        }
-    }
-    
+
+    [ObservableProperty]
     private DateTime? _dateFrom;
+
+    [ObservableProperty]
     private DateTime? _dateTo;
-    
-    public DateTime? DateFrom
-    {
-        get => _dateFrom;
-        set
-        {
-            if (_dateFrom != value)
-            {
-                _dateFrom = value;
-                OnPropertyChanged();
-                _logger.LogInformation("DateFrom property changed to: {DateFrom}", value);
-                ApplyFilters();
-            }
-        }
-    }
-    
-    public DateTime? DateTo
-    {
-        get => _dateTo;
-        set
-        {
-            if (_dateTo != value)
-            {
-                _dateTo = value;
-                OnPropertyChanged();
-                _logger.LogInformation("DateTo property changed to: {DateTo}", value);
-                ApplyFilters();
-            }
-        }
-    }
 
     public DailyTasksViewModel(
         IDatabaseService databaseService, 
@@ -310,13 +271,20 @@ public partial class DailyTasksViewModel : ObservableObject
     }
     
     
-    private void ApplyFilters()
+    public void ApplyFilters()
     {
         _logger.LogInformation("ApplyFilters called. Total tasks: {TotalTasks}, DateFrom: {DateFrom}, DateTo: {DateTo}", 
             Tasks.Count, DateFrom, DateTo);
             
         var filtered = Tasks.Where(FilterTask).ToList();
-        FilteredTasks = new ObservableCollection<DailyTask>(filtered);
+        
+        // Clear and repopulate instead of replacing the entire collection
+        // This ensures proper UI notification
+        FilteredTasks.Clear();
+        foreach (var task in filtered)
+        {
+            FilteredTasks.Add(task);
+        }
         
         _logger.LogInformation("Filtering complete. Filtered tasks: {FilteredCount}", filtered.Count);
     }
@@ -334,9 +302,9 @@ public partial class DailyTasksViewModel : ObservableObject
         // Date range filters - compare date parts only
         bool matchesDateFrom = !DateFrom.HasValue || task.Date.Date >= DateFrom.Value.Date;
         bool matchesDateTo = !DateTo.HasValue || task.Date.Date <= DateTo.Value.Date;
-        
+
         var result = matchesSearch && matchesDateFrom && matchesDateTo;
-        
+
         // Debug logging for date filters specifically
         if (DateFrom.HasValue || DateTo.HasValue)
         {
@@ -354,14 +322,22 @@ public partial class DailyTasksViewModel : ObservableObject
         DateFrom = null;
         DateTo = null;
     }
-    
-    [RelayCommand]
-    private void TestDateFilter()
+
+    partial void OnSearchTextChanged(string value)
     {
-        // Test by setting dates programmatically
-        _logger.LogInformation("TEST: Setting DateFrom to today and DateTo to tomorrow");
-        DateFrom = DateTime.Today;
-        DateTo = DateTime.Today.AddDays(1);
-        _logger.LogInformation("TEST: DateFrom={DateFrom}, DateTo={DateTo}", DateFrom, DateTo);
+        _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
+        ApplyFilters();
+    }
+
+    partial void OnDateFromChanged(DateTime? value)
+    {
+        _logger.LogInformation("DateFrom property changed to: {DateFrom}", value);
+        // Don't auto-apply filters for date changes - let user use search button for control
+    }
+
+    partial void OnDateToChanged(DateTime? value)
+    {
+        _logger.LogInformation("DateTo property changed to: {DateTo}", value);
+        // Don't auto-apply filters for date changes - let user use search button for control
     }
 }

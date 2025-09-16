@@ -31,6 +31,11 @@ namespace DailyTaskManager.Core.Interfaces
         Task<string> ExportTasksToCsvAsync(List<DailyTask> tasks, string? filePath = null);
 
         /// <summary>
+        /// Exports tasks to Word format
+        /// </summary>
+        Task<string> ExportTasksToWordAsync(List<DailyTask> tasks, PdfSettings settings, string? filePath = null);
+
+        /// <summary>
         /// Gets available export formats
         /// </summary>
         List<string> GetAvailableFormats();

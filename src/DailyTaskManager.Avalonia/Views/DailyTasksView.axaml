@@ -187,6 +187,8 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         
                         <!-- Search Box -->
@@ -205,32 +207,69 @@
                         <!-- Date From -->
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="From" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                            <DatePicker SelectedDate="{Binding DateFrom, Mode=TwoWay}"
+                          <DatePicker Name="DateFromPicker"
+                                       SelectedDate="{Binding DateFrom, Mode=OneWay}"
                                        Background="White"
                                        BorderBrush="#FFD1D5DB"
                                        BorderThickness="1"
                                        CornerRadius="8"
                                        Padding="8,4"
                                        FontSize="14"
-                                       Height="34"
-                                       SelectedDateChanged="DateFromPicker_SelectedDateChanged"
-                                       Name="DateFromPicker"/>
+                                       Height="34"/>
                         </StackPanel>
                         
                         <!-- Date To -->
                         <StackPanel Grid.Column="4" Spacing="4">
                             <TextBlock Text="To" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                            <DatePicker SelectedDate="{Binding DateTo, Mode=TwoWay}"
+                          <DatePicker Name="DateToPicker"
+                                       SelectedDate="{Binding DateTo, Mode=OneWay}"
                                        Background="White"
                                        BorderBrush="#FFD1D5DB"
                                        BorderThickness="1"
                                        CornerRadius="8"
                                        Padding="8,4"
                                        FontSize="14"
-                                       Height="34"
-                                       SelectedDateChanged="DateToPicker_SelectedDateChanged"
-                                       Name="DateToPicker"/>
+                                       Height="34"/>
                         </StackPanel>
+
+                        <!-- Search Button -->
+                        <Button Grid.Column="5"
+                                Name="SearchButton"
+                                Background="#FF3B82F6"
+                                BorderBrush="Transparent"
+                                Foreground="White"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="16,6"
+                                Margin="16,18,0,0"
+                                VerticalAlignment="Bottom"
+                                Height="34"
+                                ToolTip.Tip="Apply date filters">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="🔍" FontSize="12"/>
+                                <TextBlock Text="Search" FontSize="12" FontWeight="Medium"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Clear Filters Button -->
+                        <Button Grid.Column="6"
+                                Command="{Binding ClearFiltersCommand}"
+                                Background="Transparent"
+                                BorderBrush="#FFDC2626"
+                                Foreground="#FFDC2626"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12,6"
+                                Margin="16,18,0,0"
+                                VerticalAlignment="Bottom"
+                                Height="34"
+                                ToolTip.Tip="Clear all filters">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="✖" FontSize="12"/>
+                                <TextBlock Text="Clear" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
                     </Grid>
                 </Grid>
             </Border>

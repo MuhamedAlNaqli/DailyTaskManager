@@ -1,0 +1,342 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      release_channel:
+        description: 'Release channel'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+          - development
+      create_release:
+        description: 'Create GitHub release'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'DailyTaskManager.Avalonia.sln'
+  PROJECT_PATH: 'src/DailyTaskManager.Avalonia/DailyTaskManager.Avalonia.csproj'
+  INSTALLER_SCRIPT: 'installer/build-installer.ps1'
+  APPCAST_PATH: 'installer/appcast.xml'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    outputs:
+      version: ${{ steps.gitversion.outputs.semVer }}
+      full-version: ${{ steps.gitversion.outputs.fullSemVer }}
+      assembly-version: ${{ steps.gitversion.outputs.assemblySemVer }}
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for GitVersion
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0
+      with:
+        versionSpec: '5.12.0'
+        
+    - name: Determine version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0
+      with:
+        useConfigFile: true
+        configFilePath: GitVersion.yml
+        
+    - name: Display version info
+      run: |
+        echo "SemVer: ${{ steps.gitversion.outputs.semVer }}"
+        echo "FullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}"
+        echo "AssemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}"
+        echo "InformationalVersion: ${{ steps.gitversion.outputs.informationalVersion }}"
+        
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+      
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore --verbosity minimal
+      
+    - name: Run unit tests
+      run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/*.trx
+        
+    - name: Publish application
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output publish/win-x64 `
+          -p:PublishSingleFile=true `
+          -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} `
+          -p:FileVersion=${{ steps.gitversion.outputs.assemblySemVer }} `
+          -p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
+          
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: published-app
+        path: publish/win-x64/
+        retention-days: 5
+
+  create-installer:
+    needs: build-and-test
+    runs-on: windows-latest
+    
+    outputs:
+      installer-path: ${{ steps.build-installer.outputs.installer-path }}
+      installer-name: ${{ steps.build-installer.outputs.installer-name }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: published-app
+        path: publish/win-x64/
+        
+    - name: Setup WiX Toolset
+      run: |
+        # Download and install WiX v4
+        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix4/releases/download/v4.0.4/wix-4.0.4.exe" -OutFile "wix-installer.exe"
+        .\wix-installer.exe /quiet
+        
+        # Add WiX to PATH
+        $wixPath = "${env:ProgramFiles}\WiX Toolset v4.0\bin"
+        echo "$wixPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+    - name: Build MSI installer
+      id: build-installer
+      run: |
+        # Run the installer build script with version parameter
+        $version = "${{ needs.build-and-test.outputs.version }}"
+        $fullVersion = "${{ needs.build-and-test.outputs.full-version }}"
+        
+        Write-Host "Building installer with version: $version"
+        
+        # Execute the installer script
+        & "${{ env.INSTALLER_SCRIPT }}" -Version $fullVersion
+        
+        # Find the generated MSI file
+        $msiFiles = Get-ChildItem -Path "installer" -Filter "*.msi" | Sort-Object LastWriteTime -Descending
+        if ($msiFiles.Count -eq 0) {
+            throw "No MSI file found after build"
+        }
+        
+        $installerPath = $msiFiles[0].FullName
+        $installerName = $msiFiles[0].Name
+        
+        Write-Host "Installer created: $installerPath"
+        echo "installer-path=$installerPath" >> $env:GITHUB_OUTPUT
+        echo "installer-name=$installerName" >> $env:GITHUB_OUTPUT
+        
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: msi-installer
+        path: ${{ steps.build-installer.outputs.installer-path }}
+        retention-days: 30
+
+  create-release:
+    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.create_release) }}
+    needs: [build-and-test, create-installer]
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download installer artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: msi-installer
+        path: ./release-assets/
+        
+    - name: Generate release notes
+      id: release-notes
+      run: |
+        $version = "${{ needs.build-and-test.outputs.version }}"
+        $date = Get-Date -Format "yyyy-MM-dd"
+        
+        $releaseNotes = @"
+        # Daily Task Manager $version
+        
+        **Release Date:** $date
+        
+        ## 🎯 Key Features
+        - Cross-platform Avalonia UI application
+        - PostgreSQL database support with Entity Framework Core
+        - Google OAuth2 authentication
+        - Modern MVVM architecture with dependency injection
+        - Automatic update system with NetSparkleUpdater
+        - Professional MSI installer with automated versioning
+        
+        ## 🔧 Technical Details
+        - **Framework:** .NET 8
+        - **UI Framework:** Avalonia 11.3.3
+        - **Database:** PostgreSQL with EF Core
+        - **Authentication:** Local + Google OAuth2
+        - **Installer:** WiX v4 MSI package
+        - **Updates:** NetSparkleUpdater v3.0.3
+        
+        ## 💾 Installation
+        Download and run the MSI installer below. The application will automatically check for updates.
+        
+        ## 🔄 Upgrading
+        If you have a previous version installed, the MSI will automatically upgrade your installation while preserving your data and settings.
+        
+        ---
+        
+        **Generated automatically by GitHub Actions**
+        **Build Version:** ${{ needs.build-and-test.outputs.full-version }}
+        **Commit:** ${{ github.sha }}
+        "@
+        
+        # Save to file for GitHub release
+        $releaseNotes | Out-File -FilePath "release-notes.md" -Encoding utf8
+        
+        # Set output for use in release creation
+        echo "notes-file=release-notes.md" >> $env:GITHUB_OUTPUT
+        
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      id: create-release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ needs.build-and-test.outputs.version }}
+        release_name: Daily Task Manager v${{ needs.build-and-test.outputs.version }}
+        body_path: ${{ steps.release-notes.outputs.notes-file }}
+        draft: false
+        prerelease: ${{ contains(needs.build-and-test.outputs.version, '-') }}
+        
+    - name: Upload MSI to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./release-assets/${{ needs.create-installer.outputs.installer-name }}
+        asset_name: ${{ needs.create-installer.outputs.installer-name }}
+        asset_content_type: application/octet-stream
+        
+    - name: Update AppCast XML
+      run: |
+        $version = "${{ needs.build-and-test.outputs.version }}"
+        $fullVersion = "${{ needs.build-and-test.outputs.full-version }}"
+        $releaseUrl = "${{ steps.create-release.outputs.html_url }}"
+        $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$version/${{ needs.create-installer.outputs.installer-name }}"
+        $date = Get-Date -Format "ddd, dd MMM yyyy HH:mm:ss +0000"
+        
+        Write-Host "Updating AppCast with version: $version"
+        Write-Host "Download URL: $downloadUrl"
+        
+        # Read current appcast
+        $appcastPath = "${{ env.APPCAST_PATH }}"
+        $appcastContent = Get-Content $appcastPath -Raw
+        
+        # Create new item XML
+        $newItem = @"
+        
+            <!-- Version $version - Latest Release -->
+            <item>
+                <title>Daily Task Manager $version</title>
+                <sparkle:version>$fullVersion</sparkle:version>
+                <sparkle:shortVersionString>$version</sparkle:shortVersionString>
+                <description><![CDATA[
+                    <h3>Daily Task Manager $version</h3>
+                    <p>Latest release with improvements and bug fixes.</p>
+                    <p><strong>What's New:</strong></p>
+                    <ul>
+                        <li>Automatic updates with NetSparkleUpdater v3.0.3</li>
+                        <li>Enhanced UI and performance improvements</li>
+                        <li>Bug fixes and stability improvements</li>
+                    </ul>
+                    <p><a href="$releaseUrl">View full release notes</a></p>
+                ]]></description>
+                <pubDate>$date</pubDate>
+                <link>$downloadUrl</link>
+                <sparkle:releaseNotesLink>$releaseUrl</sparkle:releaseNotesLink>
+                <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+                <sparkle:os>windows</sparkle:os>
+                <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+                <enclosure 
+                    url="$downloadUrl"
+                    sparkle:version="$fullVersion"
+                    sparkle:shortVersionString="$version"
+                    sparkle:os="windows"
+                    type="application/octet-stream"
+                    length="0" />
+            </item>
+        "@
+        
+        # Insert new item after the channel opening tag and before existing items
+        $insertPoint = $appcastContent.IndexOf("</channel>")
+        if ($insertPoint -gt 0) {
+            $updatedContent = $appcastContent.Substring(0, $insertPoint) + $newItem + "`n`n    " + $appcastContent.Substring($insertPoint)
+            $updatedContent | Out-File -FilePath $appcastPath -Encoding utf8
+            Write-Host "AppCast updated successfully"
+        } else {
+            Write-Warning "Could not find insertion point in AppCast XML"
+        }
+        
+    - name: Commit updated AppCast
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add ${{ env.APPCAST_PATH }}
+        git commit -m "Update AppCast for version ${{ needs.build-and-test.outputs.version }} 🤖" || exit 0
+        git push || exit 0
+
+  cleanup:
+    if: always()
+    needs: [build-and-test, create-installer, create-release]
+    runs-on: windows-latest
+    
+    steps:
+    - name: Clean up artifacts
+      run: |
+        Write-Host "Build and release workflow completed"
+        Write-Host "Version: ${{ needs.build-and-test.outputs.version }}"
+        if ("${{ needs.create-release.result }}" -eq "success") {
+          Write-Host "✅ Release created successfully"
+        } else {
+          Write-Host "ℹ️ No release created (likely a non-tag build)"
+        }

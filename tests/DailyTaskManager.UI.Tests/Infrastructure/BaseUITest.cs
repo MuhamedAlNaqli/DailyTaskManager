@@ -56,7 +56,7 @@ public abstract class BaseUITest
             Console.WriteLine("🔐 Login window detected, performing automatic login...");
             await TakeScreenshotAsync("02_login_window", "Login window displayed");
             
-            await LoginAsync("admin", "admin123");
+            await LoginAsync("Muhamed", "SelmaSumejaAjna123!*");
             
             // Wait longer for the window transition and add more detailed logging
             Console.WriteLine("⏳ Waiting for main application window to appear...");

@@ -4,7 +4,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64",
-    [string]$Version = "2.0.0.0",
+    [string]$Version = "",
     [switch]$Clean,
     [switch]$SkipBuild,
     [switch]$SkipPublish,
@@ -28,6 +28,27 @@ $PublishPath = "$ProjectRoot\publish\$RuntimeIdentifier"
 $InstallerPath = "$ProjectRoot\installer"
 $OutputPath = "$InstallerPath\output"
 $WxsFile = "$InstallerPath\installer.wxs"
+
+# Auto-detect version from GitVersion if not provided
+if ([string]::IsNullOrEmpty($Version)) {
+    Write-Host "Auto-detecting version using GitVersion..." -ForegroundColor Yellow
+    try {
+        $gitVersionOutput = & dotnet-gitversion --root $ProjectRoot 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $gitVersion = $gitVersionOutput | ConvertFrom-Json
+            $Version = $gitVersion.AssemblySemFileVer
+            Write-Host "   Detected version: $Version" -ForegroundColor Green
+        } else {
+            Write-Host "   GitVersion failed, using fallback version: 2.1.0.0" -ForegroundColor Yellow
+            $Version = "2.1.0.0"
+        }
+    } catch {
+        Write-Host "   GitVersion not available, using fallback version: 2.1.0.0" -ForegroundColor Yellow
+        $Version = "2.1.0.0"
+    }
+    Write-Host ""
+}
+
 $MsiOutput = "$OutputPath\DailyTaskManager-v$Version-$RuntimeIdentifier.msi"
 
 Write-Host "Configuration:" -ForegroundColor Yellow

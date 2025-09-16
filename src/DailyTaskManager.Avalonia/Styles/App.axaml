@@ -124,6 +124,56 @@
         <Setter Property="Background" Value="White"/>
     </Style>
     
+    <!-- DatePicker button styling for classic calendar popup -->
+    <Style Selector="DatePicker /template/ Button">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6,4"/>
+        <Setter Property="CornerRadius" Value="0,8,8,0"/>
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+    </Style>
+    
+    <Style Selector="DatePicker /template/ Button:pointerover">
+        <Setter Property="Background" Value="#F3F4F6"/>
+    </Style>
+    
+    <Style Selector="DatePicker /template/ Button:pressed">
+        <Setter Property="Background" Value="#E5E7EB"/>
+    </Style>
+    
+    <!-- Enhanced DatePicker styling for better visual feedback -->
+    <Style Selector="DatePicker">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+    
+    <!-- DatePicker calendar popup improvements -->
+    <Style Selector="DatePicker /template/ Popup">
+        <Setter Property="PlacementGravity" Value="Bottom"/>
+        <Setter Property="VerticalOffset" Value="4"/>
+    </Style>
+    
+    <Style Selector="DatePicker /template/ Calendar">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="8"/>
+    </Style>
+    
+    <!-- DatePicker watermark styling -->
+    <Style Selector="DatePicker /template/ TextBox:placeholder">
+        <Setter Property="Foreground" Value="#FF9CA3AF"/>
+    </Style>
+    
     <!-- ComboBox text readability -->
     <Style Selector="ComboBox /template/ TextBox">
         <Setter Property="Foreground" Value="Black"/>

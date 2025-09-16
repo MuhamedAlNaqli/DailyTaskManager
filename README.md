@@ -231,7 +231,7 @@ dotnet publish src/DailyTaskManager.Avalonia -c Release -r linux-x64 --self-cont
 
 1. **Fork the repository**
 2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
-3. **Follow coding standards** (see `CLAUDE.md` for detailed guidelines)
+3. **Follow coding standards** (see `Documentation/CLAUDE.md` for detailed guidelines)
 4. **Write comprehensive tests** for UI changes
 5. **Ensure all tests pass** (`dotnet test`)
 6. **Commit your changes** (`git commit -m 'Add amazing feature'`)
@@ -245,7 +245,7 @@ dotnet publish src/DailyTaskManager.Avalonia -c Release -r linux-x64 --self-cont
 - **Documentation**: Update relevant docs for new features
 - **Performance**: Profile and optimize resource-intensive operations
 
-See [`CLAUDE.md`](./CLAUDE.md) for detailed development guidelines and architecture documentation.
+See [`CLAUDE.md`](./Documentation/CLAUDE.md) for detailed development guidelines and architecture documentation.
 
 ## 📋 Prerequisites for Development
 

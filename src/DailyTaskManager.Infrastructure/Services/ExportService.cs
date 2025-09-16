@@ -5,6 +5,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ClosedXML.Excel;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using OpenXmlDocument = DocumentFormat.OpenXml.Wordprocessing.Document;
 using DailyTaskManager.Core.Interfaces;
 using DailyTaskManager.Core.Models;
 
@@ -26,51 +33,119 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), 
-                $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+            // Order list ascending
+            tasks = tasks
+                .OrderBy(x => x.CreatedAt)
+                .ToList();
+
+            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                $"Pregled utrošenih sati - MA - {DateTime.Now:MMyy}.xlsx");
 
             _logger.LogInformation("Exporting {Count} tasks to Excel: {FilePath}", tasks.Count, filePath);
 
             using var workbook = new XLWorkbook();
-            var worksheet = workbook.Worksheets.Add("Daily Tasks");
+            var worksheet = workbook.Worksheets.Add("Sati");
 
-            // Headers
-            worksheet.Cell(1, 1).Value = "Date";
-            worksheet.Cell(1, 2).Value = "Description";
-            worksheet.Cell(1, 3).Value = "Hours";
-            worksheet.Cell(1, 4).Value = "Created";
-            worksheet.Cell(1, 5).Value = "Updated";
+            // Headers - matching reference format exactly
+            worksheet.Cell(1, 1).Value = "Red br";
+            worksheet.Cell(1, 2).Value = "Kratak opis aktivnosti";
+            worksheet.Cell(1, 3).Value = "Datum";
+            worksheet.Cell(1, 4).Value = "Broj sati";
 
-            // Style headers
-            var headerRange = worksheet.Range(1, 1, 1, 5);
+            // Style headers to match reference format
+            var headerRange = worksheet.Range(1, 1, 1, 4);
             headerRange.Style.Font.Bold = true;
-            headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+            headerRange.Style.Font.FontSize = 11;
+            headerRange.Style.Font.FontName = "Trebuchet MS";
+            headerRange.Style.Fill.BackgroundColor = XLColor.White;
+            headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            headerRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
             headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            headerRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
 
-            // Data rows
+            // Data rows - matching reference format exactly
             for (int i = 0; i < tasks.Count; i++)
             {
                 var task = tasks[i];
                 var row = i + 2;
 
-                worksheet.Cell(row, 1).Value = task.Date.ToString("yyyy-MM-dd");
+                // Row number - centered
+                worksheet.Cell(row, 1).Value = i + 1;
+                worksheet.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                worksheet.Cell(row, 1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                worksheet.Cell(row, 1).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(row, 1).Style.Font.FontSize = 11;
+
+                // Description - with prefix "Daily" and line break, left aligned
                 worksheet.Cell(row, 2).Value = task.Description;
-                worksheet.Cell(row, 3).Value = (double)task.Hours;
-                worksheet.Cell(row, 4).Value = task.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-                worksheet.Cell(row, 5).Value = task.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 2).Style.Alignment.WrapText = true;
+                worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                worksheet.Cell(row, 2).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+                worksheet.Cell(row, 2).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(row, 2).Style.Font.FontSize = 11;
+
+                // Date - centered, formatted as d.M.yyyy
+                worksheet.Cell(row, 3).Value = task.Date;
+                worksheet.Cell(row, 3).Style.DateFormat.Format = "d.M.yyyy";
+                worksheet.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                worksheet.Cell(row, 3).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                worksheet.Cell(row, 3).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(row, 3).Style.Font.FontSize = 11;
+
+                // Hours - centered
+                worksheet.Cell(row, 4).Value = (double)task.Hours;
+                worksheet.Cell(row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                worksheet.Cell(row, 4).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                worksheet.Cell(row, 4).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(row, 4).Style.Font.FontSize = 11;
+
+                // Add borders to data row
+                var dataRowRange = worksheet.Range(row, 1, row, 4);
+                dataRowRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                dataRowRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
             }
 
-            // Auto-fit columns
-            worksheet.Columns().AdjustToContents();
-
-            // Add totals
+            // Add totals row - matching reference format
             if (tasks.Count > 0)
             {
-                var totalRow = tasks.Count + 3;
-                worksheet.Cell(totalRow, 2).Value = "Total Hours:";
-                worksheet.Cell(totalRow, 3).Value = (double)tasks.Sum(t => t.Hours);
-                worksheet.Cell(totalRow, 2).Style.Font.Bold = true;
+                var totalRow = tasks.Count + 2;
+
+                // Empty cells for columns 1 and 2
+                worksheet.Cell(totalRow, 1).Value = "";
+                worksheet.Cell(totalRow, 2).Value = "";
+
+                // "Ukupan broj sati" label in column 3, right aligned
+                worksheet.Cell(totalRow, 3).Value = "Ukupan broj sati";
                 worksheet.Cell(totalRow, 3).Style.Font.Bold = true;
+                worksheet.Cell(totalRow, 3).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(totalRow, 3).Style.Font.FontSize = 11;
+                worksheet.Cell(totalRow, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                // Total value in column 4, centered
+                worksheet.Cell(totalRow, 4).Value = (double)tasks.Sum(t => t.Hours);
+                worksheet.Cell(totalRow, 4).Style.Font.Bold = true;
+                worksheet.Cell(totalRow, 4).Style.Font.FontName = "Aptos Narrow";
+                worksheet.Cell(totalRow, 4).Style.Font.FontSize = 11;
+                worksheet.Cell(totalRow, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // Add borders to totals row
+                var totalRange = worksheet.Range(totalRow, 1, totalRow, 4);
+                totalRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                totalRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            }
+
+            // Set column widths to match reference format precisely
+            worksheet.Column(1).Width = 8;   // Red br - narrow but readable
+            worksheet.Column(2).Width = 60;  // Kratak opis aktivnosti - wide for descriptions
+            worksheet.Column(3).Width = 15;  // Datum - medium for date
+            worksheet.Column(4).Width = 15;  // Broj sati - medium for numbers
+
+            // Add borders to the entire data range including headers and totals
+            if (tasks.Count > 0)
+            {
+                var fullDataRange = worksheet.Range(1, 1, tasks.Count + 2, 4);
+                fullDataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                fullDataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
             }
 
             await Task.Run(() => workbook.SaveAs(filePath));
@@ -89,7 +164,7 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), 
+            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 GetDefaultPdfFileName());
 
             _logger.LogInformation("Exporting {Count} tasks to PDF: {FilePath}", tasks.Count, filePath);
@@ -98,22 +173,14 @@ public class ExportService : IExportService
             {
                 // Sort tasks by date
                 var sortedTasks = tasks.OrderBy(t => t.Date).ToList();
-                
-                // Generate HTML report (same as old WPF version)
-                var html = GenerateHtmlReport(sortedTasks, settings);
-                
-                // For now, save as HTML file that can be converted to PDF by the user
-                // In the future, this could be enhanced with a proper PDF conversion library
-                var htmlPath = filePath.Replace(".pdf", ".html");
-                File.WriteAllText(htmlPath, html);
-                
-                _logger.LogInformation("HTML report generated: {HtmlPath}", htmlPath);
-                
-                // Return the HTML path since we're generating HTML for now
-                filePath = htmlPath;
+
+                // Generate PDF using QuestPDF
+                GenerateQuestPdfReport(sortedTasks, settings, filePath);
+
+                _logger.LogInformation("PDF report generated: {FilePath}", filePath);
             });
 
-            _logger.LogInformation("Successfully exported tasks to PDF (HTML): {FilePath}", filePath);
+            _logger.LogInformation("Successfully exported tasks to PDF: {FilePath}", filePath);
             return filePath;
         }
         catch (Exception ex)
@@ -134,7 +201,7 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), 
+            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
             _logger.LogInformation("Exporting {Count} tasks to CSV: {FilePath}", tasks.Count, filePath);
@@ -147,7 +214,7 @@ public class ExportService : IExportService
             foreach (var task in tasks)
             {
                 var line = $"{task.Date:yyyy-MM-dd}," +
-                          $"\"{task.Description.Replace("\"", "\"\"")}\","+ 
+                          $"\"{task.Description.Replace("\"", "\"\"")}\"," +
                           $"{task.Hours}," +
                           $"{task.CreatedAt:yyyy-MM-dd HH:mm:ss}," +
                           $"{task.UpdatedAt:yyyy-MM-dd HH:mm:ss}";
@@ -166,9 +233,37 @@ public class ExportService : IExportService
         }
     }
 
+    public async Task<string> ExportTasksToWordAsync(List<DailyTask> tasks, PdfSettings settings, string? filePath = null)
+    {
+        try
+        {
+            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.docx");
+
+            _logger.LogInformation("Exporting {Count} tasks to Word: {FilePath}", tasks.Count, filePath);
+
+            await Task.Run(() =>
+            {
+                // Sort tasks by date
+                var sortedTasks = tasks.OrderBy(t => t.Date).ToList();
+
+                // Generate Word document
+                GenerateWordDocument(sortedTasks, settings, filePath);
+            });
+
+            _logger.LogInformation("Successfully exported tasks to Word: {FilePath}", filePath);
+            return filePath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting tasks to Word");
+            throw;
+        }
+    }
+
     public List<string> GetAvailableFormats()
     {
-        return new List<string> { "Excel", "CSV", "PDF" };
+        return new List<string> { "Excel", "CSV", "PDF", "Word" };
     }
 
     public bool ValidateExportParameters(List<DailyTask> tasks, string format)
@@ -187,130 +282,374 @@ public class ExportService : IExportService
         return $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
     }
 
-    private string GenerateHtmlReport(List<DailyTask> tasks, PdfSettings settings)
+    private void GenerateQuestPdfReport(List<DailyTask> tasks, PdfSettings settings, string filePath)
     {
+        QuestPDF.Settings.License = LicenseType.Community;
+
         var total = tasks.Sum(t => t.Hours);
         var period = tasks.Any() ? $"{tasks.Min(t => t.Date):MMMM yyyy}." : DateTime.Now.ToString("MMMM yyyy.");
         var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
-        
-        var html = $@"<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='UTF-8'>
-    <title>{settings.DocumentTitle}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; font-size: 12px; line-height: 1.4; }}
-        .header-section {{ margin-bottom: 40px; }}
-        .company-info {{ {(settings.ShowLogoBorder ? "border-left: 4px solid #333; padding-left: 15px;" : "")} margin-bottom: 30px; }}
-        .company-name {{ font-weight: bold; font-size: 14px; margin-bottom: 5px; }}
-        .company-details {{ font-size: 11px; color: #333; line-height: 1.3; }}
-        .client-info {{ font-weight: bold; font-size: 13px; margin-bottom: 20px; }}
-        .document-title {{ text-align: center; font-size: 22px; font-weight: bold; margin: 40px 0 10px 0; }}
-        .contract-info {{ text-align: center; font-size: 12px; margin-bottom: 30px; }}
-        .period-info {{ font-weight: bold; margin-bottom: 20px; }}
-        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 11px; }}
-        th {{ background-color: #f5f5f5; border: 1px solid #333; padding: 10px 8px; text-align: center; font-weight: bold; }}
-        td {{ border: 1px solid #333; padding: 8px; vertical-align: top; }}
-        .row-number {{ text-align: center; width: 50px; }}
-        .description {{ width: 60%; }}
-        .date {{ text-align: center; width: 15%; }}
-        .hours {{ text-align: center; width: 15%; }}
-        .total-row {{ font-weight: bold; }}
-        .additional-notes {{ margin: 40px 0; }}
-        .signature-line {{ border-bottom: 1px solid #333; display: inline-block; width: 300px; margin-bottom: 5px; }}
-        .signature-labels {{ display: flex; justify-content: space-between; margin-top: 60px; }}
-        .signature-left {{ text-align: left; }}
-        .signature-right {{ text-align: right; }}
-        .blue-text {{ color: #0066cc; font-weight: bold; }}
-    </style>
-</head>
-<body>
-    <div class='header-section'>
-        <div class='company-info'>
-            <div class='company-name'>{System.Net.WebUtility.HtmlEncode(settings.CompanyName)}</div>
-            <div class='company-details'>
-                ID broj: {System.Net.WebUtility.HtmlEncode(settings.CompanyId)}<br>
-                {System.Net.WebUtility.HtmlEncode(settings.AddressLine1)}<br>
-                {System.Net.WebUtility.HtmlEncode(settings.AddressLine2)}<br>
-                Telefon: {System.Net.WebUtility.HtmlEncode(settings.Phone)}<br>
-                Email: {System.Net.WebUtility.HtmlEncode(settings.Email)}
-            </div>
-        </div>
-        
-        <div class='client-info'>
-            {System.Net.WebUtility.HtmlEncode(settings.ClientName)}<br>
-            ID broj: {System.Net.WebUtility.HtmlEncode(settings.ClientId)}
-        </div>
-    </div>
 
-    <div class='document-title'>{System.Net.WebUtility.HtmlEncode(settings.DocumentTitle)}</div>
-    <div class='contract-info'>Ugovor o pružanju usluga broj: {contractNumber}</div>
-    
-    <div class='period-info'>Izvještajni period: {period}</div>
+        string headingsFontColor = "#FF4B4B"; // Dark Red
 
-    <table>
-        <thead>
-            <tr>
-                <th class='row-number'>Red<br>br</th>
-                <th class='description'>Kratak opis</th>
-                <th class='date'>Datum</th>
-                <th class='hours'>Ukupan broj sati</th>
-            </tr>
-        </thead>
-        <tbody>";
+        QuestPDF.Fluent.Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(70);
+                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Trebuchet MS"));
 
+                page.Header().Element(ComposeHeader);
+                page.Content().Element(ComposeContent);
+
+                void ComposeHeader(IContainer container)
+                {
+                    container.Column(column =>
+                    {
+                        // Company info
+                        column.Item().PaddingBottom(15).Text(text =>
+                        {
+                            text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
+
+                            // header (bold, bigger)
+                            text.Span(settings.CompanyName)
+                                .Bold()
+                                .FontSize(16)
+                                .FontColor(headingsFontColor);
+
+                            // small lines separated with \n (no extra gap)
+                            text.Span(
+                                $"\nID broj: {settings.CompanyId}\n" +
+                                $"Broj rješenja: 16-17-320/24\n" +
+                                $"{settings.AddressLine1}\n" +
+                                $"{settings.AddressLine2}\n" +
+                                $"Telefon: {settings.Phone}\n" +
+                                $"Email: {settings.Email}"
+                            ).FontSize(11);
+                        });
+
+                        // Client info
+                        column.Item().PaddingBottom(28).Text(text =>
+                        {
+                            text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
+
+                            text.Span(settings.ClientName)
+                            .Bold()
+                            .FontSize(16)
+                            .FontColor(headingsFontColor);
+
+                            text.Span($"\nID broj: {settings.ClientId}\n" +
+                                        "PDV broj: 200236190009\n" +
+                                        "Grbavička 4\n" +
+                                        "71000 Sarajevo"
+                             ).FontSize(11);
+                        });
+
+                        // Document title
+                        column.Item().AlignCenter().Text(settings.DocumentTitle).Bold().FontSize(18).FontColor(headingsFontColor);
+
+                        // Contract info
+                        column.Item().PaddingBottom(18).AlignCenter().Text($"Ugovor o pružanju usluga broj: {contractNumber}").Bold().FontSize(11);
+
+                        // Period info
+                        column.Item().PaddingBottom(10).Text($"Izvještajni period: {period}").Bold().FontSize(11);
+                    });
+                }
+
+                void ComposeContent(IContainer container)
+                {
+                    container.Column(column =>
+                    {
+                        // Tasks table
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(1);   // Red br
+                                columns.RelativeColumn(7);   // Kratak opis
+                                columns.RelativeColumn(2);   // Datum
+                                columns.RelativeColumn(2);   // Ukupan broj sati
+                            });
+
+                            // Header
+                            table.Header(header =>
+                            {
+                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Red\nbr").Bold().FontSize(11);
+                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Kratak opis").Bold().FontSize(11);
+                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Datum").Bold().FontSize(11);
+                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Ukupan broj sati").Bold().FontSize(11);
+                            });
+
+                            // Data rows
+                            var index = 1;
+                            foreach (var task in tasks)
+                            {
+                                table.Cell().Border(1).Padding(4).AlignCenter().Text(index++.ToString()).FontSize(11);
+                                table.Cell().Border(1).Padding(4).Text($"- Daily\n- {task.Description}").FontSize(11);
+                                table.Cell().Border(1).Padding(4).AlignCenter().Text($"{task.Date:d. M. yyyy}.").FontSize(11);
+                                table.Cell().Border(1).Padding(4).AlignCenter().Text(task.Hours.ToString()).FontSize(11);
+                            }
+
+                            // Total row
+                            table.Cell().Border(1).Padding(4).Text("").FontSize(11);
+                            table.Cell().Border(1).Padding(4).Text("").FontSize(11);
+                            table.Cell().Border(1).Padding(4).AlignRight().Text("Ukupan broj sati").Bold().FontSize(11);
+                            table.Cell().Border(1).Padding(4).AlignCenter().Text(total.ToString()).Bold().FontSize(11);
+                        });
+
+                        if (settings.IncludeSignatures)
+                        {
+                            // Additional notes
+                            column.Item().PaddingTop(30).Text(text =>
+                            {
+                                text.Span("Dodatne\nnapomene:").Bold().FontSize(11);
+                                text.EmptyLine();
+                                text.Span("_".PadRight(70, '_'));
+                                text.EmptyLine();
+                                text.Span("_".PadRight(70, '_'));
+                            });
+
+                            // Date line
+                            column.Item().PaddingTop(20).Text(text =>
+                            {
+                                text.Span("Dana: ").FontSize(11);
+                                text.Span("_".PadRight(15, '_')).FontSize(11);
+                                text.Span(", godine").FontSize(11);
+                            });
+
+                            // Signatures
+                            column.Item().PaddingTop(40).Row(row =>
+                            {
+                                row.RelativeItem().Text(text =>
+                                {
+                                    text.Span("Izvršilac").FontSize(11);
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.Span("_".PadRight(25, '_'));
+                                });
+
+                                row.RelativeItem().AlignRight().Text(text =>
+                                {
+                                    text.Span("Za Naručioca").FontSize(11);
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.EmptyLine();
+                                    text.Span("_".PadRight(25, '_'));
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+        }).GeneratePdf(filePath);
+    }
+
+    private void GenerateWordDocument(List<DailyTask> tasks, PdfSettings settings, string filePath)
+    {
+        using var document = WordprocessingDocument.Create(filePath, WordprocessingDocumentType.Document);
+        var mainPart = document.AddMainDocumentPart();
+        mainPart.Document = new OpenXmlDocument();
+        var body = mainPart.Document.AppendChild(new Body());
+
+        var total = tasks.Sum(t => t.Hours);
+        var period = tasks.Any() ? $"{tasks.Min(t => t.Date):MMMM yyyy}." : DateTime.Now.ToString("MMMM yyyy.");
+        var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
+
+        // Company info
+        var companyPara = body.AppendChild(new Paragraph());
+        var companyRun = companyPara.AppendChild(new Run());
+        companyRun.AppendChild(new RunProperties(new Bold()));
+        companyRun.AppendChild(new Text(settings.CompanyName));
+
+        body.AppendChild(CreateSimpleParagraph($"ID broj: {settings.CompanyId}"));
+        body.AppendChild(CreateSimpleParagraph("Broj rješenja: 16-17-320/24"));
+        body.AppendChild(CreateSimpleParagraph(settings.AddressLine1));
+        body.AppendChild(CreateSimpleParagraph(settings.AddressLine2));
+        body.AppendChild(CreateSimpleParagraph($"Telefon: {settings.Phone}"));
+        body.AppendChild(CreateSimpleParagraph($"Email: {settings.Email}"));
+
+        // Empty line
+        body.AppendChild(CreateSimpleParagraph(""));
+
+        // Client info
+        var clientPara = body.AppendChild(new Paragraph());
+        var clientRun = clientPara.AppendChild(new Run());
+        clientRun.AppendChild(new RunProperties(new Bold()));
+        clientRun.AppendChild(new Text(settings.ClientName));
+
+        body.AppendChild(CreateSimpleParagraph($"ID broj: {settings.ClientId}"));
+        body.AppendChild(CreateSimpleParagraph("PDV broj: 200236190009"));
+        body.AppendChild(CreateSimpleParagraph("Grbavička 47"));
+        body.AppendChild(CreateSimpleParagraph("71000 Sarajevo"));
+
+        // Empty line
+        body.AppendChild(CreateSimpleParagraph(""));
+
+        // Document title
+        var titlePara = body.AppendChild(new Paragraph());
+        var titleProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+        titlePara.AppendChild(titleProp);
+        var titleRun = titlePara.AppendChild(new Run());
+        titleRun.AppendChild(new RunProperties(new Bold(), new FontSize() { Val = "32" }));
+        titleRun.AppendChild(new Text(settings.DocumentTitle));
+
+        // Contract info
+        var contractPara = body.AppendChild(new Paragraph());
+        var contractProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+        contractPara.AppendChild(contractProp);
+        contractPara.AppendChild(new Run(new Text($"Ugovor o pružanju usluga broj: {contractNumber}")));
+
+        // Period info
+        body.AppendChild(CreateSimpleParagraph($"Izvještajni period: {period}"));
+
+        // Empty line
+        body.AppendChild(CreateSimpleParagraph(""));
+
+        // Table
+        var table = new Table();
+
+        // Table properties
+        var tableProps = new TableProperties(
+            new TableBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }
+            ),
+            new TableWidth() { Width = "0", Type = TableWidthUnitValues.Auto }
+        );
+        table.AppendChild(tableProps);
+
+        // Header row
+        var headerRow = new TableRow();
+        headerRow.AppendChild(CreateTableCell("Red\nbr", true));
+        headerRow.AppendChild(CreateTableCell("Kratak opis", true));
+        headerRow.AppendChild(CreateTableCell("Datum", true));
+        headerRow.AppendChild(CreateTableCell("Ukupan broj sati", true));
+        table.AppendChild(headerRow);
+
+        // Data rows
         var index = 1;
         foreach (var task in tasks)
         {
-            html += $@"
-            <tr>
-                <td class='row-number'>{index++}</td>
-                <td class='description'>- Daily<br>- {System.Net.WebUtility.HtmlEncode(task.Description)}</td>
-                <td class='date'>{task.Date:d. M. yyyy}.</td>
-                <td class='hours'>{task.Hours}</td>
-            </tr>";
+            var dataRow = new TableRow();
+            dataRow.AppendChild(CreateTableCell(index++.ToString()));
+            dataRow.AppendChild(CreateTableCell($"- Daily\n- {task.Description}"));
+            dataRow.AppendChild(CreateTableCell($"{task.Date:d. M. yyyy}."));
+            dataRow.AppendChild(CreateTableCell(task.Hours.ToString()));
+            table.AppendChild(dataRow);
         }
 
-        html += $@"
-        </tbody>
-        <tfoot>
-            <tr class='total-row'>
-                <td colspan='3' style='text-align: right; padding-right: 20px;'><strong>Ukupan broj sati</strong></td>
-                <td class='hours'><strong>{total}</strong></td>
-            </tr>
-        </tfoot>
-    </table>";
+        // Total row
+        var totalRow = new TableRow();
+        totalRow.AppendChild(CreateTableCell(""));
+        totalRow.AppendChild(CreateTableCell(""));
+        totalRow.AppendChild(CreateTableCell("Ukupan broj sati", true));
+        totalRow.AppendChild(CreateTableCell(total.ToString(), true));
+        table.AppendChild(totalRow);
+
+        body.AppendChild(table);
 
         if (settings.IncludeSignatures)
         {
-            html += "\n    <div class='additional-notes'>";
-            html += "\n        <strong>Dodatne<br>napomene:</strong>";
-            html += "\n        <div class='signature-line'></div>";
-            html += "\n        <br>";
-            html += "\n        <div class='signature-line'></div>";
-            html += "\n    </div>";
-            html += "\n";
-            html += "\n    <div style='margin-top: 60px;'>";
-            html += "\n        <strong>Dana:</strong> <span style='display: inline-block; width: 100px; border-bottom: 1px solid #333;'></span><strong>, godine</strong>";
-            html += "\n    </div>";
-            html += "\n";
-            html += "\n    <div class='signature-labels'>";
-            html += "\n        <div class='signature-left'>";
-            html += "\n            <div>Izvršilac</div>";
-            html += "\n            <div class='blue-text' style='margin-top: 20px;'>OBR \"SMART POINT\"</div>";
-            html += "\n            <div class='blue-text'>vl. Alnaqli Muhamed</div>";
-            html += "\n            <div class='blue-text'>SARAJEVO</div>";
-            html += "\n            <div style='margin-top: 30px; border-bottom: 1px solid #333; width: 200px;'></div>";
-            html += "\n        </div>";
-            html += "\n        <div class='signature-right'>";
-            html += "\n            <div>Za Naručioca</div>";
-            html += "\n            <div style='margin-top: 100px; border-bottom: 1px solid #333; width: 200px; margin-left: auto;'></div>";
-            html += "\n        </div>";
-            html += "\n    </div>";
+            // Additional notes
+            body.AppendChild(CreateSimpleParagraph(""));
+            body.AppendChild(CreateSimpleParagraph(""));
+            var notesPara = body.AppendChild(new Paragraph());
+            var notesRun = notesPara.AppendChild(new Run());
+            notesRun.AppendChild(new RunProperties(new Bold()));
+            notesRun.AppendChild(new Text("Dodatne napomene:"));
+
+            body.AppendChild(CreateSimpleParagraph("_".PadRight(70, '_')));
+            body.AppendChild(CreateSimpleParagraph("_".PadRight(70, '_')));
+
+            // Date line
+            body.AppendChild(CreateSimpleParagraph(""));
+            body.AppendChild(CreateSimpleParagraph($"Dana: {"_".PadRight(15, '_')}, godine"));
+
+            // Signatures
+            body.AppendChild(CreateSimpleParagraph(""));
+            body.AppendChild(CreateSimpleParagraph(""));
+
+            var sigPara = body.AppendChild(new Paragraph());
+            sigPara.AppendChild(new Run(new Text("Izvršilac")));
+            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            sigPara.AppendChild(new Run(new Text("Za Naručioca")));
+
+            body.AppendChild(CreateSimpleParagraph(""));
+            body.AppendChild(CreateSimpleParagraph(""));
+            body.AppendChild(CreateSimpleParagraph(""));
+
+            var linePara = body.AppendChild(new Paragraph());
+            linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
+            linePara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            linePara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
         }
 
-        html += "\n</body>\n</html>";
+        mainPart.Document.Save();
+    }
 
-        return html;
+    private static Paragraph CreateSimpleParagraph(string text)
+    {
+        var paragraph = new Paragraph();
+        var run = paragraph.AppendChild(new Run());
+        run.AppendChild(new Text(text));
+        return paragraph;
+    }
+
+    private static TableCell CreateTableCell(string text, bool bold = false)
+    {
+        var cell = new TableCell();
+        var paragraph = new Paragraph();
+        var run = new Run();
+
+        if (bold)
+        {
+            run.AppendChild(new RunProperties(new Bold()));
+        }
+
+        if (text.Contains('\n'))
+        {
+            var lines = text.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                {
+                    run.AppendChild(new Break());
+                }
+                run.AppendChild(new Text(lines[i]));
+            }
+        }
+        else
+        {
+            run.AppendChild(new Text(text));
+        }
+
+        paragraph.AppendChild(run);
+        cell.AppendChild(paragraph);
+
+        // Cell properties for borders
+        var cellProps = new TableCellProperties(
+            new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }
+            )
+        );
+        cell.AppendChild(cellProps);
+
+        return cell;
     }
 }

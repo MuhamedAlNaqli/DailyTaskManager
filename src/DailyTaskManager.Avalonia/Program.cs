@@ -46,6 +46,10 @@ class Program
             await InitializeDatabaseAsync(host.Services);
             Console.WriteLine("DEBUG: Database initialization completed");
             
+            // Initialize update service
+            await InitializeUpdateServiceAsync(host.Services);
+            Console.WriteLine("DEBUG: Update service initialization completed");
+            
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -117,6 +121,7 @@ class Program
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
+                services.AddSingleton<IUpdateService, UpdateService>();
                 
                 // Native notifications - placeholder for future implementation
                 // services.AddSingleton<INotificationManager>(provider => /* Notification manager implementation */); 
@@ -388,6 +393,31 @@ class Program
         catch (Exception ex)
         {
             logger.LogError(ex, "Error adding password authentication to OAuth users");
+        }
+    }
+
+    private static async Task InitializeUpdateServiceAsync(IServiceProvider services)
+    {
+        try
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            var updateService = services.GetRequiredService<IUpdateService>();
+
+            logger.LogInformation("Initializing update service...");
+            
+            // Initialize the update service
+            await updateService.InitializeAsync();
+            
+            // Start automatic update checking (check every 24 hours)
+            updateService.StartAutomaticUpdateChecking(TimeSpan.FromHours(24));
+            
+            logger.LogInformation("Update service initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            // Don't fail startup if update service fails to initialize
+            var logger = services.GetService<ILogger<Program>>();
+            logger?.LogError(ex, "Failed to initialize update service");
         }
     }
 }

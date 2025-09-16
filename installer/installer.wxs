@@ -3,11 +3,13 @@
   
   <Package Name="Daily Task Manager" 
            Language="1033" 
-           Version="2.0.0.0" 
+           Version="$(var.Version)" 
            Manufacturer="Smart Point" 
            UpgradeCode="A7B2C3D4-E5F6-7890-ABCD-123456789012"
-           InstallerVersion="200"
-           Compressed="yes">
+           InstallerVersion="500"
+           Compressed="yes"
+           Platform="x64"
+           Scope="perMachine">
     
     <!-- Package Information -->
     <SummaryInformation Description="Daily Task Manager - Cross-platform task management application" />
@@ -15,8 +17,14 @@
     <!-- Media Template -->
     <MediaTemplate EmbedCab="yes" />
     
-    <!-- Major Upgrade -->
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <!-- Enhanced Major Upgrade Configuration -->
+    <MajorUpgrade 
+      Schedule="afterInstallInitialize"
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed. Please uninstall the newer version first."
+      AllowDowngrades="no"
+      AllowSameVersionUpgrades="yes"
+      MigrateFeatures="yes"
+      DisallowUpgradeErrorMessage="An older version of [ProductName] is installed. The installer will now upgrade to version [ProductVersion]." />
     
     <!-- Feature Definition -->
     <Feature Id="ProductFeature" Title="Daily Task Manager Application" Level="1" Description="Core application files">
@@ -66,6 +74,28 @@
               Source="$(var.PublishDir)\appsettings.Development.json"
               KeyPath="yes" />
       </Component>
+      
+      <!-- Installation Registry Information -->
+      <Component Id="RegistryEntries" Guid="A1B2C3D4-E5F6-7890-1234-567890ABCDEF">
+        <RegistryKey Root="HKLM" Key="SOFTWARE\SmartPoint\DailyTaskManager">
+          <RegistryValue Name="Version" Type="string" Value="$(var.Version)" KeyPath="yes" />
+          <RegistryValue Name="InstallPath" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Name="InstallDate" Type="string" Value="[Date]" />
+          <RegistryValue Name="ReleaseChannel" Type="string" Value="[RELEASECHANNEL]" />
+          <RegistryValue Name="InstallMode" Type="string" Value="automatic" />
+          <RegistryValue Name="UpdatesEnabled" Type="integer" Value="1" />
+        </RegistryKey>
+        
+        <!-- Uninstall Registry Entry -->
+        <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]">
+          <RegistryValue Name="EstimatedSize" Type="integer" Value="50000" />
+          <RegistryValue Name="InstallLocation" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Name="Publisher" Type="string" Value="Smart Point" />
+          <RegistryValue Name="DisplayVersion" Type="string" Value="$(var.Version)" />
+          <RegistryValue Name="VersionMajor" Type="integer" Value="2" />
+          <RegistryValue Name="VersionMinor" Type="integer" Value="1" />
+        </RegistryKey>
+      </Component>
     </ComponentGroup>
     
     <!-- Start Menu Shortcuts -->
@@ -114,8 +144,40 @@
     <Property Id="ARPNOREPAIR" Value="1" />
     <Property Id="ARPNOMODIFY" Value="1" />
     
-    <!-- Launch Condition - Windows Version -->
+    <!-- Launch Conditions -->
     <Launch Condition="VersionNT >= 601" Message="This application requires Windows 7 or higher." />
+    <Launch Condition="VersionNT64" Message="This application requires a 64-bit version of Windows." />
+    
+    <!-- Version Validation Properties -->
+    <Property Id="PREVIOUSVERSIONINSTALLED" Secure="yes" />
+    <Property Id="NEWPRODUCTFOUND" Secure="yes" />
+    
+    <!-- Installation Mode Properties -->
+    <Property Id="INSTALLMODE">
+      <RegistrySearch Id="InstallModeSearch"
+                      Root="HKLM" 
+                      Key="SOFTWARE\SmartPoint\DailyTaskManager"
+                      Name="InstallMode"
+                      Type="raw" />
+    </Property>
+    
+    <!-- Release Channel Property -->
+    <Property Id="RELEASECHANNEL" Value="stable">
+      <RegistrySearch Id="ReleaseChannelSearch"
+                      Root="HKLM" 
+                      Key="SOFTWARE\SmartPoint\DailyTaskManager"
+                      Name="ReleaseChannel"
+                      Type="raw" />
+    </Property>
+    
+    <!-- Previous Version Property -->
+    <Property Id="PREVVERSION">
+      <RegistrySearch Id="PrevVersionSearch"
+                      Root="HKLM" 
+                      Key="SOFTWARE\SmartPoint\DailyTaskManager"
+                      Name="Version"
+                      Type="raw" />
+    </Property>
     
   </Package>
 </Wix>
