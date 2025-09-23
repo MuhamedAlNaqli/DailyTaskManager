@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   
-  <Package Name="Daily Task Manager" 
-           Language="1033" 
-           Version="$(var.Version)" 
-           Manufacturer="Smart Point" 
+  <Package Name="Daily Task Manager"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="Smart Point"
            UpgradeCode="A7B2C3D4-E5F6-7890-ABCD-123456789012"
            InstallerVersion="500"
            Compressed="yes"
-           Platform="x64"
            Scope="perMachine">
     
     <!-- Package Information -->
@@ -18,13 +17,12 @@
     <MediaTemplate EmbedCab="yes" />
     
     <!-- Enhanced Major Upgrade Configuration -->
-    <MajorUpgrade 
+    <MajorUpgrade
       Schedule="afterInstallInitialize"
       DowngradeErrorMessage="A newer version of [ProductName] is already installed. Please uninstall the newer version first."
       AllowDowngrades="no"
       AllowSameVersionUpgrades="yes"
-      MigrateFeatures="yes"
-      DisallowUpgradeErrorMessage="An older version of [ProductName] is installed. The installer will now upgrade to version [ProductVersion]." />
+      MigrateFeatures="yes" />
     
     <!-- Feature Definition -->
     <Feature Id="ProductFeature" Title="Daily Task Manager Application" Level="1" Description="Core application files">

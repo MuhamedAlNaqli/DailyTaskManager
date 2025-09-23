@@ -1,18 +1,23 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Models;
+using DailyTaskManager.Core.Interfaces;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
 
 public partial class AddTaskViewModel : ObservableObject
 {
     private readonly ILogger<AddTaskViewModel> _logger;
+    private readonly IAutoCompleteService _autoCompleteService;
+    private CancellationTokenSource? _searchCancellationTokenSource;
 
     [ObservableProperty]
-    private DateTime _date = DateTime.Today;
+    private DateTimeOffset? _date = DateTimeOffset.Now.Date;
 
     [ObservableProperty]
     private string _description = "";
@@ -29,11 +34,20 @@ public partial class AddTaskViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasValidationError = false;
 
+    [ObservableProperty]
+    private bool _showSuggestions = false;
+
+    [ObservableProperty]
+    private int _selectedSuggestionIndex = -1;
+
+    public ObservableCollection<string> Suggestions { get; } = new();
+
     public event EventHandler<bool>? RequestClose;
 
-    public AddTaskViewModel(ILogger<AddTaskViewModel> logger)
+    public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService)
     {
         _logger = logger;
+        _autoCompleteService = autoCompleteService;
     }
 
     [RelayCommand]
@@ -104,9 +118,121 @@ public partial class AddTaskViewModel : ObservableObject
     {
         return new DailyTask
         {
-            Date = Date,
+            Date = Date?.DateTime ?? DateTime.Today,
             Description = Description.Trim(),
             Hours = Hours
         };
+    }
+
+    partial void OnDescriptionChanged(string value)
+    {
+        _ = SearchSuggestionsWithDebounceAsync(value);
+    }
+
+    private async Task SearchSuggestionsWithDebounceAsync(string input)
+    {
+        try
+        {
+            // Cancel previous search
+            _searchCancellationTokenSource?.Cancel();
+            _searchCancellationTokenSource = new CancellationTokenSource();
+
+            var cancellationToken = _searchCancellationTokenSource.Token;
+
+            // Debounce delay
+            await Task.Delay(300, cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            await SearchSuggestionsAsync(input);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancelled, do nothing
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in debounced search for input '{Input}'", input);
+        }
+    }
+
+    private async Task SearchSuggestionsAsync(string input)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(input) || input.Length < 2)
+            {
+                HideSuggestions();
+                return;
+            }
+
+            var suggestions = await _autoCompleteService.GetSuggestionsAsync(input, 8);
+
+            Suggestions.Clear();
+            foreach (var suggestion in suggestions)
+            {
+                Suggestions.Add(suggestion);
+            }
+
+            ShowSuggestions = Suggestions.Count > 0;
+            SelectedSuggestionIndex = -1;
+
+            _logger.LogDebug("Found {Count} suggestions for '{Input}'", suggestions.Count, input);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching suggestions for input '{Input}'", input);
+            HideSuggestions();
+        }
+    }
+
+    [RelayCommand]
+    public void SelectSuggestion(string? suggestion)
+    {
+        if (!string.IsNullOrEmpty(suggestion))
+        {
+            Description = suggestion;
+            HideSuggestions();
+            _logger.LogDebug("Selected suggestion: '{Suggestion}'", suggestion);
+        }
+    }
+
+    [RelayCommand]
+    public void NavigateSuggestions(string direction)
+    {
+        if (!ShowSuggestions || Suggestions.Count == 0)
+            return;
+
+        switch (direction.ToLower())
+        {
+            case "up":
+                SelectedSuggestionIndex = SelectedSuggestionIndex <= 0
+                    ? Suggestions.Count - 1
+                    : SelectedSuggestionIndex - 1;
+                break;
+            case "down":
+                SelectedSuggestionIndex = SelectedSuggestionIndex >= Suggestions.Count - 1
+                    ? 0
+                    : SelectedSuggestionIndex + 1;
+                break;
+        }
+    }
+
+    [RelayCommand]
+    public void ApplySelectedSuggestion()
+    {
+        if (SelectedSuggestionIndex >= 0 && SelectedSuggestionIndex < Suggestions.Count)
+        {
+            SelectSuggestion(Suggestions[SelectedSuggestionIndex]);
+        }
+    }
+
+    [RelayCommand]
+    public void HideSuggestions()
+    {
+        ShowSuggestions = false;
+        SelectedSuggestionIndex = -1;
+        _searchCancellationTokenSource?.Cancel();
     }
 }

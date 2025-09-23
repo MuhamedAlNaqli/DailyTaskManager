@@ -1,2 +1,4 @@
 - Allways use these credentials for login, Username: Muhamed, Password: SelmaSumejaAjna123!*
 - Allways run UI tests that are specific for the implemented feature to verify that everything is implemented as it should be
+- All project documentation is centralized in the docs/ folder at project root
+- Documentation includes: README.md, deployment instructions, OAuth setup, UI tests guide, versioning roadmap, and installer documentation

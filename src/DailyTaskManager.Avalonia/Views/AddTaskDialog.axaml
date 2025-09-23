@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+        xmlns:i="using:Avalonia.Xaml.Interactivity"
+        xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
         x:Class="DailyTaskManager.Avalonia.Views.AddTaskDialog"
         x:DataType="vm:AddTaskViewModel"
         Title="Add New Task"
@@ -30,18 +32,75 @@
         <!-- Form Content -->
         <StackPanel Grid.Row="1" Spacing="15">
             
-            <!-- Task Description -->
+            <!-- Task Description with Auto-Complete -->
             <StackPanel>
-                <TextBlock Text="Description *" 
-                           Classes="label" 
+                <TextBlock Text="Description *"
+                           Classes="label"
                            Margin="0,0,0,5"/>
-                <TextBox Text="{Binding Description}" 
-                         Watermark="Enter task description (supports multiple lines)"
-                         Classes="primary"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         MinHeight="60"
-                         MaxHeight="120"/>
+
+                <!-- Auto-Complete Container -->
+                <Grid>
+                    <TextBox Name="DescriptionTextBox"
+                             Text="{Binding Description}"
+                             Watermark="Enter task description (supports multiple lines)"
+                             Classes="primary"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="60"
+                             MaxHeight="120">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Down" Command="{Binding NavigateSuggestionsCommand}" CommandParameter="down"/>
+                            <KeyBinding Gesture="Up" Command="{Binding NavigateSuggestionsCommand}" CommandParameter="up"/>
+                            <KeyBinding Gesture="Enter" Command="{Binding ApplySelectedSuggestionCommand}"/>
+                            <KeyBinding Gesture="Escape" Command="{Binding HideSuggestionsCommand}"/>
+                        </TextBox.KeyBindings>
+                    </TextBox>
+
+                    <!-- Auto-Complete Popup -->
+                    <Popup Name="SuggestionsPopup"
+                           IsOpen="{Binding ShowSuggestions}"
+                           PlacementTarget="{Binding ElementName=DescriptionTextBox}"
+                           Placement="Bottom"
+                           IsLightDismissEnabled="True"
+                           MaxWidth="400"
+                           MaxHeight="200">
+                        <Border Background="White"
+                                BorderBrush="#FFDDD6FE"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                BoxShadow="0 4 12 0 #1A000000">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          MaxHeight="200">
+                                <ItemsControl ItemsSource="{Binding Suggestions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Name="SuggestionItem"
+                                                    Background="Transparent"
+                                                    Padding="12,8"
+                                                    Cursor="Hand">
+                                                <Border.Styles>
+                                                    <Style Selector="Border:pointerover">
+                                                        <Setter Property="Background" Value="#FFF3F4F6"/>
+                                                    </Style>
+                                                </Border.Styles>
+                                                <TextBlock Text="{Binding}"
+                                                           FontSize="14"
+                                                           Foreground="#FF374151"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <i:Interaction.Behaviors>
+                                                    <ia:EventTriggerBehavior EventName="PointerPressed">
+                                                        <ia:InvokeCommandAction Command="{Binding $parent[Window].DataContext.SelectSuggestionCommand}"
+                                                                                CommandParameter="{Binding}"/>
+                                                    </ia:EventTriggerBehavior>
+                                                </i:Interaction.Behaviors>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
             </StackPanel>
 
             <!-- Date and Hours -->
@@ -52,7 +111,7 @@
                     <TextBlock Text="Date *" 
                                Classes="label" 
                                Margin="0,0,0,5"/>
-                    <DatePicker SelectedDate="{Binding Date}" 
+                    <DatePicker SelectedDate="{Binding Date, Mode=TwoWay}"
                                 Classes="primary"/>
                 </StackPanel>
 

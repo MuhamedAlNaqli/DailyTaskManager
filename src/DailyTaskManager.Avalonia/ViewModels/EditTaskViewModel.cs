@@ -13,7 +13,7 @@ public partial class EditTaskViewModel : ObservableObject
     private DailyTask? _originalTask;
 
     [ObservableProperty]
-    private DateTime _date = DateTime.Today;
+    private DateTimeOffset? _date = DateTimeOffset.Now.Date;
 
     [ObservableProperty]
     private string _description = "";
@@ -40,7 +40,7 @@ public partial class EditTaskViewModel : ObservableObject
     public void LoadTask(DailyTask task)
     {
         _originalTask = task;
-        Date = task.Date;
+        Date = new DateTimeOffset(task.Date);
         Description = task.Description;
         Hours = task.Hours;
     }
@@ -113,10 +113,10 @@ public partial class EditTaskViewModel : ObservableObject
     {
         if (_originalTask == null) return null;
 
-        _originalTask.Date = Date;
+        _originalTask.Date = Date?.DateTime ?? DateTime.Today;
         _originalTask.Description = Description;
         _originalTask.Hours = Hours;
-        
+
         return _originalTask;
     }
 }
