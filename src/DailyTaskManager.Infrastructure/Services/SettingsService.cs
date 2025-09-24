@@ -174,13 +174,96 @@ public class SettingsService : ISettingsService
         {
             var settingsJson = JsonConvert.SerializeObject(settings, Formatting.Indented);
             await SetSettingAsync("PdfSettings", settingsJson, "PDF export settings");
-            
+
             _logger.LogDebug("PDF settings saved");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving PDF settings");
             throw;
+        }
+    }
+
+    public async Task<string> GetDownloadPathAsync()
+    {
+        try
+        {
+            var downloadPath = await GetSettingAsync<string>("DownloadPath");
+
+            if (string.IsNullOrEmpty(downloadPath))
+            {
+                // Default to Desktop if no setting is found
+                downloadPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                _logger.LogDebug("Using default download path: {Path}", downloadPath);
+            }
+            else
+            {
+                _logger.LogDebug("Using configured download path: {Path}", downloadPath);
+            }
+
+            return downloadPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting download path, using default");
+            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        }
+    }
+
+    public async Task<string> GetPdfExportPathAsync()
+    {
+        try
+        {
+            var path = await GetSettingAsync<string>("PdfExportPath");
+            if (string.IsNullOrEmpty(path))
+            {
+                path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                _logger.LogDebug("Using default PDF export path: {Path}", path);
+            }
+            return path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting PDF export path, using default");
+            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        }
+    }
+
+    public async Task<string> GetWordExportPathAsync()
+    {
+        try
+        {
+            var path = await GetSettingAsync<string>("WordExportPath");
+            if (string.IsNullOrEmpty(path))
+            {
+                path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                _logger.LogDebug("Using default Word export path: {Path}", path);
+            }
+            return path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting Word export path, using default");
+            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        }
+    }
+
+    public async Task<string> GetExcelExportPathAsync()
+    {
+        try
+        {
+            var path = await GetSettingAsync<string>("ExcelExportPath");
+            if (string.IsNullOrEmpty(path))
+            {
+                path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                _logger.LogDebug("Using default Excel export path: {Path}", path);
+            }
+            return path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting Excel export path, using default");
+            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         }
     }
 

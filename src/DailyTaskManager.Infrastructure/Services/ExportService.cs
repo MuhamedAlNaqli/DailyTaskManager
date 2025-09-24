@@ -22,11 +22,29 @@ namespace DailyTaskManager.Infrastructure.Services;
 /// </summary>
 public class ExportService : IExportService
 {
-    private readonly ILogger<ExportService> _logger;
+    private readonly Dictionary<string, string> _months = new Dictionary<string, string>
+    {
+        { "January", "Januar" },
+        { "February", "Februar" },
+        { "March", "Mart" },
+        { "April", "April" },
+        { "May", "Maj" },
+        { "June", "Juni" },
+        { "July", "Juli" },
+        { "August", "August" },
+        { "September", "Septembar" },
+        { "October", "Oktobar" },
+        { "November", "Novembar" },
+        { "December", "Decembar" }
+    };
 
-    public ExportService(ILogger<ExportService> logger)
+    private readonly ILogger<ExportService> _logger;
+    private readonly ISettingsService _settingsService;
+
+    public ExportService(ILogger<ExportService> logger, ISettingsService settingsService)
     {
         _logger = logger;
+        _settingsService = settingsService;
     }
 
     public async Task<string> ExportTasksToExcelAsync(List<DailyTask> tasks, string? filePath = null)
@@ -35,11 +53,14 @@ public class ExportService : IExportService
         {
             // Order list ascending
             tasks = tasks
-                .OrderBy(x => x.CreatedAt)
+                .OrderBy(x => x.Date)
                 .ToList();
 
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                $"Pregled utrošenih sati - MA - {DateTime.Now:MMyy}.xlsx");
+            if (string.IsNullOrEmpty(filePath))
+            {
+                var downloadPath = await _settingsService.GetExcelExportPathAsync();
+                filePath = Path.Combine(downloadPath, $"Pregled utrošenih sati - MA - {DateTime.Now:MMyy}.xlsx");
+            }
 
             _logger.LogInformation("Exporting {Count} tasks to Excel: {FilePath}", tasks.Count, filePath);
 
@@ -164,8 +185,11 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                GetDefaultPdfFileName());
+            if (string.IsNullOrEmpty(filePath))
+            {
+                var downloadPath = await _settingsService.GetPdfExportPathAsync();
+                filePath = Path.Combine(downloadPath, GetDefaultPdfFileName());
+            }
 
             _logger.LogInformation("Exporting {Count} tasks to PDF: {FilePath}", tasks.Count, filePath);
 
@@ -201,8 +225,11 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+            if (string.IsNullOrEmpty(filePath))
+            {
+                var downloadPath = await _settingsService.GetExcelExportPathAsync();
+                filePath = Path.Combine(downloadPath, $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+            }
 
             _logger.LogInformation("Exporting {Count} tasks to CSV: {FilePath}", tasks.Count, filePath);
 
@@ -237,8 +264,11 @@ public class ExportService : IExportService
     {
         try
         {
-            filePath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.docx");
+            if (string.IsNullOrEmpty(filePath))
+            {
+                var downloadPath = await _settingsService.GetWordExportPathAsync();
+                filePath = Path.Combine(downloadPath, $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.docx");
+            }
 
             _logger.LogInformation("Exporting {Count} tasks to Word: {FilePath}", tasks.Count, filePath);
 
@@ -287,7 +317,10 @@ public class ExportService : IExportService
         QuestPDF.Settings.License = LicenseType.Community;
 
         var total = tasks.Sum(t => t.Hours);
-        var period = tasks.Any() ? $"{tasks.Min(t => t.Date):MMMM yyyy}." : DateTime.Now.ToString("MMMM yyyy.");
+        var maxTaskDate = tasks.Any() ? tasks.Max(t => t.Date) : DateTime.Now;
+        var currentMonth = _months[maxTaskDate.ToString("MMMM")];
+        var currentYear = maxTaskDate.ToString("yyyy");
+        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.");
         var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
 
         string headingsFontColor = "#FF4B4B"; // Dark Red
@@ -300,67 +333,65 @@ public class ExportService : IExportService
                 page.Margin(70);
                 page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Trebuchet MS"));
 
-                page.Header().Element(ComposeHeader);
                 page.Content().Element(ComposeContent);
 
-                void ComposeHeader(IContainer container)
-                {
-                    container.Column(column =>
-                    {
-                        // Company info
-                        column.Item().PaddingBottom(15).Text(text =>
-                        {
-                            text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
-
-                            // header (bold, bigger)
-                            text.Span(settings.CompanyName)
-                                .Bold()
-                                .FontSize(16)
-                                .FontColor(headingsFontColor);
-
-                            // small lines separated with \n (no extra gap)
-                            text.Span(
-                                $"\nID broj: {settings.CompanyId}\n" +
-                                $"Broj rješenja: 16-17-320/24\n" +
-                                $"{settings.AddressLine1}\n" +
-                                $"{settings.AddressLine2}\n" +
-                                $"Telefon: {settings.Phone}\n" +
-                                $"Email: {settings.Email}"
-                            ).FontSize(11);
-                        });
-
-                        // Client info
-                        column.Item().PaddingBottom(28).Text(text =>
-                        {
-                            text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
-
-                            text.Span(settings.ClientName)
-                            .Bold()
-                            .FontSize(16)
-                            .FontColor(headingsFontColor);
-
-                            text.Span($"\nID broj: {settings.ClientId}\n" +
-                                        "PDV broj: 200236190009\n" +
-                                        "Grbavička 4\n" +
-                                        "71000 Sarajevo"
-                             ).FontSize(11);
-                        });
-
-                        // Document title
-                        column.Item().AlignCenter().Text(settings.DocumentTitle).Bold().FontSize(18).FontColor(headingsFontColor);
-
-                        // Contract info
-                        column.Item().PaddingBottom(18).AlignCenter().Text($"Ugovor o pružanju usluga broj: {contractNumber}").Bold().FontSize(11);
-
-                        // Period info
-                        column.Item().PaddingBottom(10).Text($"Izvještajni period: {period}").Bold().FontSize(11);
-                    });
-                }
 
                 void ComposeContent(IContainer container)
                 {
                     container.Column(column =>
                     {
+                        // Header content (only on first page)
+                        column.Item().Column(headerColumn =>
+                        {
+                            // Company info
+                            headerColumn.Item().PaddingBottom(15).Text(text =>
+                            {
+                                text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
+
+                                // header (bold, bigger)
+                                text.Span(settings.CompanyName)
+                                    .Bold()
+                                    .FontSize(16)
+                                    .FontColor(headingsFontColor);
+
+                                // small lines separated with \n (no extra gap)
+                                text.Span(
+                                    $"\nID broj: {settings.CompanyId}\n" +
+                                    $"Broj rješenja: 16-17-320/24\n" +
+                                    $"{settings.AddressLine1}\n" +
+                                    $"{settings.AddressLine2}\n" +
+                                    $"Telefon: {settings.Phone}\n" +
+                                    $"Email: {settings.Email}"
+                                ).FontSize(11);
+                            });
+
+                            // Client info
+                            headerColumn.Item().PaddingBottom(28).Text(text =>
+                            {
+                                text.DefaultTextStyle(x => x.LineHeight(1.0f)); // <- sets line height to 1 (tight)
+
+                                text.Span(settings.ClientName)
+                                .Bold()
+                                .FontSize(16)
+                                .FontColor(headingsFontColor);
+
+                                text.Span($"\nID broj: {settings.ClientId}\n" +
+                                            "PDV broj: 200236190009\n" +
+                                            "Grbavička 4\n" +
+                                            "71000 Sarajevo"
+                                 ).FontSize(11);
+                            });
+
+                            // Document title
+                            headerColumn.Item().AlignCenter().Text(settings.DocumentTitle).Bold().FontSize(18).FontColor(headingsFontColor);
+
+                            // Contract info
+                            headerColumn.Item().PaddingBottom(18).AlignCenter().Text($"Ugovor o pružanju usluga broj: {contractNumber}").Bold().FontSize(11);
+
+                            // Period info
+                            headerColumn.Item().PaddingBottom(10).Text($"Izvještajni period: {period}").Bold().FontSize(11);
+                        });
+
                         // Tasks table
                         column.Item().Table(table =>
                         {
@@ -372,21 +403,18 @@ public class ExportService : IExportService
                                 columns.RelativeColumn(2);   // Ukupan broj sati
                             });
 
-                            // Header
-                            table.Header(header =>
-                            {
-                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Red\nbr").Bold().FontSize(11);
-                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Kratak opis").Bold().FontSize(11);
-                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Datum").Bold().FontSize(11);
-                                header.Cell().Border(1).Padding(5).AlignCenter().Text("Ukupan broj sati").Bold().FontSize(11);
-                            });
+                            // Header (first row only - not using table.Header to avoid repetition)
+                            table.Cell().Border(1).Padding(5).AlignCenter().Text("Red\nbr").Bold().FontSize(11);
+                            table.Cell().Border(1).Padding(5).AlignCenter().Text("Kratak opis").Bold().FontSize(11);
+                            table.Cell().Border(1).Padding(5).AlignCenter().Text("Datum").Bold().FontSize(11);
+                            table.Cell().Border(1).Padding(5).AlignCenter().Text("Ukupan broj sati").Bold().FontSize(11);
 
                             // Data rows
                             var index = 1;
                             foreach (var task in tasks)
                             {
                                 table.Cell().Border(1).Padding(4).AlignCenter().Text(index++.ToString()).FontSize(11);
-                                table.Cell().Border(1).Padding(4).Text($"- Daily\n- {task.Description}").FontSize(11);
+                                table.Cell().Border(1).Padding(4).Text($"{task.Description}").FontSize(11);
                                 table.Cell().Border(1).Padding(4).AlignCenter().Text($"{task.Date:d. M. yyyy}.").FontSize(11);
                                 table.Cell().Border(1).Padding(4).AlignCenter().Text(task.Hours.ToString()).FontSize(11);
                             }
@@ -464,15 +492,20 @@ public class ExportService : IExportService
         // Company info
         var companyPara = body.AppendChild(new Paragraph());
         var companyRun = companyPara.AppendChild(new Run());
-        companyRun.AppendChild(new RunProperties(new Bold()));
+        companyRun.AppendChild(new RunProperties(
+            new Bold(),
+            new FontSize() { Val = "32" }, // 16pt = 32 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" },
+            new Color() { Val = "FF4B4B" }
+        ));
         companyRun.AppendChild(new Text(settings.CompanyName));
 
-        body.AppendChild(CreateSimpleParagraph($"ID broj: {settings.CompanyId}"));
-        body.AppendChild(CreateSimpleParagraph("Broj rješenja: 16-17-320/24"));
-        body.AppendChild(CreateSimpleParagraph(settings.AddressLine1));
-        body.AppendChild(CreateSimpleParagraph(settings.AddressLine2));
-        body.AppendChild(CreateSimpleParagraph($"Telefon: {settings.Phone}"));
-        body.AppendChild(CreateSimpleParagraph($"Email: {settings.Email}"));
+        body.AppendChild(CreateStyledParagraph($"ID broj: {settings.CompanyId}"));
+        body.AppendChild(CreateStyledParagraph("Broj rješenja: 16-17-320/24"));
+        body.AppendChild(CreateStyledParagraph(settings.AddressLine1));
+        body.AppendChild(CreateStyledParagraph(settings.AddressLine2));
+        body.AppendChild(CreateStyledParagraph($"Telefon: {settings.Phone}"));
+        body.AppendChild(CreateStyledParagraph($"Email: {settings.Email}"));
 
         // Empty line
         body.AppendChild(CreateSimpleParagraph(""));
@@ -480,33 +513,56 @@ public class ExportService : IExportService
         // Client info
         var clientPara = body.AppendChild(new Paragraph());
         var clientRun = clientPara.AppendChild(new Run());
-        clientRun.AppendChild(new RunProperties(new Bold()));
+        clientRun.AppendChild(new RunProperties(
+            new Bold(),
+            new FontSize() { Val = "32" }, // 16pt = 32 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" },
+            new Color() { Val = "FF4B4B" }
+        ));
         clientRun.AppendChild(new Text(settings.ClientName));
 
-        body.AppendChild(CreateSimpleParagraph($"ID broj: {settings.ClientId}"));
-        body.AppendChild(CreateSimpleParagraph("PDV broj: 200236190009"));
-        body.AppendChild(CreateSimpleParagraph("Grbavička 47"));
-        body.AppendChild(CreateSimpleParagraph("71000 Sarajevo"));
+        body.AppendChild(CreateStyledParagraph($"ID broj: {settings.ClientId}"));
+        body.AppendChild(CreateStyledParagraph("PDV broj: 200236190009"));
+        body.AppendChild(CreateStyledParagraph("Grbavička 4"));
+        body.AppendChild(CreateStyledParagraph("71000 Sarajevo"));
 
         // Empty line
         body.AppendChild(CreateSimpleParagraph(""));
 
-        // Document title
+        // Document title - centered and styled
         var titlePara = body.AppendChild(new Paragraph());
         var titleProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
         titlePara.AppendChild(titleProp);
         var titleRun = titlePara.AppendChild(new Run());
-        titleRun.AppendChild(new RunProperties(new Bold(), new FontSize() { Val = "32" }));
+        titleRun.AppendChild(new RunProperties(
+            new Bold(),
+            new FontSize() { Val = "36" }, // 18pt = 36 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" },
+            new Color() { Val = "FF4B4B" }
+        ));
         titleRun.AppendChild(new Text(settings.DocumentTitle));
 
-        // Contract info
+        // Contract info - centered and styled
         var contractPara = body.AppendChild(new Paragraph());
         var contractProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
         contractPara.AppendChild(contractProp);
-        contractPara.AppendChild(new Run(new Text($"Ugovor o pružanju usluga broj: {contractNumber}")));
+        var contractRun = contractPara.AppendChild(new Run());
+        contractRun.AppendChild(new RunProperties(
+            new Bold(),
+            new FontSize() { Val = "22" }, // 11pt = 22 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" }
+        ));
+        contractRun.AppendChild(new Text($"Ugovor o pružanju usluga broj: {contractNumber}"));
 
-        // Period info
-        body.AppendChild(CreateSimpleParagraph($"Izvještajni period: {period}"));
+        // Period info - styled
+        var periodPara = body.AppendChild(new Paragraph());
+        var periodRun = periodPara.AppendChild(new Run());
+        periodRun.AppendChild(new RunProperties(
+            new Bold(),
+            new FontSize() { Val = "22" }, // 11pt = 22 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" }
+        ));
+        periodRun.AppendChild(new Text($"Izvještajni period: {period}"));
 
         // Empty line
         body.AppendChild(CreateSimpleParagraph(""));
@@ -542,7 +598,7 @@ public class ExportService : IExportService
         {
             var dataRow = new TableRow();
             dataRow.AppendChild(CreateTableCell(index++.ToString()));
-            dataRow.AppendChild(CreateTableCell($"- Daily\n- {task.Description}"));
+            dataRow.AppendChild(CreateTableCell($"{task.Description}"));
             dataRow.AppendChild(CreateTableCell($"{task.Date:d. M. yyyy}."));
             dataRow.AppendChild(CreateTableCell(task.Hours.ToString()));
             table.AppendChild(dataRow);
@@ -581,9 +637,9 @@ public class ExportService : IExportService
 
             var sigPara = body.AppendChild(new Paragraph());
             sigPara.AppendChild(new Run(new Text("Izvršilac")));
-            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
-            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
-            sigPara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            sigPara.AppendChild(new Run(new TabChar()));
+            sigPara.AppendChild(new Run(new TabChar()));
+            sigPara.AppendChild(new Run(new TabChar()));
             sigPara.AppendChild(new Run(new Text("Za Naručioca")));
 
             body.AppendChild(CreateSimpleParagraph(""));
@@ -592,8 +648,8 @@ public class ExportService : IExportService
 
             var linePara = body.AppendChild(new Paragraph());
             linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
-            linePara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
-            linePara.AppendChild(new Run(new Text("").AppendChild(new TabChar())));
+            linePara.AppendChild(new Run(new TabChar()));
+            linePara.AppendChild(new Run(new TabChar()));
             linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
         }
 
@@ -608,16 +664,35 @@ public class ExportService : IExportService
         return paragraph;
     }
 
+    private static Paragraph CreateStyledParagraph(string text)
+    {
+        var paragraph = new Paragraph();
+        var run = paragraph.AppendChild(new Run());
+        run.AppendChild(new RunProperties(
+            new FontSize() { Val = "22" }, // 11pt = 22 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" }
+        ));
+        run.AppendChild(new Text(text));
+        return paragraph;
+    }
+
     private static TableCell CreateTableCell(string text, bool bold = false)
     {
         var cell = new TableCell();
         var paragraph = new Paragraph();
         var run = new Run();
 
+        var runProperties = new RunProperties(
+            new FontSize() { Val = "22" }, // 11pt = 22 half-points
+            new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" }
+        );
+
         if (bold)
         {
-            run.AppendChild(new RunProperties(new Bold()));
+            runProperties.AppendChild(new Bold());
         }
+
+        run.AppendChild(runProperties);
 
         if (text.Contains('\n'))
         {

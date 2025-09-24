@@ -46,6 +46,26 @@ namespace DailyTaskManager.Core.Interfaces
         Task SavePdfSettingsAsync(PdfSettings settings);
 
         /// <summary>
+        /// Gets the configured download path for exports
+        /// </summary>
+        Task<string> GetDownloadPathAsync();
+
+        /// <summary>
+        /// Gets the configured PDF export path
+        /// </summary>
+        Task<string> GetPdfExportPathAsync();
+
+        /// <summary>
+        /// Gets the configured Word export path
+        /// </summary>
+        Task<string> GetWordExportPathAsync();
+
+        /// <summary>
+        /// Gets the configured Excel export path
+        /// </summary>
+        Task<string> GetExcelExportPathAsync();
+
+        /// <summary>
         /// Resets all settings to default values
         /// </summary>
         Task ResetToDefaultsAsync();
