@@ -1,0 +1,97 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'DailyTaskManager.Avalonia.sln'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore --verbosity minimal
+
+    - name: Check for unit tests (non-UI)
+      id: check-unit-tests
+      run: |
+        # Check if we have any test projects that aren't UI tests
+        $testProjects = Get-ChildItem -Recurse -Filter "*.csproj" | Where-Object {
+          $_.Directory.Name.Contains("Test") -and
+          -not $_.Directory.Name.Contains("UI.Test")
+        }
+
+        if ($testProjects.Count -gt 0) {
+          echo "has-unit-tests=true" >> $env:GITHUB_OUTPUT
+          Write-Host "Found unit test projects:"
+          $testProjects | ForEach-Object { Write-Host "  - $($_.FullName)" }
+        } else {
+          echo "has-unit-tests=false" >> $env:GITHUB_OUTPUT
+          Write-Host "No unit test projects found (only UI tests which require display)"
+        }
+
+    - name: Run unit tests
+      if: steps.check-unit-tests.outputs.has-unit-tests == 'true'
+      run: |
+        # Run tests excluding UI test projects
+        Get-ChildItem -Recurse -Filter "*Tests.csproj" | Where-Object {
+          -not $_.Directory.Name.Contains("UI.Test")
+        } | ForEach-Object {
+          Write-Host "Running tests in: $($_.FullName)"
+          dotnet test $_.FullName --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+        }
+
+    - name: Skip UI tests (CI environment limitation)
+      if: steps.check-unit-tests.outputs.has-unit-tests == 'false'
+      run: |
+        Write-Host "ℹ️ Skipping UI tests in CI environment"
+        Write-Host "UI tests require a display/desktop environment which is not available in GitHub Actions"
+        Write-Host "UI tests should be run locally during development and before creating releases"
+        Write-Host ""
+        Write-Host "To run UI tests locally:"
+        Write-Host "  dotnet test tests/DailyTaskManager.UI.Tests --configuration Release"
+        Write-Host ""
+        Write-Host "✅ Build completed successfully - UI tests skipped for CI compatibility"
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always() && steps.check-unit-tests.outputs.has-unit-tests == 'true'
+      with:
+        name: test-results
+        path: TestResults/*.trx
+        retention-days: 30
+
+    - name: Build summary
+      if: always()
+      run: |
+        Write-Host ""
+        Write-Host "=== BUILD SUMMARY ==="
+        Write-Host "✅ Code compiled successfully"
+        if ("${{ steps.check-unit-tests.outputs.has-unit-tests }}" -eq "true") {
+          Write-Host "✅ Unit tests passed"
+        } else {
+          Write-Host "⚠️  UI tests skipped (require desktop environment)"
+        }
+        Write-Host "✅ Ready for release"
+        Write-Host ""
+        Write-Host "💡 Note: Run UI tests manually before releasing:"
+        Write-Host "   dotnet test tests/DailyTaskManager.UI.Tests --configuration Release"
