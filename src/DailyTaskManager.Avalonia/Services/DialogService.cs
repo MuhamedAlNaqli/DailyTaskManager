@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Avalonia.ViewModels;
@@ -159,6 +160,69 @@ public class DialogService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error showing edit task dialog");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Shows a folder selection dialog
+    /// </summary>
+    public async Task<string?> ShowFolderDialogAsync(string title, string? initialFolder = null)
+    {
+        try
+        {
+            var mainWindow = GetMainWindow();
+            if (mainWindow == null)
+            {
+                _logger.LogWarning("No main window available for folder dialog");
+                return null;
+            }
+
+            var storageProvider = mainWindow.StorageProvider;
+            if (storageProvider == null)
+            {
+                _logger.LogWarning("No storage provider available");
+                return null;
+            }
+
+            var options = new FolderPickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false
+            };
+
+            // Set initial folder if provided
+            if (!string.IsNullOrEmpty(initialFolder))
+            {
+                try
+                {
+                    var initialFolderUri = await storageProvider.TryGetFolderFromPathAsync(initialFolder);
+                    if (initialFolderUri != null)
+                    {
+                        options.SuggestedStartLocation = initialFolderUri;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not set initial folder: {Folder}", initialFolder);
+                }
+            }
+
+            var result = await storageProvider.OpenFolderPickerAsync(options);
+
+            if (result.Count > 0)
+            {
+                var selectedFolder = result[0];
+                var localPath = selectedFolder.TryGetLocalPath();
+                _logger.LogDebug("Folder selected: {Path}", localPath);
+                return localPath;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error showing folder dialog");
             return null;
         }
     }

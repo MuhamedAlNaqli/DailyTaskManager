@@ -239,6 +239,32 @@ namespace DailyTaskManager.Infrastructure.Services
             }
         }
 
+        public async Task<List<string>> GetUniqueDescriptionsAsync()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var descriptions = await _context.DailyTasks
+                    .Where(t => t.UserId == userId)
+                    .Select(t => t.Description.Trim())
+                    .Where(d => !string.IsNullOrWhiteSpace(d))
+                    .Distinct()
+                    .OrderBy(d => d)
+                    .ToListAsync();
+
+                _logger.LogDebug("Retrieved {Count} unique descriptions for user {UserId}",
+                    descriptions.Count, userId);
+
+                return descriptions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving unique descriptions");
+                throw;
+            }
+        }
+
         private int GetCurrentUserId()
         {
             if (!_authService.IsAuthenticated || _authService.CurrentUser == null)

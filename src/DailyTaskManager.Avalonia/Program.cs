@@ -118,6 +118,7 @@ class Program
                 services.AddScoped<IAuthenticationService, AuthenticationService>();
                 services.AddScoped<IExportService, ExportService>();
                 services.AddScoped<ISettingsService, SettingsService>();
+                services.AddScoped<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
@@ -408,8 +409,19 @@ class Program
             // Initialize the update service
             await updateService.InitializeAsync();
             
-            // Start automatic update checking (check every 24 hours)
-            updateService.StartAutomaticUpdateChecking(TimeSpan.FromHours(24));
+            // Start automatic update checking with configured interval
+            var configuration = services.GetRequiredService<IConfiguration>();
+            var checkIntervalString = configuration["UpdateService:CheckInterval"] ?? "24:00:00";
+            if (TimeSpan.TryParse(checkIntervalString, out var checkInterval))
+            {
+                logger.LogInformation("Starting automatic update checking with interval: {Interval}", checkInterval);
+                updateService.StartAutomaticUpdateChecking(checkInterval);
+            }
+            else
+            {
+                logger.LogWarning("Invalid CheckInterval format '{Interval}', using 24 hours default", checkIntervalString);
+                updateService.StartAutomaticUpdateChecking(TimeSpan.FromHours(24));
+            }
             
             logger.LogInformation("Update service initialized successfully");
         }

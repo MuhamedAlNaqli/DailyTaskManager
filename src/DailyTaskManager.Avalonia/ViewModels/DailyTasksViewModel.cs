@@ -40,6 +40,15 @@ public partial class DailyTasksViewModel : ObservableObject
     [ObservableProperty]
     private DateTime? _dateTo;
 
+    [ObservableProperty]
+    private decimal _todayHours;
+
+    [ObservableProperty]
+    private decimal _thisWeekHours;
+
+    [ObservableProperty]
+    private decimal _dailyAverage30Days;
+
     public DailyTasksViewModel(
         IDatabaseService databaseService, 
         IExportService exportService,
@@ -245,18 +254,49 @@ public partial class DailyTasksViewModel : ObservableObject
             }
 
             IsLoading = true;
-            
+
             // Export tasks to PDF with default settings
             var filePath = await _exportService.ExportTasksToPdfAsync(FilteredTasks.ToList());
-            
+
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"PDF exported successfully to:\n{filePath}");
-            
+
             _logger.LogInformation("PDF export completed successfully for {Count} tasks: {FilePath}", FilteredTasks.Count, filePath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting to PDF");
             await _dialogService.ShowErrorDialogAsync("Export Error", $"Failed to export PDF: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportToWordAsync()
+    {
+        try
+        {
+            if (!FilteredTasks.Any())
+            {
+                await _dialogService.ShowInfoDialogAsync("No Data", "No tasks available to export.");
+                return;
+            }
+
+            IsLoading = true;
+
+            // Export tasks to Word with default settings
+            var filePath = await _exportService.ExportTasksToWordAsync(FilteredTasks.ToList(), new Core.Models.PdfSettings());
+
+            await _dialogService.ShowInfoDialogAsync("Export Complete", $"Word document exported successfully to:\n{filePath}");
+
+            _logger.LogInformation("Word export completed successfully for {Count} tasks: {FilePath}", FilteredTasks.Count, filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting to Word");
+            await _dialogService.ShowErrorDialogAsync("Export Error", $"Failed to export Word document: {ex.Message}");
         }
         finally
         {
@@ -287,6 +327,9 @@ public partial class DailyTasksViewModel : ObservableObject
         }
         
         _logger.LogInformation("Filtering complete. Filtered tasks: {FilteredCount}", filtered.Count);
+
+        // Update statistics after filtering
+        UpdateStatistics();
     }
     
     private bool FilterTask(DailyTask task)
@@ -339,5 +382,35 @@ public partial class DailyTasksViewModel : ObservableObject
     {
         _logger.LogInformation("DateTo property changed to: {DateTo}", value);
         // Don't auto-apply filters for date changes - let user use search button for control
+    }
+
+    private void UpdateStatistics()
+    {
+        try
+        {
+            var today = DateTime.Today;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            var thirtyDaysAgo = today.AddDays(-30);
+
+            // Calculate today's hours
+            TodayHours = Tasks.Where(t => t.Date.Date == today).Sum(t => t.Hours);
+
+            // Calculate this week's hours
+            ThisWeekHours = Tasks.Where(t => t.Date.Date >= startOfWeek && t.Date.Date <= today).Sum(t => t.Hours);
+
+            // Calculate daily average for last 30 days
+            var last30DaysTasks = Tasks.Where(t => t.Date.Date >= thirtyDaysAgo && t.Date.Date <= today);
+            var last30DaysTotal = last30DaysTasks.Sum(t => t.Hours);
+            var workingDaysInPeriod = last30DaysTasks.Select(t => t.Date.Date).Distinct().Count();
+
+            DailyAverage30Days = workingDaysInPeriod > 0 ? last30DaysTotal / workingDaysInPeriod : 0m;
+
+            _logger.LogInformation("Statistics updated: Today={TodayHours}h, Week={WeekHours}h, DailyAvg={DailyAvg}h",
+                TodayHours, ThisWeekHours, DailyAverage30Days);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating statistics");
+        }
     }
 }

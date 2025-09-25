@@ -425,6 +425,63 @@
 
                         </StackPanel>
                     </Border>
+
+                    <!-- Updates Section -->
+                    <Border Background="White"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="#FFE2E8F0"
+                            BorderThickness="1"
+                            Margin="0,0,0,24">
+                        <StackPanel Spacing="20">
+                            <!-- Section Header -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="🔄 Updates"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          Foreground="#FF111827"/>
+                                <TextBlock Text="Check for and manage application updates"
+                                          FontSize="13"
+                                          Foreground="#FF6B7280"/>
+                            </StackPanel>
+
+                            <!-- Update Check Button -->
+                            <Border Background="#FFFAFAFA"
+                                    CornerRadius="8"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <Button Command="{Binding CheckForUpdatesCommand}"
+                                            Classes="primary"
+                                            Background="#FF3B82F6"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            CornerRadius="8"
+                                            Padding="16,10"
+                                            IsEnabled="{Binding !IsCheckingForUpdates}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="🔍" FontSize="14"/>
+                                            <TextBlock Text="Check for Updates" FontWeight="Medium"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Update Check Result -->
+                                    <Border Background="White"
+                                            CornerRadius="6"
+                                            Padding="12"
+                                            BorderBrush="#FFE2E8F0"
+                                            BorderThickness="1"
+                                            IsVisible="{Binding !!UpdateCheckResult}">
+                                        <TextBlock Text="{Binding UpdateCheckResult}"
+                                                  FontSize="12"
+                                                  Foreground="#FF374151"
+                                                  TextWrapping="Wrap"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
 

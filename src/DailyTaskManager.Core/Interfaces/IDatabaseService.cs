@@ -49,5 +49,10 @@ namespace DailyTaskManager.Core.Interfaces
         /// Gets task statistics for the current user
         /// </summary>
         Task<(int TotalTasks, decimal TotalHours, decimal AverageHours)> GetTaskStatsAsync();
+
+        /// <summary>
+        /// Gets unique task descriptions for auto-complete functionality
+        /// </summary>
+        Task<List<string>> GetUniqueDescriptionsAsync();
     }
 }

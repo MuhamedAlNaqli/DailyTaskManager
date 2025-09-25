@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly IConfiguration _configuration;
     private readonly DialogService _dialogService;
+    private readonly IUpdateService _updateService;
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -37,17 +38,24 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _excelExportPath = string.Empty;
 
+    [ObservableProperty]
+    private bool _isCheckingForUpdates = false;
+
+    [ObservableProperty]
+    private string _updateCheckResult = string.Empty;
+
     public ObservableCollection<Setting> DbSettings { get; } = new();
     public ObservableCollection<AppSettingItem> AppSettings { get; } = new();
 
-    public SettingsViewModel(ISettingsService settingsService, IExportService exportService, 
-        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService)
+    public SettingsViewModel(ISettingsService settingsService, IExportService exportService,
+        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService)
     {
         _settingsService = settingsService;
         _exportService = exportService;
         _logger = logger;
         _configuration = configuration;
         _dialogService = dialogService;
+        _updateService = updateService;
         
         _logger.LogInformation("Settings view initialized");
         
@@ -399,6 +407,34 @@ public partial class SettingsViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            IsCheckingForUpdates = true;
+            UpdateCheckResult = "Checking for updates...";
+            _logger.LogInformation("Manual update check requested");
+
+            var currentVersion = _updateService.GetCurrentVersion();
+            _logger.LogInformation("Current version: {Version}", currentVersion);
+            UpdateCheckResult = $"Current version: {currentVersion}\nChecking for updates...";
+
+            // First try to show update UI directly (which includes checking)
+            await _updateService.ShowUpdateUIAsync();
+            UpdateCheckResult = $"Current version: {currentVersion}\nUpdate check completed. Check logs for results.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking for updates");
+            UpdateCheckResult = $"Error checking for updates: {ex.Message}";
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
         }
     }
 

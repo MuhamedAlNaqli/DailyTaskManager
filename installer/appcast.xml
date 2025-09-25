@@ -6,7 +6,45 @@
         <language>en</language>
         <link>https://github.com/smartpointdevelopment/DailyTaskManager</link>
 
-        <!-- Version 2.1.0 - Current Release -->
+        <!-- Version 2.2.0 - Latest Release -->
+        <item>
+            <title>Daily Task Manager 2.2.0 - Enhanced Settings Page</title>
+            <sparkle:version>2.2.0.0</sparkle:version>
+            <sparkle:shortVersionString>2.2.0</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h3>Daily Task Manager 2.2.0 - Enhanced Settings Page</h3>
+                <p><strong>Major Settings Page Enhancements:</strong></p>
+                <ul>
+                    <li><strong>Individual Export Paths:</strong> Separate export paths for PDF, Word, and Excel files</li>
+                    <li><strong>Enhanced Application Settings:</strong> Complete database connection details display</li>
+                    <li><strong>Streamlined Interface:</strong> Removed unnecessary Add/Save buttons from Database Settings</li>
+                    <li><strong>Native Folder Picker:</strong> Modern Browse button functionality for all export paths</li>
+                    <li><strong>Improved Settings Persistence:</strong> Better fallback logic (Database → appsettings.json → Desktop default)</li>
+                </ul>
+                <p><strong>Bug Fixes:</strong></p>
+                <ul>
+                    <li>Fixed DatePicker binding issue for task editing</li>
+                    <li>Resolved filtering date range issues</li>
+                    <li>Enhanced Excel export file styling</li>
+                </ul>
+                <p>This update provides better control over export functionality and improved user experience with comprehensive settings management.</p>
+            ]]></description>
+            <pubDate>Wed, 25 Sep 2025 12:00:00 +0000</pubDate>
+            <link>https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/v2.2.0/DailyTaskManager-v2.2.0.0-win-x64.msi</link>
+            <sparkle:releaseNotesLink>https://github.com/smartpointdevelopment/DailyTaskManager/releases/tag/v2.2.0</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+            <sparkle:os>windows</sparkle:os>
+            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <enclosure
+                url="https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/v2.2.0/DailyTaskManager-v2.2.0.0-win-x64.msi"
+                sparkle:version="2.2.0.0"
+                sparkle:shortVersionString="2.2.0"
+                sparkle:os="windows"
+                type="application/octet-stream"
+                length="55000000" />
+        </item>
+
+        <!-- Version 2.1.0 - Previous Release -->
         <item>
             <title>Daily Task Manager 2.1.0</title>
             <sparkle:version>2.1.0.0</sparkle:version>

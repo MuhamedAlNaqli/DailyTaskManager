@@ -50,40 +50,48 @@
                             Padding="16,10"
                             FontWeight="Medium">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="+" FontSize="18" FontWeight="Bold"/>
-                            <TextBlock Text="Add Entry"/>
+                            <TextBlock Text="+" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Text="Add Entry" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="secondary" 
-                                Command="{Binding ExportToExcelCommand}"
-                                Background="Transparent"
-                                BorderBrush="#FFBFDBFE"
-                                Foreground="#FF3B82F6"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Padding="16,10">
+                    <DropDownButton Classes="secondary"
+                                    Background="Transparent"
+                                    BorderBrush="#FF10B981"
+                                    Foreground="#FF10B981"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="16,10">
+                        <DropDownButton.Content>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📊" FontSize="14"/>
-                                <TextBlock Text="Excel"/>
+                                <TextBlock Text="📋" FontSize="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="Export" VerticalAlignment="Center"/>
+                                <TextBlock Text="▼" FontSize="10" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </Button>
-                        
-                        <Button Classes="secondary" 
-                                Command="{Binding ExportToPdfCommand}"
-                                Background="Transparent"
-                                BorderBrush="#FFEF4444"
-                                Foreground="#FFEF4444"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Padding="16,10">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📄" FontSize="14"/>
-                                <TextBlock Text="PDF"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                        </DropDownButton.Content>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Excel"
+                                          Command="{Binding ExportToExcelCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📊" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="PDF"
+                                          Command="{Binding ExportToPdfCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📄" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Word"
+                                          Command="{Binding ExportToWordCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📝" FontSize="14"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
                 </StackPanel>
             </Grid>
             
@@ -97,32 +105,32 @@
                 </Grid.ColumnDefinitions>
                 
                 <!-- Today's Hours -->
-                <Border Grid.Column="0" 
-                        Background="#FFF8FAFC" 
-                        CornerRadius="12" 
-                        Padding="20" 
+                <Border Grid.Column="0"
+                        Background="#FFF8FAFC"
+                        CornerRadius="12"
+                        Padding="20"
                         Margin="0,0,12,0"
                         BorderBrush="#FFE2E8F0"
                         BorderThickness="1">
                     <StackPanel>
                         <TextBlock Text="Today" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="8.5h" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
-                        <TextBlock Text="Target: 8h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding TodayHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
+                        <TextBlock Text="Target: 7h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- This Week -->
-                <Border Grid.Column="1" 
-                        Background="#FFF8FAFC" 
-                        CornerRadius="12" 
-                        Padding="20" 
+                <Border Grid.Column="1"
+                        Background="#FFF8FAFC"
+                        CornerRadius="12"
+                        Padding="20"
                         Margin="0,0,12,0"
                         BorderBrush="#FFE2E8F0"
                         BorderThickness="1">
                     <StackPanel>
                         <TextBlock Text="This Week" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="42.5h" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
-                        <TextBlock Text="Target: 40h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding ThisWeekHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
+                        <TextBlock Text="Target: 35h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
@@ -142,15 +150,15 @@
                 </Border>
                 
                 <!-- Average Daily -->
-                <Border Grid.Column="3" 
-                        Background="#FFF8FAFC" 
-                        CornerRadius="12" 
+                <Border Grid.Column="3"
+                        Background="#FFF8FAFC"
+                        CornerRadius="12"
                         Padding="20"
                         BorderBrush="#FFE2E8F0"
                         BorderThickness="1">
                     <StackPanel>
                         <TextBlock Text="Daily Avg" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="7.8h" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding DailyAverage30Days, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
                         <TextBlock Text="Last 30 days" FontSize="11" Foreground="#FF64748B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
@@ -246,8 +254,8 @@
                                 Height="34"
                                 ToolTip.Tip="Apply date filters">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="🔍" FontSize="12"/>
-                                <TextBlock Text="Search" FontSize="12" FontWeight="Medium"/>
+                                <TextBlock Text="🔍" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="Search" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -265,8 +273,8 @@
                                 Height="34"
                                 ToolTip.Tip="Clear all filters">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="✖" FontSize="12"/>
-                                <TextBlock Text="Clear" FontSize="12"/>
+                                <TextBlock Text="✖" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="Clear" FontSize="12" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -409,8 +417,8 @@
                                Padding="20,12"
                                Margin="0,8,0,0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="+" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="Add Your First Entry"/>
+                                <TextBlock Text="+" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <TextBlock Text="Add Your First Entry" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

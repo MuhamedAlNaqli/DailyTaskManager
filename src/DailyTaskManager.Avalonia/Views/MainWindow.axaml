@@ -21,138 +21,211 @@
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar Navigation -->
-        <Border Grid.Column="0" Classes="card">
+        <Border Grid.Column="0" Background="White" BorderBrush="#FFE5E7EB" BorderThickness="0,0,1,0">
             <DockPanel LastChildFill="False">
-                
+
                 <!-- App Header -->
-                <Border DockPanel.Dock="Top" 
-                        Background="{DynamicResource MaterialPaperBrush}"
-                        Padding="20,20,20,16">
-                    <StackPanel Orientation="Horizontal">
-                        <!-- TODO: Add MaterialIcon when package is working -->
-                        <TextBlock Text="📅" FontSize="24" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                <Border DockPanel.Dock="Top"
+                        Background="White"
+                        Padding="20,24,20,20">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#FF8B5FBF"
+                                CornerRadius="6"
+                                Padding="6,4"
+                                Margin="0,0,12,0">
+                            <TextBlock Text="📊" FontSize="16" Foreground="White"/>
+                        </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="DTM"
                                        FontSize="16"
-                                       FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding AppVersion}"
-                                       FontSize="11"
-                                       Opacity="0.7"/>
+                                       FontWeight="SemiBold"
+                                       Foreground="#FF1F2937"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- User Welcome Info - Under app header, made wider -->
-                <Border DockPanel.Dock="Top" 
-                        Background="{DynamicResource MaterialPrimaryMidBrush}"
-                        CornerRadius="8"
-                        Padding="12,8"
-                        Margin="12,8,12,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0"
-                                   Text="{Binding UserDisplayName}"
-                                   FontWeight="Medium"
-                                   FontSize="13"
-                                   TextTrimming="CharacterEllipsis"
-                                   HorizontalAlignment="Center"
-                                   TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding UserEmail}"
-                                   FontSize="11"
-                                   Opacity="0.8"
-                                   TextTrimming="CharacterEllipsis"
-                                   HorizontalAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   Margin="0,2,0,0"/>
-                    </Grid>
-                </Border>
+                <!-- Navigation Menu -->
+                <StackPanel DockPanel.Dock="Top" Margin="16,0,16,20">
 
-                <!-- Navigation Menu - Only Daily Tasks -->
-                <StackPanel DockPanel.Dock="Top" Margin="16,10">
-                    
-                    <ToggleButton Classes="nav"
-                                  IsChecked="{Binding IsTasksViewSelected}"
-                                  Command="{Binding NavigateToTasksCommand}"
-                                  HorizontalAlignment="Stretch"
-                                  HorizontalContentAlignment="Left">
+                    <!-- Daily Tasks -->
+                    <Button Classes="sidebar-nav"
+                            Command="{Binding NavigateToTasksCommand}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,10"
+                            Margin="0,2">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="📅" FontSize="16" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Daily Tasks" 
-                                       VerticalAlignment="Center" 
-                                       Margin="12,0,0,0"/>
+                            <Border Grid.Column="0"
+                                    Width="20" Height="20"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="📅" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="Daily Tasks"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="#FF374151"
+                                       VerticalAlignment="Center"/>
                         </Grid>
-                    </ToggleButton>
+                    </Button>
+
+                    <!-- Analytics -->
+                    <Button Classes="sidebar-nav"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,10"
+                            Margin="0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="20" Height="20"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="📊" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="Analytics"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="#FF9CA3AF"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- Reports -->
+                    <Button Classes="sidebar-nav"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,10"
+                            Margin="0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="20" Height="20"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="📄" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="Reports"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="#FF9CA3AF"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- Speech to Text -->
+                    <Button Classes="sidebar-nav"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,10"
+                            Margin="0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="20" Height="20"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="🎤" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="Speech to Text"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="#FF9CA3AF"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
 
                 </StackPanel>
 
                 <!-- Spacer to push bottom elements down -->
                 <Border DockPanel.Dock="Top" />
 
-                <!-- Bottom Actions - Theme, Settings, Logout -->
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,20">
-                    
-                    <!-- Theme Toggle -->
-                    <ToggleButton Classes="nav"
-                                  IsChecked="{Binding IsDarkTheme}"
-                                  Command="{Binding ToggleThemeCommand}"
-                                  HorizontalAlignment="Stretch"
-                                  HorizontalContentAlignment="Left">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="🌙" FontSize="16" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ThemeText}" 
-                                       VerticalAlignment="Center" 
-                                       Margin="12,0,0,0"/>
-                        </Grid>
-                    </ToggleButton>
+                <!-- Bottom Actions -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,20" Spacing="4">
 
-                    <!-- Settings Button - Moved to bottom area -->
-                    <ToggleButton Classes="nav"
-                                  IsChecked="{Binding IsSettingsViewSelected}"
-                                  Command="{Binding NavigateToSettingsCommand}"
-                                  HorizontalAlignment="Stretch"
-                                  HorizontalContentAlignment="Left"
-                                  Margin="0,4,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="⚙️" FontSize="16" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Settings" 
-                                       VerticalAlignment="Center" 
-                                       Margin="12,0,0,0"/>
-                        </Grid>
-                    </ToggleButton>
-
-                    <!-- Logout Button - At the very bottom -->
-                    <Button Classes="danger"
-                            Command="{Binding LogoutCommand}"
+                    <!-- Settings -->
+                    <Button Classes="sidebar-nav"
+                            Command="{Binding NavigateToSettingsCommand}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="⚙️" FontSize="14" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="Settings"
+                                       FontSize="13"
+                                       Foreground="#FF6B7280"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- Help -->
+                    <Button Classes="sidebar-nav"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="❓" FontSize="14" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="Help"
+                                       FontSize="13"
+                                       Foreground="#FF6B7280"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- Logout Button -->
+                    <Button Command="{Binding LogoutCommand}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,8"
                             Margin="0,8,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="🚪" FontSize="16" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Logout" 
-                                       VerticalAlignment="Center" 
-                                       Margin="12,0,0,0"/>
+                            <TextBlock Grid.Column="0" Text="🚪" FontSize="14" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="Logout"
+                                       FontSize="13"
+                                       Foreground="#FFEF4444"/>
                         </Grid>
                     </Button>
+
                 </StackPanel>
             </DockPanel>
         </Border>
