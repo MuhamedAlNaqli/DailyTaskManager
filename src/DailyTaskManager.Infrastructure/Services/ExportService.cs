@@ -267,7 +267,7 @@ public class ExportService : IExportService
             if (string.IsNullOrEmpty(filePath))
             {
                 var downloadPath = await _settingsService.GetWordExportPathAsync();
-                filePath = Path.Combine(downloadPath, $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.docx");
+                filePath = Path.Combine(downloadPath, $"RadniNalog_{DateTime.Now:MMyy}.docx");
             }
 
             _logger.LogInformation("Exporting {Count} tasks to Word: {FilePath}", tasks.Count, filePath);
@@ -309,7 +309,7 @@ public class ExportService : IExportService
 
     private string GetDefaultPdfFileName()
     {
-        return $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        return $"RadniNalog_{DateTime.Now:MMyy}.pdf";
     }
 
     private void GenerateQuestPdfReport(List<DailyTask> tasks, PdfSettings settings, string filePath)
@@ -486,11 +486,18 @@ public class ExportService : IExportService
         var body = mainPart.Document.AppendChild(new Body());
 
         var total = tasks.Sum(t => t.Hours);
-        var period = tasks.Any() ? $"{tasks.Min(t => t.Date):MMMM yyyy}." : DateTime.Now.ToString("MMMM yyyy.");
+        var maxTaskDate = tasks.Any() ? tasks.Max(t => t.Date) : DateTime.Now;
+        var currentMonth = _months[maxTaskDate.ToString("MMMM")];
+        var currentYear = maxTaskDate.ToString("yyyy");
+        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.");
         var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
 
         // Company info
         var companyPara = body.AppendChild(new Paragraph());
+        var companyParaProps = new ParagraphProperties(
+            new SpacingBetweenLines() { Before = "0", After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
+        companyPara.AppendChild(companyParaProps);
         var companyRun = companyPara.AppendChild(new Run());
         companyRun.AppendChild(new RunProperties(
             new Bold(),
@@ -512,6 +519,10 @@ public class ExportService : IExportService
 
         // Client info
         var clientPara = body.AppendChild(new Paragraph());
+        var clientParaProps = new ParagraphProperties(
+            new SpacingBetweenLines() { Before = "0", After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
+        clientPara.AppendChild(clientParaProps);
         var clientRun = clientPara.AppendChild(new Run());
         clientRun.AppendChild(new RunProperties(
             new Bold(),
@@ -531,7 +542,10 @@ public class ExportService : IExportService
 
         // Document title - centered and styled
         var titlePara = body.AppendChild(new Paragraph());
-        var titleProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+        var titleProp = new ParagraphProperties(
+            new Justification() { Val = JustificationValues.Center },
+            new SpacingBetweenLines() { Before = "0", After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
         titlePara.AppendChild(titleProp);
         var titleRun = titlePara.AppendChild(new Run());
         titleRun.AppendChild(new RunProperties(
@@ -542,9 +556,12 @@ public class ExportService : IExportService
         ));
         titleRun.AppendChild(new Text(settings.DocumentTitle));
 
-        // Contract info - centered and styled
+        // Contract info - centered and styled with spacing after
         var contractPara = body.AppendChild(new Paragraph());
-        var contractProp = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+        var contractProp = new ParagraphProperties(
+            new Justification() { Val = JustificationValues.Center },
+            new SpacingBetweenLines() { Before = "0", After = "300", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
         contractPara.AppendChild(contractProp);
         var contractRun = contractPara.AppendChild(new Run());
         contractRun.AppendChild(new RunProperties(
@@ -554,8 +571,12 @@ public class ExportService : IExportService
         ));
         contractRun.AppendChild(new Text($"Ugovor o pružanju usluga broj: {contractNumber}"));
 
-        // Period info - styled
+        // Period info - styled with minimal spacing after to stay close to table
         var periodPara = body.AppendChild(new Paragraph());
+        var periodParaProps = new ParagraphProperties(
+            new SpacingBetweenLines() { Before = "0", After = "80", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
+        periodPara.AppendChild(periodParaProps);
         var periodRun = periodPara.AppendChild(new Run());
         periodRun.AppendChild(new RunProperties(
             new Bold(),
@@ -564,32 +585,37 @@ public class ExportService : IExportService
         ));
         periodRun.AppendChild(new Text($"Izvještajni period: {period}"));
 
-        // Empty line
-        body.AppendChild(CreateSimpleParagraph(""));
-
         // Table
         var table = new Table();
 
         // Table properties
         var tableProps = new TableProperties(
             new TableBorders(
-                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 }
             ),
-            new TableWidth() { Width = "0", Type = TableWidthUnitValues.Auto }
+            new TableWidth() { Width = "5000", Type = TableWidthUnitValues.Pct }
         );
         table.AppendChild(tableProps);
 
+        // Table grid - define column widths (in twips: 1440 twips = 1 inch)
+        var tableGrid = new TableGrid();
+        tableGrid.AppendChild(new GridColumn() { Width = "600" });   // Red br - narrow
+        tableGrid.AppendChild(new GridColumn() { Width = "5500" });  // Kratak opis - wide
+        tableGrid.AppendChild(new GridColumn() { Width = "1200" });  // Datum - medium
+        tableGrid.AppendChild(new GridColumn() { Width = "1200" });  // Ukupan broj sati - medium
+        table.AppendChild(tableGrid);
+
         // Header row
         var headerRow = new TableRow();
-        headerRow.AppendChild(CreateTableCell("Red\nbr", true));
-        headerRow.AppendChild(CreateTableCell("Kratak opis", true));
-        headerRow.AppendChild(CreateTableCell("Datum", true));
-        headerRow.AppendChild(CreateTableCell("Ukupan broj sati", true));
+        headerRow.AppendChild(CreateTableCell("Red\nbr", true, true, false));
+        headerRow.AppendChild(CreateTableCell("Kratak opis", true, true, false));
+        headerRow.AppendChild(CreateTableCell("Datum", true, true, false));
+        headerRow.AppendChild(CreateTableCell("Ukupan broj sati", true, true, false));
         table.AppendChild(headerRow);
 
         // Data rows
@@ -597,19 +623,19 @@ public class ExportService : IExportService
         foreach (var task in tasks)
         {
             var dataRow = new TableRow();
-            dataRow.AppendChild(CreateTableCell(index++.ToString()));
-            dataRow.AppendChild(CreateTableCell($"{task.Description}"));
-            dataRow.AppendChild(CreateTableCell($"{task.Date:d. M. yyyy}."));
-            dataRow.AppendChild(CreateTableCell(task.Hours.ToString()));
+            dataRow.AppendChild(CreateTableCell(index++.ToString(), false, true, false, false)); // Centered H & V
+            dataRow.AppendChild(CreateTableCell($"{task.Description}", false, false, false, true)); // Left-aligned H, Center V
+            dataRow.AppendChild(CreateTableCell($"{task.Date:d. M. yyyy}.", false, false, false, true)); // Left-aligned H, Center V
+            dataRow.AppendChild(CreateTableCell(task.Hours.ToString(), false, true, false, false)); // Centered H & V
             table.AppendChild(dataRow);
         }
 
         // Total row
         var totalRow = new TableRow();
-        totalRow.AppendChild(CreateTableCell(""));
-        totalRow.AppendChild(CreateTableCell(""));
-        totalRow.AppendChild(CreateTableCell("Ukupan broj sati", true));
-        totalRow.AppendChild(CreateTableCell(total.ToString(), true));
+        totalRow.AppendChild(CreateTableCell("", false, true, false, false));
+        totalRow.AppendChild(CreateTableCell("", false, false, false, false));
+        totalRow.AppendChild(CreateTableCell("Ukupan broj sati", true, false, false, true)); // Bold, Left-aligned H, Center V
+        totalRow.AppendChild(CreateTableCell(total.ToString(), true, true, false, false)); // Bold, Centered H & V
         table.AppendChild(totalRow);
 
         body.AppendChild(table);
@@ -631,26 +657,109 @@ public class ExportService : IExportService
             body.AppendChild(CreateSimpleParagraph(""));
             body.AppendChild(CreateSimpleParagraph($"Dana: {"_".PadRight(15, '_')}, godine"));
 
-            // Signatures
+            // Signatures - using a table for proper left/right alignment
             body.AppendChild(CreateSimpleParagraph(""));
             body.AppendChild(CreateSimpleParagraph(""));
 
-            var sigPara = body.AppendChild(new Paragraph());
-            sigPara.AppendChild(new Run(new Text("Izvršilac")));
-            sigPara.AppendChild(new Run(new TabChar()));
-            sigPara.AppendChild(new Run(new TabChar()));
-            sigPara.AppendChild(new Run(new TabChar()));
-            sigPara.AppendChild(new Run(new Text("Za Naručioca")));
+            // Create a 2-column table for signatures
+            var sigTable = new Table();
+            var sigTableProps = new TableProperties(
+                new TableBorders(
+                    new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                    new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                    new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                    new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                    new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                    new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+                ),
+                new TableWidth() { Width = "5000", Type = TableWidthUnitValues.Pct }
+            );
+            sigTable.AppendChild(sigTableProps);
 
-            body.AppendChild(CreateSimpleParagraph(""));
-            body.AppendChild(CreateSimpleParagraph(""));
-            body.AppendChild(CreateSimpleParagraph(""));
+            var sigTableGrid = new TableGrid();
+            sigTableGrid.AppendChild(new GridColumn() { Width = "4250" });  // Left column
+            sigTableGrid.AppendChild(new GridColumn() { Width = "4250" });  // Right column
+            sigTable.AppendChild(sigTableGrid);
 
-            var linePara = body.AppendChild(new Paragraph());
-            linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
-            linePara.AppendChild(new Run(new TabChar()));
-            linePara.AppendChild(new Run(new TabChar()));
-            linePara.AppendChild(new Run(new Text("_".PadRight(25, '_'))));
+            // Row 1: Labels
+            var labelRow = new TableRow();
+            var izvrsCell = new TableCell();
+            var izvrsLabelPara = new Paragraph();
+            izvrsLabelPara.AppendChild(new Run(new Text("Izvršilac")));
+            izvrsCell.AppendChild(izvrsLabelPara);
+            izvrsCell.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+
+            var narucCell = new TableCell();
+            var narucLabelPara = new Paragraph(new ParagraphProperties(new Justification() { Val = JustificationValues.Right }));
+            narucLabelPara.AppendChild(new Run(new Text("Za Naručioca")));
+            narucCell.AppendChild(narucLabelPara);
+            narucCell.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+
+            labelRow.AppendChild(izvrsCell);
+            labelRow.AppendChild(narucCell);
+            sigTable.AppendChild(labelRow);
+
+            // Row 2: Empty space
+            var spaceRow1 = new TableRow();
+            var spaceCell1L = new TableCell();
+            spaceCell1L.AppendChild(new Paragraph(new Run(new Text(""))));
+            spaceCell1L.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+            var spaceCell1R = new TableCell();
+            spaceCell1R.AppendChild(new Paragraph(new Run(new Text(""))));
+            spaceCell1R.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+            spaceRow1.AppendChild(spaceCell1L);
+            spaceRow1.AppendChild(spaceCell1R);
+            sigTable.AppendChild(spaceRow1);
+
+            // Row 3: Signature lines
+            var lineRow = new TableRow();
+            var lineCell1 = new TableCell();
+            var linePara1 = new Paragraph();
+            linePara1.AppendChild(new Run(new Text("_".PadRight(30, '_'))));
+            lineCell1.AppendChild(linePara1);
+            lineCell1.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+
+            var lineCell2 = new TableCell();
+            var linePara2 = new Paragraph(new ParagraphProperties(new Justification() { Val = JustificationValues.Right }));
+            linePara2.AppendChild(new Run(new Text("_".PadRight(30, '_'))));
+            lineCell2.AppendChild(linePara2);
+            lineCell2.AppendChild(new TableCellProperties(new TableCellBorders(
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.None) }
+            )));
+
+            lineRow.AppendChild(lineCell1);
+            lineRow.AppendChild(lineCell2);
+            sigTable.AppendChild(lineRow);
+
+            body.AppendChild(sigTable);
         }
 
         mainPart.Document.Save();
@@ -667,6 +776,13 @@ public class ExportService : IExportService
     private static Paragraph CreateStyledParagraph(string text)
     {
         var paragraph = new Paragraph();
+
+        // Add spacing properties to remove all spacing
+        var paragraphProps = new ParagraphProperties(
+            new SpacingBetweenLines() { Before = "0", After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
+        paragraph.AppendChild(paragraphProps);
+
         var run = paragraph.AppendChild(new Run());
         run.AppendChild(new RunProperties(
             new FontSize() { Val = "22" }, // 11pt = 22 half-points
@@ -676,14 +792,35 @@ public class ExportService : IExportService
         return paragraph;
     }
 
-    private static TableCell CreateTableCell(string text, bool bold = false)
+    private static TableCell CreateTableCell(string text, bool bold = false, bool centered = true, bool rightAligned = false, bool leftAligned = false)
     {
         var cell = new TableCell();
         var paragraph = new Paragraph();
+
+        // Add paragraph properties for alignment and spacing
+        var paragraphProps = new ParagraphProperties(
+            new SpacingBetweenLines() { Before = "0", After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+        );
+
+        if (rightAligned)
+        {
+            paragraphProps.AppendChild(new Justification() { Val = JustificationValues.Right });
+        }
+        else if (leftAligned)
+        {
+            paragraphProps.AppendChild(new Justification() { Val = JustificationValues.Left });
+        }
+        else if (centered)
+        {
+            paragraphProps.AppendChild(new Justification() { Val = JustificationValues.Center });
+        }
+
+        paragraph.AppendChild(paragraphProps);
+
         var run = new Run();
 
         var runProperties = new RunProperties(
-            new FontSize() { Val = "22" }, // 11pt = 22 half-points
+            new FontSize() { Val = "20" }, // 10pt = 20 half-points (reduced from 22/11pt)
             new RunFonts() { Ascii = "Trebuchet MS", HighAnsi = "Trebuchet MS" }
         );
 
@@ -714,14 +851,21 @@ public class ExportService : IExportService
         paragraph.AppendChild(run);
         cell.AppendChild(paragraph);
 
-        // Cell properties for borders
+        // Cell properties for borders, minimal padding, and vertical alignment
         var cellProps = new TableCellProperties(
             new TableCellBorders(
-                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }
-            )
+                new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 },
+                new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4 }
+            ),
+            new TableCellMargin(
+                new TopMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
+                new BottomMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
+                new LeftMargin() { Width = "40", Type = TableWidthUnitValues.Dxa },
+                new RightMargin() { Width = "40", Type = TableWidthUnitValues.Dxa }
+            ),
+            new TableCellVerticalAlignment() { Val = TableVerticalAlignmentValues.Center }
         );
         cell.AppendChild(cellProps);
 
