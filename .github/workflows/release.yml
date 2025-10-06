@@ -163,11 +163,11 @@ jobs:
         & "${{ env.INSTALLER_SCRIPT }}" -Version $fullVersion
         
         # Find the generated MSI file
-        $msiFiles = Get-ChildItem -Path "installer" -Filter "*.msi" | Sort-Object LastWriteTime -Descending
+        $msiFiles = Get-ChildItem -Path "installer/output" -Filter "*.msi" | Sort-Object LastWriteTime -Descending
         if ($msiFiles.Count -eq 0) {
             throw "No MSI file found after build"
         }
-        
+
         $installerPath = $msiFiles[0].FullName
         $installerName = $msiFiles[0].Name
         
