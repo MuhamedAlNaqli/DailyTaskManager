@@ -144,13 +144,11 @@ jobs:
         
     - name: Setup WiX Toolset
       run: |
-        # Download and install WiX v4
-        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix4/releases/download/v4.0.4/wix-4.0.4.exe" -OutFile "wix-installer.exe"
-        .\wix-installer.exe /quiet
-        
-        # Add WiX to PATH
-        $wixPath = "${env:ProgramFiles}\WiX Toolset v4.0\bin"
-        echo "$wixPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Install WiX v4 as a dotnet tool
+        dotnet tool install --global wix --version 4.0.5
+
+        # Verify installation
+        wix --version
         
     - name: Build MSI installer
       id: build-installer
