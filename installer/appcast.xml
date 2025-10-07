@@ -6,7 +6,48 @@
         <language>en</language>
         <link>https://github.com/smartpointdevelopment/DailyTaskManager</link>
 
-        <!-- Version 2.2.0 - Latest Release -->
+        <!-- Version 2.2.1 - Latest Release -->
+        <item>
+            <title>Daily Task Manager 2.2.1</title>
+            <sparkle:version>2.2.1.0</sparkle:version>
+            <sparkle:shortVersionString>2.2.1</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h3>Daily Task Manager 2.2.1</h3>
+                <p><strong>Key Features:</strong></p>
+                <ul>
+                    <li>Cross-platform Avalonia UI application</li>
+                    <li>PostgreSQL database support with Entity Framework Core</li>
+                    <li>Google OAuth2 authentication</li>
+                    <li>Modern MVVM architecture with dependency injection</li>
+                    <li>Automatic update system with NetSparkleUpdater</li>
+                    <li>Professional MSI installer with automated versioning</li>
+                </ul>
+                <p><strong>Technical Details:</strong></p>
+                <ul>
+                    <li>Framework: .NET 8</li>
+                    <li>UI Framework: Avalonia 11.3.3</li>
+                    <li>Database: PostgreSQL with EF Core</li>
+                    <li>Authentication: Local + Google OAuth2</li>
+                    <li>Installer: WiX v4 MSI package</li>
+                    <li>Updates: NetSparkleUpdater v3.0.3</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 06 Oct 2025 19:56:26 +0000</pubDate>
+            <link>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.2.1/DailyTaskManager-v2.2.1-win-x64.msi</link>
+            <sparkle:releaseNotesLink>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.2.1</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+            <sparkle:os>windows</sparkle:os>
+            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <enclosure
+                url="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.2.1/DailyTaskManager-v2.2.1-win-x64.msi"
+                sparkle:version="2.2.1.0"
+                sparkle:shortVersionString="2.2.1"
+                sparkle:os="windows"
+                type="application/octet-stream"
+                length="41431040" />
+        </item>
+
+        <!-- Version 2.2.0 - Previous Release -->
         <item>
             <title>Daily Task Manager 2.2.0 - Enhanced Settings Page</title>
             <sparkle:version>2.2.0.0</sparkle:version>
