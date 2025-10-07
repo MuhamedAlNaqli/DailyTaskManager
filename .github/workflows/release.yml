@@ -272,61 +272,79 @@ jobs:
     - name: Update AppCast XML
       run: |
         $version = "${{ needs.build-and-test.outputs.version }}"
-        $fullVersion = "${{ needs.build-and-test.outputs.full-version }}"
+        $assemblyVersion = "${{ needs.build-and-test.outputs.assembly-version }}"
         $releaseUrl = "${{ steps.create-release.outputs.html_url }}"
         $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$version/${{ needs.create-installer.outputs.installer-name }}"
         $date = Get-Date -Format "ddd, dd MMM yyyy HH:mm:ss +0000"
-        
+
         Write-Host "Updating AppCast with version: $version"
+        Write-Host "Assembly version: $assemblyVersion"
         Write-Host "Download URL: $downloadUrl"
-        
+
+        # Get MSI file size
+        $msiPath = "./release-assets/${{ needs.create-installer.outputs.installer-name }}"
+        $fileSize = (Get-Item $msiPath).Length
+        Write-Host "MSI file size: $fileSize bytes"
+
         # Read current appcast
         $appcastPath = "${{ env.APPCAST_PATH }}"
         $appcastContent = Get-Content $appcastPath -Raw
-        
-        # Create new item XML
+
+        # Create new item XML with proper formatting
         $newItem = @"
-        
-            <!-- Version $version - Latest Release -->
-            <item>
-                <title>Daily Task Manager $version</title>
-                <sparkle:version>$fullVersion</sparkle:version>
-                <sparkle:shortVersionString>$version</sparkle:shortVersionString>
-                <description><![CDATA[
-                    <h3>Daily Task Manager $version</h3>
-                    <p>Latest release with improvements and bug fixes.</p>
-                    <p><strong>What's New:</strong></p>
-                    <ul>
-                        <li>Automatic updates with NetSparkleUpdater v3.0.3</li>
-                        <li>Enhanced UI and performance improvements</li>
-                        <li>Bug fixes and stability improvements</li>
-                    </ul>
-                    <p><a href="$releaseUrl">View full release notes</a></p>
-                ]]></description>
-                <pubDate>$date</pubDate>
-                <link>$downloadUrl</link>
-                <sparkle:releaseNotesLink>$releaseUrl</sparkle:releaseNotesLink>
-                <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
-                <sparkle:os>windows</sparkle:os>
-                <sparkle:installerArguments>/quiet</sparkle:installerArguments>
-                <enclosure 
-                    url="$downloadUrl"
-                    sparkle:version="$fullVersion"
-                    sparkle:shortVersionString="$version"
-                    sparkle:os="windows"
-                    type="application/octet-stream"
-                    length="0" />
-            </item>
-        "@
-        
-        # Insert new item after the channel opening tag and before existing items
-        $insertPoint = $appcastContent.IndexOf("</channel>")
-        if ($insertPoint -gt 0) {
-            $updatedContent = $appcastContent.Substring(0, $insertPoint) + $newItem + "`n`n    " + $appcastContent.Substring($insertPoint)
-            $updatedContent | Out-File -FilePath $appcastPath -Encoding utf8
-            Write-Host "AppCast updated successfully"
+        <!-- Version $version - Latest Release -->
+        <item>
+            <title>Daily Task Manager $version</title>
+            <sparkle:version>$assemblyVersion</sparkle:version>
+            <sparkle:shortVersionString>$version</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h3>Daily Task Manager $version</h3>
+                <p>Latest release with improvements and bug fixes.</p>
+                <p><strong>What's New:</strong></p>
+                <ul>
+                    <li>Automatic updates with NetSparkleUpdater v3.0.3</li>
+                    <li>Enhanced UI and performance improvements</li>
+                    <li>Bug fixes and stability improvements</li>
+                </ul>
+                <p><a href="$releaseUrl">View full release notes</a></p>
+            ]]></description>
+            <pubDate>$date</pubDate>
+            <link>$downloadUrl</link>
+            <sparkle:releaseNotesLink>$releaseUrl</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+            <sparkle:os>windows</sparkle:os>
+            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <enclosure
+                url="$downloadUrl"
+                sparkle:version="$assemblyVersion"
+                sparkle:shortVersionString="$version"
+                sparkle:os="windows"
+                type="application/octet-stream"
+                length="$fileSize" />
+        </item>
+
+
+"@
+
+        # Find the first existing item and insert before it
+        $pattern = '(?s)(<link>.*?</link>\s*)(<!--.*?-->.*?<item>)'
+        if ($appcastContent -match $pattern) {
+            $updatedContent = $appcastContent -replace $pattern, "`$1`n`n        $newItem`$2"
+            $updatedContent | Out-File -FilePath $appcastPath -Encoding utf8 -NoNewline
+            Write-Host "✅ AppCast updated successfully with version $version"
         } else {
             Write-Warning "Could not find insertion point in AppCast XML"
+            Write-Host "Attempting fallback method..."
+            # Fallback: insert after <link> tag
+            $linkPattern = '(<link>.*?</link>)'
+            if ($appcastContent -match $linkPattern) {
+                $updatedContent = $appcastContent -replace $linkPattern, "`$1`n`n        $newItem"
+                $updatedContent | Out-File -FilePath $appcastPath -Encoding utf8 -NoNewline
+                Write-Host "✅ AppCast updated successfully using fallback method"
+            } else {
+                Write-Error "❌ Failed to update AppCast XML"
+                exit 1
+            }
         }
         
     - name: Commit updated AppCast

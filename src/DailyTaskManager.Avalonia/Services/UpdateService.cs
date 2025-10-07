@@ -43,8 +43,8 @@ public class UpdateService : IUpdateService, IDisposable
             _logger.LogInformation("Initializing UpdateService...");
 
             // Get update configuration
-            var appCastUrl = _configuration["UpdateService:AppCastUrl"] 
-                ?? "https://raw.githubusercontent.com/smartpointdevelopment/DailyTaskManager/master/installer/appcast.xml";
+            var appCastUrl = _configuration["UpdateService:AppCastUrl"]
+                ?? "https://raw.githubusercontent.com/MuhamedAlNaqli/DailyTaskManager/master/installer/appcast.xml";
             
             var applicationName = _configuration["UpdateService:ApplicationName"] ?? "DailyTaskManager";
 
