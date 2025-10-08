@@ -44,7 +44,7 @@ public class UpdateService : IUpdateService, IDisposable
 
             // Get update configuration
             var appCastUrl = _configuration["UpdateService:AppCastUrl"]
-                ?? "https://raw.githubusercontent.com/MuhamedAlNaqli/DailyTaskManager/master/installer/appcast.xml";
+                ?? "https://muhamedalnaqli.github.io/DailyTaskManager/appcast.xml";
             
             var applicationName = _configuration["UpdateService:ApplicationName"] ?? "DailyTaskManager";
 

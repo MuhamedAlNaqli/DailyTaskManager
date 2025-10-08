@@ -347,13 +347,25 @@ jobs:
             }
         }
         
-    - name: Commit updated AppCast
+    - name: Deploy to GitHub Pages
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add ${{ env.APPCAST_PATH }}
-        git commit -m "Update AppCast for version ${{ needs.build-and-test.outputs.version }} 🤖" || exit 0
-        git push || exit 0
+
+        # Checkout gh-pages branch
+        git fetch origin gh-pages
+        git checkout gh-pages
+
+        # Update appcast.xml
+        Copy-Item -Path "${{ env.APPCAST_PATH }}" -Destination "appcast.xml" -Force
+
+        # Commit and push
+        git add appcast.xml
+        git commit -m "Update appcast.xml for version ${{ needs.build-and-test.outputs.version }} 🤖" || exit 0
+        git push origin gh-pages || exit 0
+
+        # Switch back to original branch
+        git checkout -
 
   cleanup:
     if: always()
