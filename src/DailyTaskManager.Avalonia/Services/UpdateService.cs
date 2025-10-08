@@ -43,8 +43,9 @@ public class UpdateService : IUpdateService, IDisposable
             _logger.LogInformation("Initializing UpdateService...");
 
             // Get update configuration
+            // Using latest release download URL works for both public and private repos
             var appCastUrl = _configuration["UpdateService:AppCastUrl"]
-                ?? "https://muhamedalnaqli.github.io/DailyTaskManager/appcast.xml";
+                ?? "https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/latest/download/appcast.xml";
             
             var applicationName = _configuration["UpdateService:ApplicationName"] ?? "DailyTaskManager";
 
