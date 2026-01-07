@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using DailyTaskManager.Avalonia.ViewModels;
 using Microsoft.Extensions.Logging;
@@ -10,6 +13,10 @@ public partial class DailyTasksView : UserControl
 {
     private readonly ILogger<DailyTasksView>? _logger;
     private DailyTasksViewModel? _currentViewModel;
+    private Calendar? _dateRangeCalendar;
+    private TextBlock? _dateRangeText;
+    private Button? _dateRangeButton;
+    private FlyoutBase? _dateRangeFlyout;
 
     public DailyTasksView()
     {
@@ -23,10 +30,10 @@ public partial class DailyTasksView : UserControl
         this.Loaded += OnViewLoaded;
     }
 
-    private void OnViewLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    private void OnViewLoaded(object? sender, RoutedEventArgs e)
     {
-        // Set up DatePicker events after the view is fully loaded
-        SetupDatePickerEvents();
+        // Set up calendar and button events after the view is fully loaded
+        SetupCalendarEvents();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -37,7 +44,7 @@ public partial class DailyTasksView : UserControl
             _currentViewModel = viewModel;
 
             // Defer setup until after UI is loaded
-            Dispatcher.UIThread.Post(() => SetupDatePickerEvents(), DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() => SetupCalendarEvents(), DispatcherPriority.Background);
         }
         else
         {
@@ -46,28 +53,58 @@ public partial class DailyTasksView : UserControl
         }
     }
 
-    private void SetupDatePickerEvents()
+    private void SetupCalendarEvents()
     {
         if (_currentViewModel == null) return;
 
-        Console.WriteLine("🔌 DailyTasksView: Setting up Search button events...");
+        Console.WriteLine("🔌 DailyTasksView: Setting up Calendar and button events...");
 
         try
         {
-            // Only wire up the search button - no DatePicker events to avoid circular loops
+            // Get references to controls
             var searchButton = this.FindControl<Button>("SearchButton");
+            _dateRangeButton = this.FindControl<Button>("DateRangeButton");
+            _dateRangeCalendar = this.FindControl<Calendar>("DateRangeCalendar");
+            _dateRangeText = this.FindControl<TextBlock>("DateRangeText");
+            var applyButton = this.FindControl<Button>("ApplyDateRangeButton");
+            var clearButton = this.FindControl<Button>("ClearDateRangeButton");
 
+            // Set up search button
             if (searchButton != null)
             {
-                Console.WriteLine("✅ DailyTasksView: Found SearchButton, attaching event handler");
-
-                // Remove any existing handlers to avoid duplicates
                 searchButton.Click -= OnSearchButtonClicked;
                 searchButton.Click += OnSearchButtonClicked;
+                Console.WriteLine("✅ Search button event attached");
             }
-            else
+
+            // Set up calendar
+            if (_dateRangeCalendar != null)
             {
-                Console.WriteLine("❌ DailyTasksView: SearchButton not found!");
+                _dateRangeCalendar.SelectedDatesChanged -= OnCalendarSelectedDatesChanged;
+                _dateRangeCalendar.SelectedDatesChanged += OnCalendarSelectedDatesChanged;
+                Console.WriteLine("✅ Calendar event attached");
+            }
+
+            // Set up apply button
+            if (applyButton != null)
+            {
+                applyButton.Click -= OnApplyDateRangeClicked;
+                applyButton.Click += OnApplyDateRangeClicked;
+                Console.WriteLine("✅ Apply button event attached");
+            }
+
+            // Set up clear button
+            if (clearButton != null)
+            {
+                clearButton.Click -= OnClearDateRangeClicked;
+                clearButton.Click += OnClearDateRangeClicked;
+                Console.WriteLine("✅ Clear button event attached");
+            }
+
+            // Get flyout reference
+            if (_dateRangeButton != null)
+            {
+                _dateRangeFlyout = _dateRangeButton.Flyout;
             }
 
             Console.WriteLine("🎯 DailyTasksView: Event setup completed");
@@ -78,8 +115,90 @@ public partial class DailyTasksView : UserControl
         }
     }
 
+    private void OnCalendarSelectedDatesChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_dateRangeCalendar == null || _dateRangeText == null) return;
 
-    private void OnSearchButtonClicked(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+        try
+        {
+            var selectedDates = _dateRangeCalendar.SelectedDates.OrderBy(d => d).ToList();
+
+            if (selectedDates.Count >= 2)
+            {
+                var startDate = selectedDates.First();
+                var endDate = selectedDates.Last();
+                _dateRangeText.Text = $"{startDate:MMM dd} → {endDate:MMM dd}";
+                Console.WriteLine($"📅 Date range selected: {startDate:d} to {endDate:d}");
+            }
+            else if (selectedDates.Count == 1)
+            {
+                var startDate = selectedDates.First();
+                _dateRangeText.Text = $"{startDate:MMM dd} → ...";
+                Console.WriteLine($"📅 Start date selected: {startDate:d}");
+            }
+            else
+            {
+                _dateRangeText.Text = "Select Date Range";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in calendar selection: {ex.Message}");
+        }
+    }
+
+    private void OnApplyDateRangeClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_currentViewModel == null || _dateRangeCalendar == null) return;
+
+        try
+        {
+            var selectedDates = _dateRangeCalendar.SelectedDates.OrderBy(d => d).ToList();
+
+            if (selectedDates.Count >= 2)
+            {
+                var startDate = selectedDates.First();
+                var endDate = selectedDates.Last();
+
+                _currentViewModel.DateFrom = startDate;
+                _currentViewModel.DateTo = endDate;
+
+                Console.WriteLine($"✅ Applied date range: {startDate:d} to {endDate:d}");
+
+                // Close the flyout
+                _dateRangeFlyout?.Hide();
+
+                // Apply filters
+                _currentViewModel.ApplyFilters();
+            }
+            else
+            {
+                Console.WriteLine("⚠️ Please select both start and end dates");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error applying date range: {ex.Message}");
+        }
+    }
+
+    private void OnClearDateRangeClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_dateRangeCalendar == null || _dateRangeText == null) return;
+
+        try
+        {
+            _dateRangeCalendar.SelectedDates.Clear();
+            _dateRangeText.Text = "Select Date Range";
+            Console.WriteLine("✅ Date range cleared");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error clearing date range: {ex.Message}");
+        }
+    }
+
+    private void OnSearchButtonClicked(object? sender, RoutedEventArgs e)
     {
         if (_currentViewModel == null)
         {
@@ -91,69 +210,14 @@ public partial class DailyTasksView : UserControl
 
         try
         {
-            // Get current DatePicker values
-            var dateFromPicker = this.FindControl<DatePicker>("DateFromPicker");
-            var dateToPicker = this.FindControl<DatePicker>("DateToPicker");
-
-            Console.WriteLine($"🔍 Found DatePickers - From: {dateFromPicker != null}, To: {dateToPicker != null}");
-
-            var dateFromValue = dateFromPicker?.SelectedDate?.DateTime;
-            var dateToValue = dateToPicker?.SelectedDate?.DateTime;
-
-            Console.WriteLine($"🔍 Current DatePicker values: DateFrom = {dateFromValue}, DateTo = {dateToValue}");
+            // Apply filters with current ViewModel date values
             Console.WriteLine($"🔍 Current ViewModel values: DateFrom = {_currentViewModel.DateFrom}, DateTo = {_currentViewModel.DateTo}");
-
-            // Get current task count before filtering
-            var taskCountBefore = _currentViewModel.FilteredTasks?.Count ?? 0;
-            Console.WriteLine($"📊 Tasks before filtering: {taskCountBefore}");
-
-            // Update ViewModel properties only if they're different to avoid unnecessary binding updates
-            bool valuesChanged = false;
-
-            if (dateFromValue != _currentViewModel.DateFrom)
-            {
-                Console.WriteLine($"🔄 Updating DateFrom: {_currentViewModel.DateFrom} → {dateFromValue}");
-                _currentViewModel.DateFrom = dateFromValue;
-                valuesChanged = true;
-            }
-
-            if (dateToValue != _currentViewModel.DateTo)
-            {
-                Console.WriteLine($"🔄 Updating DateTo: {_currentViewModel.DateTo} → {dateToValue}");
-                _currentViewModel.DateTo = dateToValue;
-                valuesChanged = true;
-            }
-
-            if (!valuesChanged)
-            {
-                Console.WriteLine("🔄 No date values changed, but still applying filters...");
-            }
-
-            Console.WriteLine($"🎯 ViewModel updated - DateFrom: {_currentViewModel.DateFrom}, DateTo: {_currentViewModel.DateTo}");
-
-            // Always apply filters to ensure filtering happens
-            Console.WriteLine("🚀 Applying filters...");
             _currentViewModel.ApplyFilters();
-
-            // Check task count after filtering
-            var taskCountAfter = _currentViewModel.FilteredTasks?.Count ?? 0;
-            Console.WriteLine($"📊 Tasks after filtering: {taskCountAfter}");
-
-            if (taskCountBefore != taskCountAfter)
-            {
-                Console.WriteLine($"✅ Filtering successful! Tasks changed from {taskCountBefore} to {taskCountAfter}");
-            }
-            else
-            {
-                Console.WriteLine($"⚠️ Task count unchanged. Current filter criteria may not match any tasks or all tasks already match.");
-            }
-
             Console.WriteLine("✅ Search completed!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Error in search button click: {ex.Message}");
-            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
         }
     }
 }

@@ -192,13 +192,11 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        
+
                         <!-- Search Box -->
                         <TextBox Grid.Column="0"
                                  Text="{Binding SearchText}"
@@ -211,37 +209,75 @@
                                  FontSize="14"
                                  Height="34"
                                  Margin="0,0,16,0"/>
-                        
-                        <!-- Date From -->
-                        <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="From" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                          <DatePicker Name="DateFromPicker"
-                                       SelectedDate="{Binding DateFrom, Mode=OneWay}"
-                                       Background="White"
-                                       BorderBrush="#FFD1D5DB"
-                                       BorderThickness="1"
-                                       CornerRadius="8"
-                                       Padding="8,4"
-                                       FontSize="14"
-                                       Height="34"/>
-                        </StackPanel>
-                        
-                        <!-- Date To -->
-                        <StackPanel Grid.Column="4" Spacing="4">
-                            <TextBlock Text="To" FontSize="12" FontWeight="Medium" Foreground="#FF374151"/>
-                          <DatePicker Name="DateToPicker"
-                                       SelectedDate="{Binding DateTo, Mode=OneWay}"
-                                       Background="White"
-                                       BorderBrush="#FFD1D5DB"
-                                       BorderThickness="1"
-                                       CornerRadius="8"
-                                       Padding="8,4"
-                                       FontSize="14"
-                                       Height="34"/>
-                        </StackPanel>
+
+                        <!-- Date Range Picker Button -->
+                        <Button Grid.Column="1"
+                                Name="DateRangeButton"
+                                Background="White"
+                                BorderBrush="#FFD1D5DB"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12,6"
+                                Height="34"
+                                VerticalAlignment="Center"
+                                Margin="0,0,16,0">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <Border Background="White"
+                                            BorderBrush="#FFE2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="16">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="Select Date Range"
+                                                      FontSize="14"
+                                                      FontWeight="SemiBold"
+                                                      Foreground="#FF374151"/>
+                                            <TextBlock Text="Click start date, then click end date"
+                                                      FontSize="12"
+                                                      Foreground="#FF6B7280"
+                                                      TextWrapping="Wrap"
+                                                      MaxWidth="280"/>
+                                            <Calendar Name="DateRangeCalendar"
+                                                     SelectionMode="SingleRange"
+                                                     AllowTapRangeSelection="True"
+                                                     Background="White"/>
+                                            <StackPanel Orientation="Horizontal"
+                                                       HorizontalAlignment="Right"
+                                                       Spacing="8">
+                                                <Button Content="Clear"
+                                                       Name="ClearDateRangeButton"
+                                                       Background="Transparent"
+                                                       BorderBrush="#FFDC2626"
+                                                       Foreground="#FFDC2626"
+                                                       BorderThickness="1"
+                                                       CornerRadius="6"
+                                                       Padding="12,6"/>
+                                                <Button Content="Apply"
+                                                       Name="ApplyDateRangeButton"
+                                                       Background="#FF3B82F6"
+                                                       BorderBrush="Transparent"
+                                                       Foreground="White"
+                                                       BorderThickness="1"
+                                                       CornerRadius="6"
+                                                       Padding="12,6"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="📅" FontSize="14" VerticalAlignment="Center"/>
+                                <TextBlock Name="DateRangeText"
+                                          Text="Select Date Range"
+                                          FontSize="12"
+                                          Foreground="#FF374151"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
                         <!-- Search Button -->
-                        <Button Grid.Column="5"
+                        <Button Grid.Column="2"
                                 Name="SearchButton"
                                 Background="#FF3B82F6"
                                 BorderBrush="Transparent"
@@ -249,10 +285,10 @@
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Padding="16,6"
-                                Margin="16,18,0,0"
-                                VerticalAlignment="Bottom"
+                                Margin="0,0,16,0"
+                                VerticalAlignment="Center"
                                 Height="34"
-                                ToolTip.Tip="Apply date filters">
+                                ToolTip.Tip="Apply filters">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="🔍" FontSize="12" VerticalAlignment="Center"/>
                                 <TextBlock Text="Search" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
@@ -260,7 +296,7 @@
                         </Button>
 
                         <!-- Clear Filters Button -->
-                        <Button Grid.Column="6"
+                        <Button Grid.Column="3"
                                 Command="{Binding ClearFiltersCommand}"
                                 Background="Transparent"
                                 BorderBrush="#FFDC2626"
@@ -268,8 +304,7 @@
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Padding="12,6"
-                                Margin="16,18,0,0"
-                                VerticalAlignment="Bottom"
+                                VerticalAlignment="Center"
                                 Height="34"
                                 ToolTip.Tip="Clear all filters">
                             <StackPanel Orientation="Horizontal" Spacing="6">
