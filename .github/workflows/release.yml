@@ -239,9 +239,9 @@ jobs:
           "",
           "---",
           "",
-          "**Generated automatically by GitHub Actions**",
-          "**Build Version:** $buildVersion",
-          "**Commit:** $commit"
+          "Generated automatically by GitHub Actions",
+          "Build Version: $buildVersion",
+          "Commit: $commit"
         ) -join "`n"
         
         # Save to file for GitHub release
