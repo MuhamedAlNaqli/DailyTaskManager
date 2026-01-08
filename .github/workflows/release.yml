@@ -207,11 +207,11 @@ jobs:
         $version = "${{ needs.build-and-test.outputs.version }}"
         $date = Get-Date -Format "yyyy-MM-dd"
         
-        $releaseNotes = @"
-        # Daily Task Manager $version
-        
-        **Release Date:** $date
-        
+        $releaseNotes = @'
+        # Daily Task Manager {0}
+
+        **Release Date:** {1}
+
         ## 🎯 Key Features
         - Cross-platform Avalonia UI application
         - PostgreSQL database support with Entity Framework Core
@@ -219,27 +219,29 @@ jobs:
         - Modern MVVM architecture with dependency injection
         - Automatic update system with NetSparkleUpdater
         - Professional MSI installer with automated versioning
-        
+
         ## 🔧 Technical Details
         - **Framework:** .NET 8
-        - **UI Framework:** Avalonia 11.3.3
+        - **UI Framework:** Avalonia 11.3.10
         - **Database:** PostgreSQL with EF Core
         - **Authentication:** Local + Google OAuth2
         - **Installer:** WiX v4 MSI package
         - **Updates:** NetSparkleUpdater v3.0.3
-        
+
         ## 💾 Installation
         Download and run the MSI installer below. The application will automatically check for updates.
-        
+
         ## 🔄 Upgrading
         If you have a previous version installed, the MSI will automatically upgrade your installation while preserving your data and settings.
-        
+
         ---
-        
+
         **Generated automatically by GitHub Actions**
-        **Build Version:** ${{ needs.build-and-test.outputs.full-version }}
-        **Commit:** ${{ github.sha }}
-        "@
+        **Build Version:** {2}
+        **Commit:** {3}
+'@
+
+        $releaseNotes = $releaseNotes -f $version, $date, "${{ needs.build-and-test.outputs.full-version }}", "${{ github.sha }}"
         
         # Save to file for GitHub release
         $releaseNotes | Out-File -FilePath "release-notes.md" -Encoding utf8
