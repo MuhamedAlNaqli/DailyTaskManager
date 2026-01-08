@@ -365,17 +365,27 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        # Checkout gh-pages branch
+        # Save modified appcast.xml to temp location before switching branches
+        Copy-Item -Path "${{ env.APPCAST_PATH }}" -Destination "appcast-temp.xml" -Force
+
+        # Discard local changes to appcast.xml and checkout gh-pages branch
+        git restore "${{ env.APPCAST_PATH }}"
         git fetch origin gh-pages
         git checkout gh-pages
 
-        # Update appcast.xml
-        Copy-Item -Path "${{ env.APPCAST_PATH }}" -Destination "appcast.xml" -Force
+        # Copy appcast from temp to gh-pages root
+        Copy-Item -Path "appcast-temp.xml" -Destination "appcast.xml" -Force
+        Remove-Item "appcast-temp.xml"
 
-        # Commit and push
+        # Commit and push (suppress errors if nothing changed)
         git add appcast.xml
-        git commit -m "Update appcast.xml for version ${{ needs.build-and-test.outputs.version }} 🤖" || exit 0
-        git push origin gh-pages || exit 0
+        try {
+          git commit -m "Update appcast.xml for version ${{ needs.build-and-test.outputs.version }} 🤖"
+          git push origin gh-pages
+          Write-Host "✅ Successfully deployed appcast.xml to GitHub Pages"
+        } catch {
+          Write-Host "ℹ️ No changes to deploy or push failed (this is OK)"
+        }
 
         # Switch back to original branch
         git checkout -
