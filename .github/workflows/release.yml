@@ -362,33 +362,42 @@ jobs:
 
     - name: Deploy to GitHub Pages (optional - for public repos)
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        # Check if gh-pages branch exists before attempting deployment
+        git fetch origin
+        $ghPagesBranch = git ls-remote --heads origin gh-pages
 
-        # Save modified appcast.xml to temp location before switching branches
-        Copy-Item -Path "${{ env.APPCAST_PATH }}" -Destination "appcast-temp.xml" -Force
+        if ($ghPagesBranch) {
+          Write-Host "📄 GitHub Pages branch detected, deploying appcast.xml..."
 
-        # Discard local changes to appcast.xml and checkout gh-pages branch
-        git restore "${{ env.APPCAST_PATH }}"
-        git fetch origin gh-pages
-        git checkout gh-pages
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
-        # Copy appcast from temp to gh-pages root
-        Copy-Item -Path "appcast-temp.xml" -Destination "appcast.xml" -Force
-        Remove-Item "appcast-temp.xml"
+          # Save modified appcast.xml to temp location before switching branches
+          Copy-Item -Path "${{ env.APPCAST_PATH }}" -Destination "appcast-temp.xml" -Force
 
-        # Commit and push (suppress errors if nothing changed)
-        git add appcast.xml
-        try {
-          git commit -m "Update appcast.xml for version ${{ needs.build-and-test.outputs.version }} 🤖"
-          git push origin gh-pages
-          Write-Host "✅ Successfully deployed appcast.xml to GitHub Pages"
-        } catch {
-          Write-Host "ℹ️ No changes to deploy or push failed (this is OK)"
+          # Discard local changes to appcast.xml and checkout gh-pages branch
+          git restore "${{ env.APPCAST_PATH }}"
+          git checkout gh-pages
+
+          # Copy appcast from temp to gh-pages root
+          Copy-Item -Path "appcast-temp.xml" -Destination "appcast.xml" -Force
+          Remove-Item "appcast-temp.xml"
+
+          # Commit and push (suppress errors if nothing changed)
+          git add appcast.xml
+          try {
+            git commit -m "Update appcast.xml for version ${{ needs.build-and-test.outputs.version }} 🤖"
+            git push origin gh-pages
+            Write-Host "✅ Successfully deployed appcast.xml to GitHub Pages"
+          } catch {
+            Write-Host "ℹ️ No changes to deploy or push failed (this is OK)"
+          }
+
+          # Switch back to original branch
+          git checkout -
+        } else {
+          Write-Host "ℹ️ GitHub Pages branch not found - skipping deployment (appcast.xml is still available in the release assets)"
         }
-
-        # Switch back to original branch
-        git checkout -
 
   cleanup:
     if: always()
