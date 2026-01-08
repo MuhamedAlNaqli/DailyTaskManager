@@ -6,7 +6,40 @@
         <language>en</language>
         <link>https://github.com/MuhamedAlNaqli/DailyTaskManager</link>
 
-        <!-- Version 2.2.1 - Latest Release -->
+        
+
+                <!-- Version 2.3.2 - Latest Release -->
+        <item>
+            <title>Daily Task Manager 2.3.2</title>
+            <sparkle:version>2.3.2.0</sparkle:version>
+            <sparkle:shortVersionString>2.3.2</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h3>Daily Task Manager 2.3.2</h3>
+                <p>Latest release with improvements and bug fixes.</p>
+                <p><strong>What's New:</strong></p>
+                <ul>
+                    <li>Automatic updates with NetSparkleUpdater v3.0.3</li>
+                    <li>Enhanced UI and performance improvements</li>
+                    <li>Bug fixes and stability improvements</li>
+                </ul>
+                <p><a href="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.3.2">View full release notes</a></p>
+            ]]></description>
+            <pubDate>Thu, 08 Jan 2026 13:29:56 +0000</pubDate>
+            <link>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.3.2/DailyTaskManager-v2.3.2-win-x64.msi</link>
+            <sparkle:releaseNotesLink>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.3.2</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
+            <sparkle:os>windows</sparkle:os>
+            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <enclosure
+                url="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.3.2/DailyTaskManager-v2.3.2-win-x64.msi"
+                sparkle:version="2.3.2.0"
+                sparkle:shortVersionString="2.3.2"
+                sparkle:os="windows"
+                type="application/octet-stream"
+                length="41496576" />
+        </item>
+
+<!-- Version 2.2.1 - Latest Release -->
         <item>
             <title>Daily Task Manager 2.2.1</title>
             <sparkle:version>2.2.1.0</sparkle:version>
