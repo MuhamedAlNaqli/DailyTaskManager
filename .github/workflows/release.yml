@@ -207,41 +207,42 @@ jobs:
         $version = "${{ needs.build-and-test.outputs.version }}"
         $date = Get-Date -Format "yyyy-MM-dd"
         
-        $releaseNotes = @'
-        # Daily Task Manager {0}
+        $buildVersion = "${{ needs.build-and-test.outputs.full-version }}"
+        $commit = "${{ github.sha }}"
 
-        **Release Date:** {1}
-
-        ## 🎯 Key Features
-        - Cross-platform Avalonia UI application
-        - PostgreSQL database support with Entity Framework Core
-        - Google OAuth2 authentication
-        - Modern MVVM architecture with dependency injection
-        - Automatic update system with NetSparkleUpdater
-        - Professional MSI installer with automated versioning
-
-        ## 🔧 Technical Details
-        - **Framework:** .NET 8
-        - **UI Framework:** Avalonia 11.3.10
-        - **Database:** PostgreSQL with EF Core
-        - **Authentication:** Local + Google OAuth2
-        - **Installer:** WiX v4 MSI package
-        - **Updates:** NetSparkleUpdater v3.0.3
-
-        ## 💾 Installation
-        Download and run the MSI installer below. The application will automatically check for updates.
-
-        ## 🔄 Upgrading
-        If you have a previous version installed, the MSI will automatically upgrade your installation while preserving your data and settings.
-
-        ---
-
-        **Generated automatically by GitHub Actions**
-        **Build Version:** {2}
-        **Commit:** {3}
-'@
-
-        $releaseNotes = $releaseNotes -f $version, $date, "${{ needs.build-and-test.outputs.full-version }}", "${{ github.sha }}"
+        $releaseNotes = (
+          "# Daily Task Manager $version",
+          "",
+          "**Release Date:** $date",
+          "",
+          "## 🎯 Key Features",
+          "- Cross-platform Avalonia UI application",
+          "- PostgreSQL database support with Entity Framework Core",
+          "- Google OAuth2 authentication",
+          "- Modern MVVM architecture with dependency injection",
+          "- Automatic update system with NetSparkleUpdater",
+          "- Professional MSI installer with automated versioning",
+          "",
+          "## 🔧 Technical Details",
+          "- **Framework:** .NET 8",
+          "- **UI Framework:** Avalonia 11.3.10",
+          "- **Database:** PostgreSQL with EF Core",
+          "- **Authentication:** Local + Google OAuth2",
+          "- **Installer:** WiX v4 MSI package",
+          "- **Updates:** NetSparkleUpdater v3.0.3",
+          "",
+          "## 💾 Installation",
+          "Download and run the MSI installer below. The application will automatically check for updates.",
+          "",
+          "## 🔄 Upgrading",
+          "If you have a previous version installed, the MSI will automatically upgrade your installation while preserving your data and settings.",
+          "",
+          "---",
+          "",
+          "**Generated automatically by GitHub Actions**",
+          "**Build Version:** $buildVersion",
+          "**Commit:** $commit"
+        ) -join "`n"
         
         # Save to file for GitHub release
         $releaseNotes | Out-File -FilePath "release-notes.md" -Encoding utf8
@@ -293,42 +294,40 @@ jobs:
         $appcastContent = Get-Content $appcastPath -Raw
 
         # Create new item XML with proper formatting
-        $newItem = @'
-        <!-- Version {0} - Latest Release -->
-        <item>
-            <title>Daily Task Manager {0}</title>
-            <sparkle:version>{1}</sparkle:version>
-            <sparkle:shortVersionString>{0}</sparkle:shortVersionString>
-            <description><![CDATA[
-                <h3>Daily Task Manager {0}</h3>
-                <p>Latest release with improvements and bug fixes.</p>
-                <p><strong>What's New:</strong></p>
-                <ul>
-                    <li>Automatic updates with NetSparkleUpdater v3.0.3</li>
-                    <li>Enhanced UI and performance improvements</li>
-                    <li>Bug fixes and stability improvements</li>
-                </ul>
-                <p><a href="{2}">View full release notes</a></p>
-            ]]></description>
-            <pubDate>{3}</pubDate>
-            <link>{4}</link>
-            <sparkle:releaseNotesLink>{2}</sparkle:releaseNotesLink>
-            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
-            <sparkle:os>windows</sparkle:os>
-            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
-            <enclosure
-                url="{4}"
-                sparkle:version="{1}"
-                sparkle:shortVersionString="{0}"
-                sparkle:os="windows"
-                type="application/octet-stream"
-                length="{5}" />
-        </item>
-
-
-'@
-
-        $newItem = $newItem -f $version, $assemblyVersion, $releaseUrl, $date, $downloadUrl, $fileSize
+        $newItem = (
+          "        <!-- Version $version - Latest Release -->",
+          "        <item>",
+          "            <title>Daily Task Manager $version</title>",
+          "            <sparkle:version>$assemblyVersion</sparkle:version>",
+          "            <sparkle:shortVersionString>$version</sparkle:shortVersionString>",
+          "            <description><![CDATA[",
+          "                <h3>Daily Task Manager $version</h3>",
+          "                <p>Latest release with improvements and bug fixes.</p>",
+          "                <p><strong>What's New:</strong></p>",
+          "                <ul>",
+          "                    <li>Automatic updates with NetSparkleUpdater v3.0.3</li>",
+          "                    <li>Enhanced UI and performance improvements</li>",
+          "                    <li>Bug fixes and stability improvements</li>",
+          "                </ul>",
+          "                <p><a href=`"$releaseUrl`">View full release notes</a></p>",
+          "            ]]></description>",
+          "            <pubDate>$date</pubDate>",
+          "            <link>$downloadUrl</link>",
+          "            <sparkle:releaseNotesLink>$releaseUrl</sparkle:releaseNotesLink>",
+          "            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>",
+          "            <sparkle:os>windows</sparkle:os>",
+          "            <sparkle:installerArguments>/quiet</sparkle:installerArguments>",
+          "            <enclosure",
+          "                url=`"$downloadUrl`"",
+          "                sparkle:version=`"$assemblyVersion`"",
+          "                sparkle:shortVersionString=`"$version`"",
+          "                sparkle:os=`"windows`"",
+          "                type=`"application/octet-stream`"",
+          "                length=`"$fileSize`" />",
+          "        </item>",
+          "",
+          ""
+        ) -join "`n"
 
         # Find the first existing item and insert before it
         $pattern = '(?s)(<link>.*?</link>\s*)(<!--.*?-->.*?<item>)'
