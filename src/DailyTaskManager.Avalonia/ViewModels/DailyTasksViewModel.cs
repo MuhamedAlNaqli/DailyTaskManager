@@ -369,7 +369,17 @@ public partial class DailyTasksViewModel : ObservableObject
     partial void OnSearchTextChanged(string value)
     {
         _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
-        ApplyFilters();
+
+        // Only trigger search if text is empty OR has 3+ characters (performance optimization)
+        if (string.IsNullOrEmpty(value) || value.Length >= 3)
+        {
+            _logger.LogInformation("Applying filters - search text qualifies (empty or 3+ chars)");
+            ApplyFilters();
+        }
+        else
+        {
+            _logger.LogInformation("Skipping filter - search text too short ({Length} chars, need 3+)", value.Length);
+        }
     }
 
     partial void OnDateFromChanged(DateTime? value)

@@ -62,20 +62,11 @@ public partial class DailyTasksView : UserControl
         try
         {
             // Get references to controls
-            var searchButton = this.FindControl<Button>("SearchButton");
             _dateRangeButton = this.FindControl<Button>("DateRangeButton");
             _dateRangeCalendar = this.FindControl<Calendar>("DateRangeCalendar");
             _dateRangeText = this.FindControl<TextBlock>("DateRangeText");
             var applyButton = this.FindControl<Button>("ApplyDateRangeButton");
-            var clearButton = this.FindControl<Button>("ClearDateRangeButton");
-
-            // Set up search button
-            if (searchButton != null)
-            {
-                searchButton.Click -= OnSearchButtonClicked;
-                searchButton.Click += OnSearchButtonClicked;
-                Console.WriteLine("✅ Search button event attached");
-            }
+            var clearAllButton = this.FindControl<Button>("ClearAllFiltersButton");
 
             // Set up calendar
             if (_dateRangeCalendar != null)
@@ -93,12 +84,12 @@ public partial class DailyTasksView : UserControl
                 Console.WriteLine("✅ Apply button event attached");
             }
 
-            // Set up clear button
-            if (clearButton != null)
+            // Set up clear all filters button
+            if (clearAllButton != null)
             {
-                clearButton.Click -= OnClearDateRangeClicked;
-                clearButton.Click += OnClearDateRangeClicked;
-                Console.WriteLine("✅ Clear button event attached");
+                clearAllButton.Click -= OnClearAllFiltersClicked;
+                clearAllButton.Click += OnClearAllFiltersClicked;
+                Console.WriteLine("✅ Clear all filters button event attached");
             }
 
             // Get flyout reference
@@ -182,42 +173,34 @@ public partial class DailyTasksView : UserControl
         }
     }
 
-    private void OnClearDateRangeClicked(object? sender, RoutedEventArgs e)
+    private void OnClearAllFiltersClicked(object? sender, RoutedEventArgs e)
     {
-        if (_dateRangeCalendar == null || _dateRangeText == null) return;
+        if (_currentViewModel == null || _dateRangeCalendar == null || _dateRangeText == null) return;
 
         try
         {
+            // Clear date range calendar
             _dateRangeCalendar.SelectedDates.Clear();
             _dateRangeText.Text = "Select Date Range";
-            Console.WriteLine("✅ Date range cleared");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error clearing date range: {ex.Message}");
-        }
-    }
 
-    private void OnSearchButtonClicked(object? sender, RoutedEventArgs e)
-    {
-        if (_currentViewModel == null)
-        {
-            Console.WriteLine("❌ DailyTasksView: Search button clicked but ViewModel is null!");
-            return;
-        }
+            // Clear date range in ViewModel
+            _currentViewModel.DateFrom = null;
+            _currentViewModel.DateTo = null;
 
-        Console.WriteLine("🔍 DailyTasksView: Search button clicked!");
+            // Clear search text
+            _currentViewModel.SearchText = string.Empty;
 
-        try
-        {
-            // Apply filters with current ViewModel date values
-            Console.WriteLine($"🔍 Current ViewModel values: DateFrom = {_currentViewModel.DateFrom}, DateTo = {_currentViewModel.DateTo}");
+            Console.WriteLine("✅ All filters cleared (date range and search text)");
+
+            // Apply filters to show all tasks
             _currentViewModel.ApplyFilters();
-            Console.WriteLine("✅ Search completed!");
+
+            // Close the flyout
+            _dateRangeFlyout?.Hide();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error in search button click: {ex.Message}");
+            Console.WriteLine($"❌ Error clearing all filters: {ex.Message}");
         }
     }
 }
