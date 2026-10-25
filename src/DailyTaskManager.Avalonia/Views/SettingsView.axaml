@@ -185,6 +185,46 @@
                                              FontSize="14"
                                              Margin="0,0,0,12"/>
                                     
+                                    <TextBox Text="{Binding PdfSettings.DecisionNumber}"
+                                             Watermark="Decision Number"
+                                             Background="White"
+                                             BorderBrush="#FFD1D5DB"
+                                             BorderThickness="1"
+                                             CornerRadius="8"
+                                             Padding="12,10"
+                                             FontSize="14"
+                                             Margin="0,0,0,12"/>
+
+                                    <TextBox Text="{Binding PdfSettings.ClientVatNumber}"
+                                             Watermark="Client VAT Number"
+                                             Background="White"
+                                             BorderBrush="#FFD1D5DB"
+                                             BorderThickness="1"
+                                             CornerRadius="8"
+                                             Padding="12,10"
+                                             FontSize="14"
+                                             Margin="0,0,0,12"/>
+
+                                    <TextBox Text="{Binding PdfSettings.ClientAddressLine1}"
+                                             Watermark="Client Address Line 1"
+                                             Background="White"
+                                             BorderBrush="#FFD1D5DB"
+                                             BorderThickness="1"
+                                             CornerRadius="8"
+                                             Padding="12,10"
+                                             FontSize="14"
+                                             Margin="0,0,0,12"/>
+
+                                    <TextBox Text="{Binding PdfSettings.ClientAddressLine2}"
+                                             Watermark="Client Address Line 2"
+                                             Background="White"
+                                             BorderBrush="#FFD1D5DB"
+                                             BorderThickness="1"
+                                             CornerRadius="8"
+                                             Padding="12,10"
+                                             FontSize="14"
+                                             Margin="0,0,0,12"/>
+
                                     <CheckBox Content="Show Company Logo Border"
                                               IsChecked="{Binding PdfSettings.ShowLogoBorder}"
                                               Margin="0,0,0,12"/>

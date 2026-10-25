@@ -229,6 +229,11 @@ namespace DailyTaskManager.Infrastructure.Services
                         return OAuthResult.Failure("Google did not return an email address");
                     }
 
+                    if (!userData.VerifiedEmail)
+                    {
+                        return OAuthResult.Failure("Your Google email address is not verified");
+                    }
+
                     _logger.LogInformation("Successfully authenticated user: {Email}", userData.Email);
                     return OAuthResult.Success(userData.Email, userData.Name, userData.Id, "Google");
                 }
@@ -355,5 +360,7 @@ namespace DailyTaskManager.Infrastructure.Services
         public string Email { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Picture { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("verified_email")]
+        public bool VerifiedEmail { get; set; }
     }
 }

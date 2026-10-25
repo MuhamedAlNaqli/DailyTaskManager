@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly NavigationService _navigationService;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ISettingsService _settingsService;
 
     [ObservableProperty]
     private UserControl? _currentView;
@@ -33,7 +34,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "2.0.0";
+    private string _appVersion = "2.3.2";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -67,8 +68,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IOAuthService oauthService,
         NavigationService navigationService,
         ILogger<MainWindowViewModel> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISettingsService settingsService)
     {
+        _settingsService = settingsService;
         _authService = authService;
         _oauthService = oauthService;
         _navigationService = navigationService;
@@ -141,7 +144,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
 
     [RelayCommand]
-    private void ToggleTheme()
+    private async Task ToggleThemeAsync()
     {
         try
         {
@@ -163,7 +166,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(IsDarkTheme));
                 
                 // Save theme preference to settings
-                // TODO: Implement settings persistence when settings service is available
+                await _settingsService.SetSettingAsync("Theme", theme);
             }
         }
         catch (Exception ex)
@@ -241,7 +244,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "2.0.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "2.3.2";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();
@@ -279,6 +282,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         try
         {
+            await ApplySavedThemeAsync();
+
             // Navigate to default view - this must be called from UI thread
             await NavigateToTasksAsync();
 
@@ -294,6 +299,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         _authService.AuthenticationChanged -= OnAuthenticationChanged;
         (CurrentView?.DataContext as IDisposable)?.Dispose();
+    }
+
+    private async Task ApplySavedThemeAsync()
+    {
+        try
+        {
+            var theme = await _settingsService.GetSettingAsync<string>("Theme", "Light");
+            if (App.Current != null && !string.IsNullOrEmpty(theme))
+            {
+                IsDarkTheme = string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase);
+                App.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+                OnPropertyChanged(nameof(ThemeIcon));
+                OnPropertyChanged(nameof(ThemeText));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not apply saved theme");
+        }
     }
 
     private void OnAuthenticationChanged(object? sender, Core.Models.AuthResult e)

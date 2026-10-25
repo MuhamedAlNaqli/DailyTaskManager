@@ -21,7 +21,7 @@ namespace DailyTaskManager.Core.Models
         public string Key { get; set; } = "";
 
         [Required]
-        [MaxLength(1000)] // Increased to support larger values
+        [MaxLength(4000)]
         [Column("value")]
         public string Value { get; set; } = "";
 

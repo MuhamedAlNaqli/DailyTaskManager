@@ -361,7 +361,7 @@ public class ExportService : IExportService
                                 // small lines separated with \n (no extra gap)
                                 text.Span(
                                     $"\nID broj: {settings.CompanyId}\n" +
-                                    $"Broj rješenja: 16-17-320/24\n" +
+                                    $"Broj rješenja: {settings.DecisionNumber}\n" +
                                     $"{settings.AddressLine1}\n" +
                                     $"{settings.AddressLine2}\n" +
                                     $"Telefon: {settings.Phone}\n" +
@@ -380,9 +380,9 @@ public class ExportService : IExportService
                                 .FontColor(headingsFontColor);
 
                                 text.Span($"\nID broj: {settings.ClientId}\n" +
-                                            "PDV broj: 200236190009\n" +
-                                            "Grbavička 4\n" +
-                                            "71000 Sarajevo"
+                                            $"PDV broj: {settings.ClientVatNumber}\n" +
+                                            $"{settings.ClientAddressLine1}\n" +
+                                            $"{settings.ClientAddressLine2}"
                                  ).FontSize(11);
                             });
 
@@ -512,7 +512,7 @@ public class ExportService : IExportService
         companyRun.AppendChild(new Text(settings.CompanyName));
 
         body.AppendChild(CreateStyledParagraph($"ID broj: {settings.CompanyId}"));
-        body.AppendChild(CreateStyledParagraph("Broj rješenja: 16-17-320/24"));
+        body.AppendChild(CreateStyledParagraph($"Broj rješenja: {settings.DecisionNumber}"));
         body.AppendChild(CreateStyledParagraph(settings.AddressLine1));
         body.AppendChild(CreateStyledParagraph(settings.AddressLine2));
         body.AppendChild(CreateStyledParagraph($"Telefon: {settings.Phone}"));
@@ -537,9 +537,9 @@ public class ExportService : IExportService
         clientRun.AppendChild(new Text(settings.ClientName));
 
         body.AppendChild(CreateStyledParagraph($"ID broj: {settings.ClientId}"));
-        body.AppendChild(CreateStyledParagraph("PDV broj: 200236190009"));
-        body.AppendChild(CreateStyledParagraph("Grbavička 4"));
-        body.AppendChild(CreateStyledParagraph("71000 Sarajevo"));
+        body.AppendChild(CreateStyledParagraph($"PDV broj: {settings.ClientVatNumber}"));
+        body.AppendChild(CreateStyledParagraph(settings.ClientAddressLine1));
+        body.AppendChild(CreateStyledParagraph(settings.ClientAddressLine2));
 
         // Empty line
         body.AppendChild(CreateSimpleParagraph(""));

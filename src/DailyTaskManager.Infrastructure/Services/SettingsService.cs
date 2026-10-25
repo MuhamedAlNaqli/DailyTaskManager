@@ -172,7 +172,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
-            var settingsJson = JsonConvert.SerializeObject(settings, Formatting.Indented);
+            var settingsJson = JsonConvert.SerializeObject(settings, Formatting.None);
             await SetSettingAsync("PdfSettings", settingsJson, "PDF export settings");
 
             _logger.LogDebug("PDF settings saved");

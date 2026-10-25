@@ -74,8 +74,7 @@ public class UpdateService : IUpdateService, IDisposable
             _sparkleUpdater.UpdateDetected += OnUpdateDetected;
             _sparkleUpdater.UpdateCheckFinished += OnUpdateCheckFinished;
 
-            // Start update service
-            _sparkleUpdater.StartLoop(true, true);
+            // Periodic checks are driven by StartAutomaticUpdateChecking (single source of update polling)
 
             _logger.LogInformation("UpdateService initialized successfully");
             await Task.CompletedTask;
@@ -192,12 +191,12 @@ public class UpdateService : IUpdateService, IDisposable
         {
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
-            return version?.ToString() ?? "2.1.0.0";
+            return version?.ToString() ?? "2.3.2.0";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current version");
-            return "2.1.0.0";
+            return "2.3.2.0";
         }
     }
 

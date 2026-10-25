@@ -113,6 +113,7 @@ public class DialogService
                 dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             }
 
+            if (mainWindow == null) return null;
             var result = await dialog.ShowDialog<bool>(mainWindow);
             
             if (result)
@@ -152,6 +153,7 @@ public class DialogService
                 dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             }
 
+            if (mainWindow == null) return null;
             var result = await dialog.ShowDialog<bool>(mainWindow);
             
             if (result)

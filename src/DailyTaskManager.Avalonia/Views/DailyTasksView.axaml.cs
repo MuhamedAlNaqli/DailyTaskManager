@@ -5,13 +5,11 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using DailyTaskManager.Avalonia.ViewModels;
-using Microsoft.Extensions.Logging;
 
 namespace DailyTaskManager.Avalonia.Views;
 
 public partial class DailyTasksView : UserControl
 {
-    private readonly ILogger<DailyTasksView>? _logger;
     private DailyTasksViewModel? _currentViewModel;
     private Calendar? _dateRangeCalendar;
     private TextBlock? _dateRangeText;
@@ -124,7 +122,7 @@ public partial class DailyTasksView : UserControl
             else if (selectedDates.Count == 1)
             {
                 var startDate = selectedDates.First();
-                _dateRangeText.Text = $"{startDate:MMM dd} → ...";
+                _dateRangeText.Text = $"{startDate:MMM dd}";
                 Console.WriteLine($"📅 Start date selected: {startDate:d}");
             }
             else
@@ -162,9 +160,12 @@ public partial class DailyTasksView : UserControl
                 // Apply filters
                 _currentViewModel.ApplyFilters();
             }
-            else
+            else if (selectedDates.Count == 1)
             {
-                Console.WriteLine("⚠️ Please select both start and end dates");
+                _currentViewModel.DateFrom = selectedDates[0];
+                _currentViewModel.DateTo = selectedDates[0];
+                _dateRangeFlyout?.Hide();
+                _currentViewModel.ApplyFilters();
             }
         }
         catch (Exception ex)

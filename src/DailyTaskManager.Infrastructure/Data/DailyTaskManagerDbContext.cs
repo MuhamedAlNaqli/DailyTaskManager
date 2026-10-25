@@ -108,7 +108,7 @@ namespace DailyTaskManager.Infrastructure.Data
                 
                 // Configure properties
                 entity.Property(s => s.Key).HasMaxLength(100).IsRequired();
-                entity.Property(s => s.Value).HasMaxLength(1000).IsRequired();
+                entity.Property(s => s.Value).HasMaxLength(4000).IsRequired();
                 entity.Property(s => s.Description).HasMaxLength(500);
             });
 
@@ -223,6 +223,10 @@ namespace DailyTaskManager.Infrastructure.Data
                 await Database.ExecuteSqlRawAsync(
                     "ALTER TABLE public.daily_tasks ADD COLUMN updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
             }
+
+            // Settings values were originally limited to 1000 characters
+            await Database.ExecuteSqlRawAsync(
+                "ALTER TABLE IF EXISTS public.settings ALTER COLUMN value TYPE character varying(4000)");
 
             await Database.ExecuteSqlRawAsync(
                 "UPDATE public.daily_tasks SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL");

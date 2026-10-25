@@ -92,10 +92,18 @@ public class AuthenticationService : IAuthenticationService
 
             if (user == null)
             {
-                // Create new OAuth user
+                // Create new OAuth user with a username that doesn't clash with existing ones
+                var baseUsername = oauthResult.Email?.Split('@')[0] ?? "user";
+                var username = baseUsername;
+                var suffix = 1;
+                while (await _context.Users.AnyAsync(u => u.Username == username))
+                {
+                    username = $"{baseUsername}{++suffix}";
+                }
+
                 user = new User
                 {
-                    Username = oauthResult.Email?.Split('@')[0] ?? "user",
+                    Username = username,
                     Email = oauthResult.Email ?? "",
                     DisplayName = oauthResult.DisplayName,
                     OAuthProvider = oauthResult.Provider,
@@ -133,7 +141,19 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            username = username?.Trim() ?? string.Empty;
+            email = email?.Trim() ?? string.Empty;
             _logger.LogInformation("Registration attempt for user: {Username}, email: {Email}", username, email);
+
+            if (username.Length < 3)
+            {
+                return AuthResult.Failure("Username must be at least 3 characters");
+            }
+
+            if (string.IsNullOrEmpty(password) || password.Length < 8)
+            {
+                return AuthResult.Failure("Password must be at least 8 characters");
+            }
 
             // Check if user already exists
             var existingUser = await _context.Users
@@ -158,13 +178,10 @@ public class AuthenticationService : IAuthenticationService
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            _currentUser = user;
-            var result = AuthResult.Success(user);
-            
-            AuthenticationChanged?.Invoke(this, result);
-            _logger.LogInformation("User {Username} registered and logged in successfully", username);
-            
-            return result;
+            // Registration does not sign the user in; they log in explicitly afterwards
+            _logger.LogInformation("User {Username} registered successfully", username);
+
+            return AuthResult.Success(user);
         }
         catch (Exception ex)
         {

@@ -56,9 +56,6 @@ public partial class EditTaskViewModel : ObservableObject
             IsLoading = true;
             _logger.LogInformation("Updating task: {Description}", Description);
 
-            // Simulate save operation
-            await Task.Delay(500);
-
             _logger.LogInformation("Task updated successfully");
             RequestClose?.Invoke(this, true); // Dialog result = true
         }
@@ -113,10 +110,14 @@ public partial class EditTaskViewModel : ObservableObject
     {
         if (_originalTask == null) return null;
 
-        _originalTask.Date = Date?.DateTime ?? DateTime.Today;
-        _originalTask.Description = Description;
-        _originalTask.Hours = Hours;
-
-        return _originalTask;
+        return new DailyTask
+        {
+            Id = _originalTask.Id,
+            UserId = _originalTask.UserId,
+            Date = Date?.DateTime ?? DateTime.Today,
+            Description = Description.Trim(),
+            Hours = Hours,
+            CreatedAt = _originalTask.CreatedAt
+        };
     }
 }

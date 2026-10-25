@@ -24,7 +24,8 @@ class Program
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
-    public static async Task Main(string[] args)
+    [STAThread]
+    public static void Main(string[] args)
     {
         try
         {
@@ -43,11 +44,11 @@ class Program
             Console.WriteLine("DEBUG: ServiceProvider set");
             
             // Initialize database before starting UI
-            await InitializeDatabaseAsync(host.Services);
+            InitializeDatabaseAsync(host.Services).GetAwaiter().GetResult();
             Console.WriteLine("DEBUG: Database initialization completed");
             
             // Initialize update service
-            await InitializeUpdateServiceAsync(host.Services);
+            InitializeUpdateServiceAsync(host.Services).GetAwaiter().GetResult();
             Console.WriteLine("DEBUG: Update service initialization completed");
             
             BuildAvaloniaApp()

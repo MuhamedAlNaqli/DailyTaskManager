@@ -62,6 +62,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
+                    .AsNoTracking()
                     .Where(t => t.UserId == userId)
                     .OrderByDescending(t => t.Date)
                     .ThenByDescending(t => t.CreatedAt)
@@ -86,6 +87,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
+                    .AsNoTracking()
                     .Where(t => t.UserId == userId && 
                                t.Date >= startDate.Date && 
                                t.Date <= endDate.Date)
@@ -220,6 +222,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
+                    .AsNoTracking()
                     .Where(t => t.UserId == userId)
                     .ToListAsync();
 

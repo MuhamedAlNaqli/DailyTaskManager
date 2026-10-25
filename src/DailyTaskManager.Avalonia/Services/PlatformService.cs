@@ -154,7 +154,7 @@ public class PlatformService : IPlatformService
             var topLevel = GetTopLevel();
             if (topLevel?.Clipboard == null) return null;
 
-            return await topLevel.Clipboard.GetTextAsync();
+            return await global::Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(topLevel.Clipboard);
         }
         catch (Exception ex)
         {

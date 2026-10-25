@@ -345,7 +345,8 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         if (task == null) return false;
         
         // Search filter
-        bool matchesSearch = string.IsNullOrWhiteSpace(SearchText)
+        // Searches shorter than 3 characters are ignored (treated as no search)
+        bool matchesSearch = string.IsNullOrWhiteSpace(SearchText) || SearchText.Length < 3
             || task.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
             || task.Date.ToString("d").Contains(SearchText)
             || task.Hours.ToString().Contains(SearchText);
@@ -378,16 +379,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     {
         _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
 
-        // Only trigger search if text is empty OR has 3+ characters (performance optimization)
-        if (string.IsNullOrEmpty(value) || value.Length >= 3)
-        {
-            _logger.LogInformation("Applying filters - search text qualifies (empty or 3+ chars)");
-            ApplyFilters();
-        }
-        else
-        {
-            _logger.LogInformation("Skipping filter - search text too short ({Length} chars, need 3+)", value.Length);
-        }
+        ApplyFilters();
     }
 
     partial void OnDateFromChanged(DateTime? value)

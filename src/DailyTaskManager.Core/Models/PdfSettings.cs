@@ -18,6 +18,10 @@ namespace DailyTaskManager.Core.Models
         private string _clientId = "4200236190009";
         private string _documentTitle = "RADNI NALOG";
         private string _contractPrefix = "081-01";
+        private string _decisionNumber = "16-17-320/24";
+        private string _clientVatNumber = "200236190009";
+        private string _clientAddressLine1 = "Grbavička 4";
+        private string _clientAddressLine2 = "71000 Sarajevo";
         private bool _showLogoBorder = true;
         private bool _includeSignatures = true;
 
@@ -79,6 +83,30 @@ namespace DailyTaskManager.Core.Models
         {
             get => _contractPrefix;
             set { _contractPrefix = value; OnPropertyChanged(); }
+        }
+
+        public string DecisionNumber
+        {
+            get => _decisionNumber;
+            set { _decisionNumber = value; OnPropertyChanged(); }
+        }
+
+        public string ClientVatNumber
+        {
+            get => _clientVatNumber;
+            set { _clientVatNumber = value; OnPropertyChanged(); }
+        }
+
+        public string ClientAddressLine1
+        {
+            get => _clientAddressLine1;
+            set { _clientAddressLine1 = value; OnPropertyChanged(); }
+        }
+
+        public string ClientAddressLine2
+        {
+            get => _clientAddressLine2;
+            set { _clientAddressLine2 = value; OnPropertyChanged(); }
         }
 
         public bool ShowLogoBorder
