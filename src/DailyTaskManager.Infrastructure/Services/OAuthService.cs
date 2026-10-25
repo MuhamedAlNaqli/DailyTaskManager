@@ -12,6 +12,7 @@ using System.Web;
 using System.Text.Json;
 using System.Reflection;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Interfaces;
 using DailyTaskManager.Core.Models;
@@ -23,31 +24,30 @@ namespace DailyTaskManager.Infrastructure.Services
     /// </summary>
     public class OAuthService : IOAuthService
     {
-        private static GoogleClientSecrets? _googleClientSecrets;
+        private readonly GoogleClientSecrets? _googleClientSecrets;
         private readonly ILogger<OAuthService> _logger;
-        
+
         // Google OAuth uses dynamic loopback address as per official documentation
         private const string GoogleScope = "openid profile email";
 
-        static OAuthService()
-        {
-            LoadGoogleClientSecrets();
-        }
-
-        public OAuthService(ILogger<OAuthService> logger)
+        public OAuthService(ILogger<OAuthService> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _googleClientSecrets = LoadGoogleClientSecrets(configuration);
         }
 
         public async Task<OAuthResult> AuthenticateGoogleAsync()
         {
             try
             {
+                if (_googleClientSecrets == null)
+                {
+                    _logger.LogWarning("Google OAuth requested but no client credentials are configured");
+                    return OAuthResult.Failure("Google login is not configured. Set OAuth:Google:ClientId and OAuth:Google:ClientSecret in appsettings.json or provide client_secret.json.");
+                }
+
                 _logger.LogInformation("Starting Google OAuth authentication");
-                
-                // For development purposes, use simulated flow since credentials may not be configured
-                _logger.LogInformation("Using simulated Google OAuth for development");
-                return await SimulateOAuthFlow("Google");
+                return await RealGoogleOAuthFlow(_googleClientSecrets);
             }
             catch (Exception ex)
             {
@@ -56,95 +56,57 @@ namespace DailyTaskManager.Infrastructure.Services
             }
         }
 
-        public async Task<OAuthResult> AuthenticateMicrosoftAsync()
+        public Task<OAuthResult> AuthenticateMicrosoftAsync()
+        {
+            _logger.LogWarning("Microsoft OAuth requested but is not implemented");
+            return Task.FromResult(OAuthResult.Failure("Microsoft login is not available yet."));
+        }
+
+        private GoogleClientSecrets? LoadGoogleClientSecrets(IConfiguration configuration)
         {
             try
             {
-                _logger.LogInformation("Microsoft OAuth not yet implemented, using simulation");
-                return await SimulateOAuthFlow("Microsoft");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Microsoft authentication error: {Message}", ex.Message);
-                return OAuthResult.Failure("Microsoft authentication failed");
-            }
-        }
+                var clientId = configuration["OAuth:Google:ClientId"];
+                var clientSecret = configuration["OAuth:Google:ClientSecret"];
+                if (IsConfigured(clientId) && IsConfigured(clientSecret))
+                {
+                    return new GoogleClientSecrets { ClientId = clientId!, ClientSecret = clientSecret! };
+                }
 
-        private async Task<OAuthResult> SimulateOAuthFlow(string provider)
-        {
-            // This is a demonstration implementation for testing
-            // In production, you would integrate with actual OAuth providers
-
-            await Task.Delay(1500); // Simulate network delay
-
-            // Create a realistic test user for demonstration
-            var mockEmail = provider.ToLower() == "google" ? "testuser@gmail.com" : $"testuser@{provider.ToLower()}.com";
-            var mockDisplayName = provider.ToLower() == "google" ? "Test User (Google)" : $"Test User ({provider})";
-            var mockId = provider.ToLower() == "google" ? "google_test_123" : Guid.NewGuid().ToString();
-
-            return OAuthResult.Success(mockEmail, mockDisplayName, mockId, provider);
-        }
-
-        private static void LoadGoogleClientSecrets()
-        {
-            try
-            {
-                // Try to load from multiple possible locations
                 var possiblePaths = new[]
                 {
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "client_secret.json"),
+                    Path.Combine(AppContext.BaseDirectory, "client_secret.json"),
                     Path.Combine(Directory.GetCurrentDirectory(), "client_secret.json"),
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "client_secret.json"),
                 };
 
-                string credentialsPath = null;
                 foreach (var path in possiblePaths)
                 {
-                    if (File.Exists(path))
+                    if (!File.Exists(path)) continue;
+
+                    var json = File.ReadAllText(path);
+                    var secrets = JsonSerializer.Deserialize<GoogleClientSecretsFile>(json, new JsonSerializerOptions
                     {
-                        credentialsPath = path;
-                        break;
+                        PropertyNameCaseInsensitive = true
+                    });
+                    if (secrets != null && IsConfigured(secrets.Installed.ClientId) && IsConfigured(secrets.Installed.ClientSecret))
+                    {
+                        return secrets.Installed;
                     }
                 }
-
-                if (credentialsPath == null)
-                {
-                    // Create a default configuration for development
-                    _googleClientSecrets = new GoogleClientSecrets
-                    {
-                        ClientId = "99933633137-tl7uoat7rq6bb12q4ctqlvtt3uif8joa.apps.googleusercontent.com",
-                        ClientSecret = "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",
-                        RedirectUris = new[] { "http://127.0.0.1" }
-                    };
-                    Debug.WriteLine("Using default Google OAuth credentials for development");
-                    return;
-                }
-
-                var json = File.ReadAllText(credentialsPath);
-                var secrets = JsonSerializer.Deserialize<GoogleClientSecretsFile>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-                _googleClientSecrets = secrets.Installed;
-                
-                Debug.WriteLine($"Google OAuth credentials loaded successfully from {credentialsPath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to load Google OAuth credentials: {ex.Message}");
-                
-                // Fallback to default configuration
-                _googleClientSecrets = new GoogleClientSecrets
-                {
-                    ClientId = "99933633137-tl7uoat7rq6bb12q4ctqlvtt3uif8joa.apps.googleusercontent.com",
-                    ClientSecret = "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",
-                    RedirectUris = new[] { "http://127.0.0.1" }
-                };
-                Debug.WriteLine("Using fallback Google OAuth credentials");
+                _logger.LogError(ex, "Failed to load Google OAuth credentials");
             }
+
+            return null;
         }
 
-        private async Task<OAuthResult> RealGoogleOAuthFlow()
+        private static bool IsConfigured(string? value) =>
+            !string.IsNullOrWhiteSpace(value) && !value.Contains("_here", StringComparison.OrdinalIgnoreCase);
+
+
+        private async Task<OAuthResult> RealGoogleOAuthFlow(GoogleClientSecrets secrets)
         {
             var state = Guid.NewGuid().ToString();
             var codeVerifier = GenerateCodeVerifier();
@@ -155,7 +117,7 @@ namespace DailyTaskManager.Infrastructure.Services
             var redirectUri = $"http://127.0.0.1:{port}/";
             
             var authUrl = $"https://accounts.google.com/o/oauth2/v2/auth?" +
-                         $"client_id={_googleClientSecrets.ClientId}&" +
+                         $"client_id={secrets.ClientId}&" +
                          $"redirect_uri={Uri.EscapeDataString(redirectUri.TrimEnd('/'))}&" +
                          $"response_type=code&" +
                          $"scope={Uri.EscapeDataString(GoogleScope)}&" +
@@ -191,7 +153,7 @@ namespace DailyTaskManager.Infrastructure.Services
                     return OAuthResult.Failure("OAuth authentication timed out");
                 }
 
-                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url.Query);
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
                 var code = query["code"];
                 var returnedState = query["state"];
                 var error = query["error"];
@@ -222,8 +184,8 @@ namespace DailyTaskManager.Infrastructure.Services
                 {
                     var tokenRequest = new FormUrlEncodedContent(new[]
                     {
-                        new KeyValuePair<string, string>("client_id", _googleClientSecrets.ClientId),
-                        new KeyValuePair<string, string>("client_secret", _googleClientSecrets.ClientSecret),
+                        new KeyValuePair<string, string>("client_id", secrets.ClientId),
+                        new KeyValuePair<string, string>("client_secret", secrets.ClientSecret),
                         new KeyValuePair<string, string>("code", code),
                         new KeyValuePair<string, string>("grant_type", "authorization_code"),
                         new KeyValuePair<string, string>("redirect_uri", redirectUri.TrimEnd('/')),
@@ -247,7 +209,7 @@ namespace DailyTaskManager.Infrastructure.Services
                     });
 
                     // Get user info
-                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+                    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData?.AccessToken ?? string.Empty);
                     var userResponse = await client.GetAsync("https://www.googleapis.com/oauth2/v2/userinfo");
                     var userContent = await userResponse.Content.ReadAsStringAsync();
                     
@@ -261,6 +223,11 @@ namespace DailyTaskManager.Infrastructure.Services
                     {
                         PropertyNameCaseInsensitive = true
                     });
+
+                    if (userData == null || string.IsNullOrEmpty(userData.Email))
+                    {
+                        return OAuthResult.Failure("Google did not return an email address");
+                    }
 
                     _logger.LogInformation("Successfully authenticated user: {Email}", userData.Email);
                     return OAuthResult.Success(userData.Email, userData.Name, userData.Id, "Google");
@@ -338,11 +305,10 @@ namespace DailyTaskManager.Infrastructure.Services
         private static string GenerateCodeVerifier()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-            var random = new Random();
             var result = new StringBuilder(128);
             for (int i = 0; i < 128; i++)
             {
-                result.Append(chars[random.Next(chars.Length)]);
+                result.Append(chars[RandomNumberGenerator.GetInt32(chars.Length)]);
             }
             return result.ToString();
         }
@@ -363,16 +329,23 @@ namespace DailyTaskManager.Infrastructure.Services
 
     public class GoogleClientSecrets
     {
+        [System.Text.Json.Serialization.JsonPropertyName("client_id")]
         public string ClientId { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonPropertyName("client_secret")]
         public string ClientSecret { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonPropertyName("redirect_uris")]
         public string[] RedirectUris { get; set; } = Array.Empty<string>();
     }
     
     public class GoogleTokenResponse
     {
+        [System.Text.Json.Serialization.JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonPropertyName("refresh_token")]
         public string? RefreshToken { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("token_type")]
         public string TokenType { get; set; } = string.Empty;
     }
 

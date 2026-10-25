@@ -15,7 +15,7 @@ using DailyTaskManager.Avalonia.Views;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
 
-public partial class MainWindowViewModel : ObservableObject
+public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly IAuthenticationService _authService;
     private readonly IOAuthService _oauthService;
@@ -93,6 +93,7 @@ public partial class MainWindowViewModel : ObservableObject
             IsLoading = true;
             LoadingMessage = "Loading tasks...";
 
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<DailyTasksView, DailyTasksViewModel>();
             
             IsTasksViewSelected = true;
@@ -119,6 +120,7 @@ public partial class MainWindowViewModel : ObservableObject
             IsLoading = true;
             LoadingMessage = "Loading settings...";
 
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<SettingsView, SettingsViewModel>();
             
             IsTasksViewSelected = false;
@@ -177,6 +179,9 @@ public partial class MainWindowViewModel : ObservableObject
         {
             IsLoading = true;
             LoadingMessage = "Logging out...";
+
+            // Detach view-models from auth events so they don't reload on the next login
+            Dispose();
 
             await _authService.LogoutAsync();
             
@@ -283,6 +288,12 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _logger.LogError(ex, "Error initializing main window view");
         }
+    }
+
+    public void Dispose()
+    {
+        _authService.AuthenticationChanged -= OnAuthenticationChanged;
+        (CurrentView?.DataContext as IDisposable)?.Dispose();
     }
 
     private void OnAuthenticationChanged(object? sender, Core.Models.AuthResult e)

@@ -30,9 +30,13 @@ public class DialogService
     {
         try
         {
-            // TODO: Implement proper dialog - for now just log
             _logger.LogInformation("INFO: {Title} - {Message}", title, message);
-            await Task.CompletedTask;
+
+            var mainWindow = GetMainWindow();
+            if (mainWindow != null)
+            {
+                await ShowMessageBoxAsync(mainWindow, title, message, Icon.Info);
+            }
         }
         catch (Exception ex)
         {

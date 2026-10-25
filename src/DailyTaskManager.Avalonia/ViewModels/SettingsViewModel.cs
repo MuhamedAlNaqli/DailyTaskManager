@@ -22,6 +22,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IConfiguration _configuration;
     private readonly DialogService _dialogService;
     private readonly IUpdateService _updateService;
+    private readonly IPlatformService _platformService;
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -48,7 +49,7 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<AppSettingItem> AppSettings { get; } = new();
 
     public SettingsViewModel(ISettingsService settingsService, IExportService exportService,
-        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService)
+        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService)
     {
         _settingsService = settingsService;
         _exportService = exportService;
@@ -56,6 +57,7 @@ public partial class SettingsViewModel : ObservableObject
         _configuration = configuration;
         _dialogService = dialogService;
         _updateService = updateService;
+        _platformService = platformService;
         
         _logger.LogInformation("Settings view initialized");
         
@@ -87,7 +89,7 @@ public partial class SettingsViewModel : ObservableObject
 
             // Add connection string section
             var connectionString = _configuration.GetConnectionString("DefaultConnection") ?? "(missing)";
-            AppSettings.Add(new AppSettingItem { Key = "Database Connection String", Value = connectionString });
+            AppSettings.Add(new AppSettingItem { Key = "Database Connection String", Value = MaskPassword(connectionString) });
 
             // Parse and display connection details
             if (!string.IsNullOrEmpty(connectionString) && connectionString != "(missing)")
@@ -97,7 +99,7 @@ public partial class SettingsViewModel : ObservableObject
                     var connectionParts = connectionString.Split(';');
                     foreach (var part in connectionParts)
                     {
-                        var keyValue = part.Split('=');
+                        var keyValue = part.Split('=', 2);
                         if (keyValue.Length == 2)
                         {
                             var key = keyValue[0].Trim();
@@ -395,8 +397,10 @@ public partial class SettingsViewModel : ObservableObject
             };
 
             // Generate preview with current settings using the correct method
-            await _exportService.ExportTasksToPdfAsync(sampleTasks, PdfSettings);
-            await _dialogService.ShowInfoDialogAsync("Success", "Preview PDF generated successfully! Check your desktop for the HTML file.");
+            // Write the preview to a temp file so it never overwrites a real report
+            var previewPath = Path.Combine(Path.GetTempPath(), "DailyTaskManager_PdfPreview.pdf");
+            await _exportService.ExportTasksToPdfAsync(sampleTasks, PdfSettings, previewPath);
+            await _platformService.OpenFileWithDefaultAppAsync(previewPath);
             _logger.LogInformation("PDF preview generated successfully");
         }
         catch (Exception ex)
@@ -437,6 +441,9 @@ public partial class SettingsViewModel : ObservableObject
             IsCheckingForUpdates = false;
         }
     }
+
+    private static string MaskPassword(string connectionString) =>
+        System.Text.RegularExpressions.Regex.Replace(connectionString, @"(?i)(password|pwd)\s*=\s*[^;]*", "$1=*****");
 
     public bool HasDbSettings => DbSettings.Any();
 }

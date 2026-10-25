@@ -11,11 +11,12 @@ using DailyTaskManager.Avalonia.Services;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
 
-public partial class DailyTasksViewModel : ObservableObject
+public partial class DailyTasksViewModel : ObservableObject, IDisposable
 {
     private readonly IDatabaseService _databaseService;
     private readonly IExportService _exportService;
     private readonly IAuthenticationService _authService;
+    private readonly ISettingsService _settingsService;
     private readonly DialogService _dialogService;
     private readonly ILogger<DailyTasksViewModel> _logger;
 
@@ -53,12 +54,14 @@ public partial class DailyTasksViewModel : ObservableObject
         IDatabaseService databaseService, 
         IExportService exportService,
         IAuthenticationService authService,
+        ISettingsService settingsService,
         DialogService dialogService,
         ILogger<DailyTasksViewModel> logger)
     {
         _databaseService = databaseService;
         _exportService = exportService;
         _authService = authService;
+        _settingsService = settingsService;
         _dialogService = dialogService;
         _logger = logger;
         
@@ -67,6 +70,11 @@ public partial class DailyTasksViewModel : ObservableObject
         
         // Always attempt to load tasks - LoadTasksAsync handles authentication check
         _ = LoadTasksAsync();
+    }
+
+    public void Dispose()
+    {
+        _authService.AuthenticationChanged -= OnAuthenticationChanged;
     }
 
     private async void OnAuthenticationChanged(object? sender, AuthResult e)
@@ -255,8 +263,8 @@ public partial class DailyTasksViewModel : ObservableObject
 
             IsLoading = true;
 
-            // Export tasks to PDF with default settings
-            var filePath = await _exportService.ExportTasksToPdfAsync(FilteredTasks.ToList());
+            var pdfSettings = await _settingsService.GetPdfSettingsAsync();
+            var filePath = await _exportService.ExportTasksToPdfAsync(FilteredTasks.ToList(), pdfSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"PDF exported successfully to:\n{filePath}");
 
@@ -286,8 +294,8 @@ public partial class DailyTasksViewModel : ObservableObject
 
             IsLoading = true;
 
-            // Export tasks to Word with default settings
-            var filePath = await _exportService.ExportTasksToWordAsync(FilteredTasks.ToList(), new Core.Models.PdfSettings());
+            var wordSettings = await _settingsService.GetPdfSettingsAsync();
+            var filePath = await _exportService.ExportTasksToWordAsync(FilteredTasks.ToList(), wordSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"Word document exported successfully to:\n{filePath}");
 

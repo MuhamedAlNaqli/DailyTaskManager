@@ -180,63 +180,54 @@ namespace DailyTaskManager.Infrastructure.Data
         }
 
         /// <summary>
-        /// Applies pending migrations to the database
+        /// Applies pending migrations, or creates the schema when the project has no migrations
         /// </summary>
         public async Task MigrateDatabaseAsync()
         {
-            await Database.MigrateAsync();
-            
+            if (Database.GetMigrations().Any())
+            {
+                await Database.MigrateAsync();
+            }
+            else
+            {
+                await Database.EnsureCreatedAsync();
+            }
+
             // Fix schema issues if needed
             await FixSchemaIssuesAsync();
         }
-        
+
         /// <summary>
-        /// Fix database schema issues by adding missing columns
+        /// Adds missing timestamp columns to an existing daily_tasks table.
+        /// Never drops data: on failure the error is propagated.
         /// </summary>
         private async Task FixSchemaIssuesAsync()
         {
-            try
+            var sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                AND table_name = 'daily_tasks'
+                AND column_name IN ('created_at', 'updated_at')";
+
+            var existingColumns = await Database.SqlQueryRaw<string>(sql).ToListAsync();
+
+            if (!existingColumns.Contains("created_at"))
             {
-                // Check if created_at and updated_at columns exist in daily_tasks table
-                var sql = @"
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
-                    AND table_name = 'daily_tasks' 
-                    AND column_name IN ('created_at', 'updated_at')";
-                    
-                var existingColumns = await Database.SqlQueryRaw<string>(sql).ToListAsync();
-                
-                if (!existingColumns.Contains("created_at"))
-                {
-                    await Database.ExecuteSqlRawAsync(
-                        "ALTER TABLE public.daily_tasks ADD COLUMN created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
-                }
-                
-                if (!existingColumns.Contains("updated_at"))
-                {
-                    await Database.ExecuteSqlRawAsync(
-                        "ALTER TABLE public.daily_tasks ADD COLUMN updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
-                }
-                
-                // Update existing records to have timestamps if they're null
-                await Database.ExecuteSqlRawAsync(@"
-                    UPDATE public.daily_tasks 
-                    SET created_at = CURRENT_TIMESTAMP 
-                    WHERE created_at IS NULL");
-                    
-                await Database.ExecuteSqlRawAsync(@"
-                    UPDATE public.daily_tasks 
-                    SET updated_at = CURRENT_TIMESTAMP 
-                    WHERE updated_at IS NULL");
+                await Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE public.daily_tasks ADD COLUMN created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
             }
-            catch (Exception ex)
+
+            if (!existingColumns.Contains("updated_at"))
             {
-                // If schema fix fails, we might need to recreate the database
-                Console.WriteLine($"Schema fix failed: {ex.Message}. Recreating database...");
-                await Database.EnsureDeletedAsync();
-                await Database.EnsureCreatedAsync();
+                await Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE public.daily_tasks ADD COLUMN updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
             }
+
+            await Database.ExecuteSqlRawAsync(
+                "UPDATE public.daily_tasks SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL");
+            await Database.ExecuteSqlRawAsync(
+                "UPDATE public.daily_tasks SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL");
         }
     }
 }

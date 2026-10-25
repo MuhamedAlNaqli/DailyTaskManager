@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -62,6 +63,7 @@ public class ExportService : IExportService
                 filePath = Path.Combine(downloadPath, $"Pregled utrošenih sati - MA - {DateTime.Now:MMyy}.xlsx");
             }
 
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
             _logger.LogInformation("Exporting {Count} tasks to Excel: {FilePath}", tasks.Count, filePath);
 
             using var workbook = new XLWorkbook();
@@ -191,6 +193,7 @@ public class ExportService : IExportService
                 filePath = Path.Combine(downloadPath, GetDefaultPdfFileName());
             }
 
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
             _logger.LogInformation("Exporting {Count} tasks to PDF: {FilePath}", tasks.Count, filePath);
 
             await Task.Run(() =>
@@ -216,9 +219,8 @@ public class ExportService : IExportService
 
     public async Task<string> ExportTasksToPdfAsync(List<DailyTask> tasks, string? filePath = null)
     {
-        // Create default PDF settings
-        var defaultSettings = new PdfSettings();
-        return await ExportTasksToPdfAsync(tasks, defaultSettings, filePath);
+        var savedSettings = await _settingsService.GetPdfSettingsAsync();
+        return await ExportTasksToPdfAsync(tasks, savedSettings, filePath);
     }
 
     public async Task<string> ExportTasksToCsvAsync(List<DailyTask> tasks, string? filePath = null)
@@ -231,6 +233,7 @@ public class ExportService : IExportService
                 filePath = Path.Combine(downloadPath, $"DailyTasks_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
             }
 
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
             _logger.LogInformation("Exporting {Count} tasks to CSV: {FilePath}", tasks.Count, filePath);
 
             var lines = new List<string>
@@ -270,6 +273,7 @@ public class ExportService : IExportService
                 filePath = Path.Combine(downloadPath, $"RadniNalog_{DateTime.Now:MMyy}.docx");
             }
 
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
             _logger.LogInformation("Exporting {Count} tasks to Word: {FilePath}", tasks.Count, filePath);
 
             await Task.Run(() =>
@@ -318,9 +322,9 @@ public class ExportService : IExportService
 
         var total = tasks.Sum(t => t.Hours);
         var maxTaskDate = tasks.Any() ? tasks.Max(t => t.Date) : DateTime.Now;
-        var currentMonth = _months[maxTaskDate.ToString("MMMM")];
+        var currentMonth = _months[maxTaskDate.ToString("MMMM", CultureInfo.InvariantCulture)];
         var currentYear = maxTaskDate.ToString("yyyy");
-        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.");
+        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.", CultureInfo.InvariantCulture);
         var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
 
         string headingsFontColor = "#FF4B4B"; // Dark Red
@@ -487,9 +491,9 @@ public class ExportService : IExportService
 
         var total = tasks.Sum(t => t.Hours);
         var maxTaskDate = tasks.Any() ? tasks.Max(t => t.Date) : DateTime.Now;
-        var currentMonth = _months[maxTaskDate.ToString("MMMM")];
+        var currentMonth = _months[maxTaskDate.ToString("MMMM", CultureInfo.InvariantCulture)];
         var currentYear = maxTaskDate.ToString("yyyy");
-        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.");
+        var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.", CultureInfo.InvariantCulture);
         var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
 
         // Company info

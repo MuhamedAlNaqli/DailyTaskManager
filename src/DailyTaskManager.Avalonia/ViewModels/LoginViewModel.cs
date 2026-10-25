@@ -181,12 +181,7 @@ public partial class LoginViewModel : ObservableObject
                 
                 if (mainWindow != null)
                 {
-                    // Initialize the main window view
-                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                    {
-                        await mainViewModel.InitializeViewAsync();
-                    }
-                    
+                    // The main window initializes its own view when it opens
                     desktop.MainWindow = mainWindow;
                     mainWindow.Show();
                     

@@ -52,10 +52,20 @@ public class UpdateService : IUpdateService, IDisposable
             _logger.LogInformation("AppCast URL: {AppCastUrl}", appCastUrl);
 
             // Initialize SparkleUpdater with minimal configuration for now
-            _sparkleUpdater = new SparkleUpdater(
-                appCastUrl,
-                new Ed25519Checker(NetSparkleUpdater.Enums.SecurityMode.Unsafe) // For development - should use proper signing in production
-            );
+            // Verify update signatures whenever a public key is configured
+            var publicKey = _configuration["UpdateService:Ed25519PublicKey"];
+            Ed25519Checker checker;
+            if (!string.IsNullOrWhiteSpace(publicKey))
+            {
+                checker = new Ed25519Checker(NetSparkleUpdater.Enums.SecurityMode.Strict, publicKey);
+            }
+            else
+            {
+                _logger.LogWarning("UpdateService:Ed25519PublicKey is not configured - update signatures are NOT verified");
+                checker = new Ed25519Checker(NetSparkleUpdater.Enums.SecurityMode.Unsafe);
+            }
+
+            _sparkleUpdater = new SparkleUpdater(appCastUrl, checker);
 
             // Configure UI factory
             _sparkleUpdater.UIFactory = new UIFactory();

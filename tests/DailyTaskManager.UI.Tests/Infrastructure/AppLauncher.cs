@@ -17,7 +17,7 @@ public class AppLauncher : IDisposable
     private FlaUI.Core.Application? _application;
     private static readonly SemaphoreSlim AppLaunchSemaphore = new(1, 1);
 
-    public const string APP_EXE_PATH = @"D:\Internal Projects\DailyTaskManager\src\DailyTaskManager.Avalonia\bin\Debug\net8.0\win-x64\DailyTaskManager.Avalonia.exe";
+    public const string APP_EXE_PATH = @"E:\Internal Projects\DailyTaskManager\src\DailyTaskManager.Avalonia\bin\Debug\net8.0\win-x64\DailyTaskManager.Avalonia.exe";
     public const int STARTUP_TIMEOUT_MS = 30000;
     public const int DEFAULT_TIMEOUT_MS = 5000;
 
