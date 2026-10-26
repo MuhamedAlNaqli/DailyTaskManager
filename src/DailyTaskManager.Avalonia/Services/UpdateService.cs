@@ -191,12 +191,12 @@ public class UpdateService : IUpdateService, IDisposable
         {
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
-            return version?.ToString() ?? "2.3.2.0";
+            return version?.ToString() ?? "2.4.0.0";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current version");
-            return "2.3.2.0";
+            return "2.4.0.0";
         }
     }
 

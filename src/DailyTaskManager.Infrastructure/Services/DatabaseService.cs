@@ -15,16 +15,16 @@ namespace DailyTaskManager.Infrastructure.Services
     /// </summary>
     public class DatabaseService : IDatabaseService
     {
-        private readonly DailyTaskManagerDbContext _context;
+        private readonly IDbContextFactory<DailyTaskManagerDbContext> _contextFactory;
         private readonly IAuthenticationService _authService;
         private readonly ILogger<DatabaseService> _logger;
 
         public DatabaseService(
-            DailyTaskManagerDbContext context, 
+            IDbContextFactory<DailyTaskManagerDbContext> contextFactory, 
             IAuthenticationService authService,
             ILogger<DatabaseService> logger)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _authService = authService;
             _logger = logger;
         }
@@ -33,6 +33,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 task.UserId = GetCurrentUserId();
                 task.CreatedAt = DateTime.UtcNow;
                 task.UpdatedAt = DateTime.UtcNow;
@@ -59,6 +60,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
@@ -84,6 +86,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
@@ -112,6 +115,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var task = await _context.DailyTasks
@@ -135,6 +139,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
                 var existingTask = await _context.DailyTasks
                     .FirstOrDefaultAsync(t => t.Id == task.Id && t.UserId == userId);
@@ -169,6 +174,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
                 var task = await _context.DailyTasks
                     .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
@@ -196,6 +202,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var totalHours = await _context.DailyTasks
@@ -219,6 +226,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.DailyTasks
@@ -246,6 +254,7 @@ namespace DailyTaskManager.Infrastructure.Services
         {
             try
             {
+                await using var _context = _contextFactory.CreateDbContext();
                 var userId = GetCurrentUserId();
 
                 var descriptions = await _context.DailyTasks

@@ -29,36 +29,22 @@ class Program
     {
         try
         {
-            Console.WriteLine("DEBUG: Starting Main method");
-            
             // Set up dependency injection host
-            Console.WriteLine("DEBUG: Creating host builder");
             var host = CreateHostBuilder(args).Build();
-            Console.WriteLine("DEBUG: Host created successfully");
-            
             // Configure application with the host's services
-            Console.WriteLine("DEBUG: Configuring Avalonia app");
-            
             // Store the service provider for global access
             App.ServiceProvider = host.Services;
-            Console.WriteLine("DEBUG: ServiceProvider set");
-            
             // Initialize database before starting UI
             InitializeDatabaseAsync(host.Services).GetAwaiter().GetResult();
-            Console.WriteLine("DEBUG: Database initialization completed");
-            
             // Initialize update service
             InitializeUpdateServiceAsync(host.Services).GetAwaiter().GetResult();
-            Console.WriteLine("DEBUG: Update service initialization completed");
-            
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
-            Console.WriteLine("DEBUG: StartWithClassicDesktopLifetime completed");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"DEBUG: Exception in Main: {ex}");
+            Serilog.Log.Fatal(ex, "Unhandled exception in Main");
             throw;
         }
     }
@@ -77,6 +63,8 @@ class Program
                 config.SetBasePath(appDir)
                       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                       .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+                      // Machine-specific secrets (e.g. the database password); not committed to git
+                      .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
                       .AddEnvironmentVariables()
                       .AddCommandLine(args);
             })
@@ -94,29 +82,28 @@ class Program
                 var configuration = context.Configuration;
                 
                 // Add database context with improved connection string handling
-                services.AddDbContext<DailyTaskManagerDbContext>(options =>
+                services.AddDbContextFactory<DailyTaskManagerDbContext>(options =>
                 {
                     // Try multiple sources for connection string
-                    var connectionString = configuration.GetConnectionString("DefaultConnection") 
-                                         ?? Environment.GetEnvironmentVariable("DTM_CONNECTION_STRING")
-                                         ?? Environment.GetEnvironmentVariable("CONNECTION_STRING");
+                    var connectionString = Environment.GetEnvironmentVariable("DTM_CONNECTION_STRING")
+                                         ?? configuration.GetConnectionString("DefaultConnection");
                     
-                    // Fallback to default if none found
                     if (string.IsNullOrEmpty(connectionString))
                     {
-                        Console.WriteLine("WARNING: No connection string found in appsettings.json or environment variables, using development fallback");
-                        connectionString = "Host=localhost;Port=5432;Database=DailyTaskManager;Username=postgres;Password=admin;";
+                        throw new InvalidOperationException(
+                            "No database connection string configured. Set ConnectionStrings:DefaultConnection in " +
+                            "appsettings.local.json, or the DTM_CONNECTION_STRING environment variable.");
                     }
-                    
+
                     options.UseNpgsql(connectionString);
                 });
 
                 // Core Services
-                services.AddScoped<IDatabaseService, DatabaseService>();
-                services.AddScoped<IAuthenticationService, AuthenticationService>();
-                services.AddScoped<IExportService, ExportService>();
-                services.AddScoped<ISettingsService, SettingsService>();
-                services.AddScoped<IAutoCompleteService, AutoCompleteService>();
+                services.AddSingleton<IDatabaseService, DatabaseService>();
+                services.AddSingleton<IAuthenticationService, AuthenticationService>();
+                services.AddSingleton<IExportService, ExportService>();
+                services.AddSingleton<ISettingsService, SettingsService>();
+                services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
@@ -146,9 +133,9 @@ class Program
 
     private static async Task InitializeDatabaseAsync(IServiceProvider services)
     {
-        using var scope = services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<DailyTaskManagerDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var contextFactory = services.GetRequiredService<IDbContextFactory<DailyTaskManagerDbContext>>();
+        await using var context = contextFactory.CreateDbContext();
+        var logger = services.GetRequiredService<ILogger<Program>>();
 
         try
         {

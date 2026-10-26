@@ -38,7 +38,7 @@ public partial class DailyTasksView : UserControl
     {
         if (DataContext is DailyTasksViewModel viewModel)
         {
-            Console.WriteLine("🔌 DailyTasksView: DataContext changed to DailyTasksViewModel");
+            Serilog.Log.Debug("DailyTasksView: DataContext changed to DailyTasksViewModel");
             _currentViewModel = viewModel;
 
             // Defer setup until after UI is loaded
@@ -46,7 +46,7 @@ public partial class DailyTasksView : UserControl
         }
         else
         {
-            Console.WriteLine("⚠️ DailyTasksView: DataContext is not DailyTasksViewModel");
+            Serilog.Log.Debug("DailyTasksView: DataContext is not DailyTasksViewModel");
             _currentViewModel = null;
         }
     }
@@ -55,7 +55,7 @@ public partial class DailyTasksView : UserControl
     {
         if (_currentViewModel == null) return;
 
-        Console.WriteLine("🔌 DailyTasksView: Setting up Calendar and button events...");
+        Serilog.Log.Debug("DailyTasksView: Setting up Calendar and button events...");
 
         try
         {
@@ -71,7 +71,7 @@ public partial class DailyTasksView : UserControl
             {
                 _dateRangeCalendar.SelectedDatesChanged -= OnCalendarSelectedDatesChanged;
                 _dateRangeCalendar.SelectedDatesChanged += OnCalendarSelectedDatesChanged;
-                Console.WriteLine("✅ Calendar event attached");
+                Serilog.Log.Debug("Calendar event attached");
             }
 
             // Set up apply button
@@ -79,7 +79,7 @@ public partial class DailyTasksView : UserControl
             {
                 applyButton.Click -= OnApplyDateRangeClicked;
                 applyButton.Click += OnApplyDateRangeClicked;
-                Console.WriteLine("✅ Apply button event attached");
+                Serilog.Log.Debug("Apply button event attached");
             }
 
             // Set up clear all filters button
@@ -87,7 +87,7 @@ public partial class DailyTasksView : UserControl
             {
                 clearAllButton.Click -= OnClearAllFiltersClicked;
                 clearAllButton.Click += OnClearAllFiltersClicked;
-                Console.WriteLine("✅ Clear all filters button event attached");
+                Serilog.Log.Debug("Clear all filters button event attached");
             }
 
             // Get flyout reference
@@ -96,11 +96,11 @@ public partial class DailyTasksView : UserControl
                 _dateRangeFlyout = _dateRangeButton.Flyout;
             }
 
-            Console.WriteLine("🎯 DailyTasksView: Event setup completed");
+            Serilog.Log.Debug("DailyTasksView: Event setup completed");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error setting up events: {ex.Message}");
+            Serilog.Log.Error(ex, "Error setting up events");
         }
     }
 
@@ -117,13 +117,13 @@ public partial class DailyTasksView : UserControl
                 var startDate = selectedDates.First();
                 var endDate = selectedDates.Last();
                 _dateRangeText.Text = $"{startDate:MMM dd} → {endDate:MMM dd}";
-                Console.WriteLine($"📅 Date range selected: {startDate:d} to {endDate:d}");
+                Serilog.Log.Debug($"Date range selected: {startDate:d} to {endDate:d}");
             }
             else if (selectedDates.Count == 1)
             {
                 var startDate = selectedDates.First();
                 _dateRangeText.Text = $"{startDate:MMM dd}";
-                Console.WriteLine($"📅 Start date selected: {startDate:d}");
+                Serilog.Log.Debug($"Start date selected: {startDate:d}");
             }
             else
             {
@@ -132,7 +132,7 @@ public partial class DailyTasksView : UserControl
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error in calendar selection: {ex.Message}");
+            Serilog.Log.Error(ex, "Error in calendar selection");
         }
     }
 
@@ -152,7 +152,7 @@ public partial class DailyTasksView : UserControl
                 _currentViewModel.DateFrom = startDate;
                 _currentViewModel.DateTo = endDate;
 
-                Console.WriteLine($"✅ Applied date range: {startDate:d} to {endDate:d}");
+                Serilog.Log.Debug($"Applied date range: {startDate:d} to {endDate:d}");
 
                 // Close the flyout
                 _dateRangeFlyout?.Hide();
@@ -170,7 +170,7 @@ public partial class DailyTasksView : UserControl
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error applying date range: {ex.Message}");
+            Serilog.Log.Error(ex, "Error applying date range");
         }
     }
 
@@ -191,7 +191,7 @@ public partial class DailyTasksView : UserControl
             // Clear search text
             _currentViewModel.SearchText = string.Empty;
 
-            Console.WriteLine("✅ All filters cleared (date range and search text)");
+            Serilog.Log.Debug("All filters cleared (date range and search text)");
 
             // Apply filters to show all tasks
             _currentViewModel.ApplyFilters();
@@ -201,7 +201,7 @@ public partial class DailyTasksView : UserControl
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error clearing all filters: {ex.Message}");
+            Serilog.Log.Error(ex, "Error clearing all filters");
         }
     }
 }

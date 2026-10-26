@@ -29,7 +29,7 @@
                     <TextBlock Text="Time Tracking" 
                                FontSize="28" 
                                FontWeight="Bold" 
-                               Foreground="#FF2E3440"/>
+                               Foreground="{DynamicResource MaterialBodyBrush}"/>
                     <TextBlock Text="Track and manage your daily work hours" 
                                FontSize="14" 
                                Foreground="#FF5E81AC" 

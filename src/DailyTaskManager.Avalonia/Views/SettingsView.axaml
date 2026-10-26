@@ -267,21 +267,32 @@
                                        Foreground="#FF374151"
                                        Margin="0,0,0,16"/>
                             
-                            <DataGrid ItemsSource="{Binding AppSettings}" 
-                                      AutoGenerateColumns="False" 
-                                      IsReadOnly="True"
-                                      Background="#FFF8FAFC"
-                                      BorderBrush="#FFE2E8F0"
-                                      BorderThickness="1"
-                                      CornerRadius="8"
-                                      GridLinesVisibility="Horizontal"
-                                      HeadersVisibility="Column"
-                                      RowBackground="White">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
-                                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="2*"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <Border Background="#FFF8FAFC"
+                                    BorderBrush="#FFE2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+                                <StackPanel>
+                                    <Grid ColumnDefinitions="*,2*" Margin="12,8">
+                                        <TextBlock Grid.Column="0" Text="Key" FontWeight="SemiBold" Foreground="#FF374151"/>
+                                        <TextBlock Grid.Column="1" Text="Value" FontWeight="SemiBold" Foreground="#FF374151"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding AppSettings}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="White"
+                                                        BorderBrush="#FFE2E8F0"
+                                                        BorderThickness="0,1,0,0"
+                                                        Padding="12,8">
+                                                    <Grid ColumnDefinitions="*,2*">
+                                                        <TextBlock Grid.Column="0" Text="{Binding Key}" TextWrapping="Wrap" Foreground="#FF374151"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Foreground="#FF374151"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 

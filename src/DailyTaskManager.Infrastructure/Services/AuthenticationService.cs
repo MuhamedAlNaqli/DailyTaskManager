@@ -15,13 +15,13 @@ namespace DailyTaskManager.Infrastructure.Services;
 /// </summary>
 public class AuthenticationService : IAuthenticationService
 {
-    private readonly DailyTaskManagerDbContext _context;
+    private readonly IDbContextFactory<DailyTaskManagerDbContext> _contextFactory;
     private readonly ILogger<AuthenticationService> _logger;
     private User? _currentUser;
 
-    public AuthenticationService(DailyTaskManagerDbContext context, ILogger<AuthenticationService> logger)
+    public AuthenticationService(IDbContextFactory<DailyTaskManagerDbContext> contextFactory, ILogger<AuthenticationService> logger)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _logger = logger;
     }
 
@@ -35,6 +35,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             _logger.LogInformation("Login attempt for user: {Username}", request.Username);
 
             var user = await _context.Users
@@ -85,6 +86,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             _logger.LogInformation("OAuth login attempt for user: {Email}", oauthResult.Email);
 
             var user = await _context.Users
@@ -141,6 +143,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             username = username?.Trim() ?? string.Empty;
             email = email?.Trim() ?? string.Empty;
             _logger.LogInformation("Registration attempt for user: {Username}, email: {Email}", username, email);
@@ -212,6 +215,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             if (_currentUser == null || _currentUser.IsOAuthUser)
             {
                 return false;
@@ -224,10 +228,12 @@ public class AuthenticationService : IAuthenticationService
                 return false;
             }
 
-            _currentUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            _currentUser.UpdateTimestamp();
-            
+            var dbUser = await _context.Users.FirstAsync(u => u.Id == _currentUser.Id);
+            dbUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            dbUser.UpdateTimestamp();
+
             await _context.SaveChangesAsync();
+            _currentUser = dbUser;
             
             _logger.LogInformation("Password changed successfully for user {Username}", _currentUser.Username);
             return true;
@@ -243,6 +249,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
 
@@ -261,6 +268,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             if (_currentUser == null) return;
 
             var refreshedUser = await _context.Users
@@ -285,6 +293,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
             if (user == null)
             {

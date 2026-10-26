@@ -16,12 +16,12 @@ namespace DailyTaskManager.Infrastructure.Services;
 /// </summary>
 public class SettingsService : ISettingsService
 {
-    private readonly DailyTaskManagerDbContext _context;
+    private readonly IDbContextFactory<DailyTaskManagerDbContext> _contextFactory;
     private readonly ILogger<SettingsService> _logger;
 
-    public SettingsService(DailyTaskManagerDbContext context, ILogger<SettingsService> logger)
+    public SettingsService(IDbContextFactory<DailyTaskManagerDbContext> contextFactory, ILogger<SettingsService> logger)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _logger = logger;
     }
 
@@ -31,6 +31,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             var setting = await _context.Settings
                 .FirstOrDefaultAsync(s => s.Key == key);
 
@@ -53,6 +54,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             var setting = await _context.Settings
                 .FirstOrDefaultAsync(s => s.Key == key);
 
@@ -89,6 +91,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             return await _context.Settings
                 .OrderBy(s => s.Key)
                 .ToListAsync();
@@ -104,6 +107,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             var setting = await _context.Settings
                 .FirstOrDefaultAsync(s => s.Key == key);
 
@@ -136,6 +140,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             return await _context.Settings
                 .AnyAsync(s => s.Key == key);
         }
@@ -271,6 +276,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            await using var _context = _contextFactory.CreateDbContext();
             // Remove all non-system settings
             var userSettings = await _context.Settings
                 .Where(s => !s.IsSystem)

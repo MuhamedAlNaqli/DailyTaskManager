@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using DailyTaskManager.Core.Models;
 
 namespace DailyTaskManager.Infrastructure.Data
@@ -13,34 +12,14 @@ namespace DailyTaskManager.Infrastructure.Data
     /// </summary>
     public class DailyTaskManagerDbContext : DbContext
     {
-        private readonly IConfiguration? _configuration;
-
         public DailyTaskManagerDbContext(DbContextOptions<DailyTaskManagerDbContext> options) : base(options)
         {
-        }
-
-        public DailyTaskManagerDbContext(DbContextOptions<DailyTaskManagerDbContext> options, IConfiguration configuration) 
-            : base(options)
-        {
-            _configuration = configuration;
         }
 
         // DbSets for entity types
         public DbSet<User> Users { get; set; }
         public DbSet<DailyTask> DailyTasks { get; set; }
         public DbSet<Setting> Settings { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (!optionsBuilder.IsConfigured && _configuration != null)
-            {
-                var connectionString = _configuration.GetConnectionString("DefaultConnection");
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    optionsBuilder.UseNpgsql(connectionString);
-                }
-            }
-        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

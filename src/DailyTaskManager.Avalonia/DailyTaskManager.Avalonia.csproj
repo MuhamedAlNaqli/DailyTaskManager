@@ -12,9 +12,9 @@
     <AssemblyCompany>Smart Point</AssemblyCompany>
     <AssemblyCopyright>Copyright © 2024 Smart Point</AssemblyCopyright>
     <!-- Version properties - keeping static for build stability, GitVersion used in installer only -->
-    <AssemblyVersion>2.3.2.0</AssemblyVersion>
-    <FileVersion>2.3.2.0</FileVersion>
-    <ProductVersion>2.3.2.0</ProductVersion>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
+    <ProductVersion>2.4.0.0</ProductVersion>
     
     <!-- Publishing Properties -->
     <PublishSingleFile>true</PublishSingleFile>
@@ -70,6 +70,9 @@
 
   <ItemGroup>
     <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="appsettings.local.json" Condition="Exists('appsettings.local.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="appsettings.Development.json">

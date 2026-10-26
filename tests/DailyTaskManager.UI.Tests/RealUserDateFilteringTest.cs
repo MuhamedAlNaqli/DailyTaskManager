@@ -86,6 +86,7 @@ public class RealUserDateFilteringTest
         Console.WriteLine("📝 Setting ViewModel date filter properties...");
         _viewModel.DateFrom = dateFrom;
         _viewModel.DateTo = dateTo;
+        _viewModel.ApplyFilters(); // date changes are applied explicitly (Apply button)
 
         // Give the ViewModel time to apply filters
         await Task.Delay(1000);
@@ -149,6 +150,7 @@ public class RealUserDateFilteringTest
         Console.WriteLine("🔄 Testing filter clearing...");
         _viewModel.DateFrom = null;
         _viewModel.DateTo = null;
+        _viewModel.ApplyFilters();
 
         await Task.Delay(500);
 
@@ -173,6 +175,7 @@ public class RealUserDateFilteringTest
 
                 config.SetBasePath(avaloniaDir)
                       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                      .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
                       .AddEnvironmentVariables();
             })
             .ConfigureServices((context, services) =>
@@ -180,7 +183,7 @@ public class RealUserDateFilteringTest
                 var configuration = context.Configuration;
 
                 // Add database context
-                services.AddDbContext<DailyTaskManagerDbContext>(options =>
+                services.AddDbContextFactory<DailyTaskManagerDbContext>(options =>
                 {
                     var connectionString = configuration.GetConnectionString("DefaultConnection")
                                          ?? "Host=localhost;Port=5432;Database=DailyTaskManager;Username=postgres;Password=admin;";
@@ -188,10 +191,10 @@ public class RealUserDateFilteringTest
                 });
 
                 // Core Services
-                services.AddScoped<IDatabaseService, DatabaseService>();
-                services.AddScoped<IAuthenticationService, AuthenticationService>();
-                services.AddScoped<IExportService, ExportService>();
-                services.AddScoped<ISettingsService, SettingsService>();
+                services.AddSingleton<IDatabaseService, DatabaseService>();
+                services.AddSingleton<IAuthenticationService, AuthenticationService>();
+                services.AddSingleton<IExportService, ExportService>();
+                services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();

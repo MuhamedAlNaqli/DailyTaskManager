@@ -21,16 +21,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Console.WriteLine("DEBUG: OnFrameworkInitializationCompleted called");
             
             // Start with the login window instead of main window
-            Console.WriteLine("DEBUG: Creating login window");
             desktop.MainWindow = CreateLoginWindow();
-            Console.WriteLine("DEBUG: Login window created");
         }
 
         base.OnFrameworkInitializationCompleted();
-        Console.WriteLine("DEBUG: OnFrameworkInitializationCompleted completed");
     }
 
     public LoginWindow CreateLoginWindow()

@@ -20,10 +20,14 @@ namespace DailyTaskManager.Infrastructure.Services
 
         public AutoCompleteService(
             IDatabaseService databaseService,
+            IAuthenticationService authService,
             ILogger<AutoCompleteService> logger)
         {
             _databaseService = databaseService;
             _logger = logger;
+
+            // Suggestions are per user, so drop the cache on login/logout
+            authService.AuthenticationChanged += (_, _) => ClearCache();
         }
 
         public async Task<List<string>> GetSuggestionsAsync(string input, int maxResults = 10)
@@ -73,7 +77,7 @@ namespace DailyTaskManager.Infrastructure.Services
 
         public void ClearCache()
         {
-            _cachedDescriptions.Clear();
+            _cachedDescriptions = new List<string>();
             _lastCacheUpdate = DateTime.MinValue;
             _logger.LogDebug("Auto-complete cache cleared");
         }

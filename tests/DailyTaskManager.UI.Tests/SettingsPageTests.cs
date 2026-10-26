@@ -117,25 +117,27 @@ public class SettingsPageTests : BaseUITest
 
     private async Task VerifyDatabaseSettingsSection()
     {
-        Console.WriteLine("🔍 Verifying Database Settings section...");
+        Console.WriteLine("🔍 Verifying Export Settings section...");
 
         var cf = new ConditionFactory(new UIA3PropertyLibrary());
 
         // Look for Database Settings section
         var dbSettingsText = await FindElementAsync(MainWindow!,
-            cf.ByName("🗃️ Database Settings"));
+            cf.ByName("🗃️ Export Settings"));
 
         if (dbSettingsText == null)
         {
             var allTexts = MainWindow!.FindAllDescendants(cf.ByControlType(ControlType.Text));
             dbSettingsText = allTexts.FirstOrDefault(t =>
-                t.Name?.Contains("Database Settings", StringComparison.OrdinalIgnoreCase) == true);
+                t.Name?.Contains("Export Settings", StringComparison.OrdinalIgnoreCase) == true);
         }
 
-        Assert.IsNotNull(dbSettingsText, "Database Settings section should be visible");
+        Assert.IsNotNull(dbSettingsText, "Export Settings section should be visible");
 
         // Look for Export Download Location setting
-        await VerifyTextExists("Export Download Location");
+        await VerifyTextExists("PDF Export Location");
+        await VerifyTextExists("Word Export Location");
+        await VerifyTextExists("Excel Export Location");
 
         // Verify Browse button exists
         var browseButton = await FindElementAsync(MainWindow!,
@@ -151,7 +153,7 @@ public class SettingsPageTests : BaseUITest
 
         Assert.IsNotNull(browseButton, "Browse button should be present");
 
-        Console.WriteLine("✅ Database Settings section verified - has download location setting");
+        Console.WriteLine("✅ Export Settings section verified - has per-format export locations");
     }
 
     private async Task TestDownloadPathBrowseButton()

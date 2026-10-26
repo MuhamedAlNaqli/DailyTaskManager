@@ -129,33 +129,6 @@
                         </Grid>
                     </Button>
 
-                    <!-- Speech to Text -->
-                    <Button Classes="sidebar-nav"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Left"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Padding="12,10"
-                            Margin="0,2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
-                                    Width="20" Height="20"
-                                    Margin="0,0,12,0">
-                                <TextBlock Text="🎤" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Grid.Column="1"
-                                       Text="Speech to Text"
-                                       FontSize="14"
-                                       FontWeight="Medium"
-                                       Foreground="#FF9CA3AF"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-
                 </StackPanel>
 
                 <!-- Spacer to push bottom elements down -->
@@ -180,6 +153,27 @@
                             <TextBlock Grid.Column="0" Text="⚙️" FontSize="14" Margin="0,0,8,0"/>
                             <TextBlock Grid.Column="1"
                                        Text="Settings"
+                                       FontSize="13"
+                                       Foreground="#FF6B7280"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- Theme toggle -->
+                    <Button Classes="sidebar-nav"
+                            Command="{Binding ToggleThemeCommand}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="🌓" FontSize="14" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ThemeText}"
                                        FontSize="13"
                                        Foreground="#FF6B7280"/>
                         </Grid>
