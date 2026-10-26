@@ -64,7 +64,7 @@
                            IsLightDismissEnabled="True"
                            MaxWidth="400"
                            MaxHeight="200">
-                        <Border Background="White"
+                        <Border Background="{DynamicResource AppSurface}"
                                 BorderBrush="#FFDDD6FE"
                                 BorderThickness="1"
                                 CornerRadius="6"
@@ -80,12 +80,12 @@
                                                     Cursor="Hand">
                                                 <Border.Styles>
                                                     <Style Selector="Border:pointerover">
-                                                        <Setter Property="Background" Value="#FFF3F4F6"/>
+                                                        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
                                                     </Style>
                                                 </Border.Styles>
                                                 <TextBlock Text="{Binding}"
                                                            FontSize="14"
-                                                           Foreground="#FF374151"
+                                                           Foreground="{DynamicResource AppText}"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <i:Interaction.Behaviors>
                                                     <ia:EventTriggerBehavior EventName="PointerPressed">
@@ -145,10 +145,10 @@
             
             <Button Content="Cancel" 
                     Command="{Binding CancelCommand}"
-                    Background="White"
-                    BorderBrush="#FFD1D5DB"
+                    Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorderStrong}"
                     BorderThickness="1"
-                    Foreground="#FF374151"
+                    Foreground="{DynamicResource AppText}"
                     CornerRadius="6"
                     Padding="16,8"
                     MinWidth="80"/>

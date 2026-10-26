@@ -171,10 +171,15 @@ public partial class SettingsViewModel : ObservableObject
                     foreach (var setting in provider.GetChildren())
                     {
                         var value = setting.Value ?? "Not configured";
-                        // Mask sensitive information like client secrets
-                        if (setting.Key.ToLower().Contains("secret"))
+                        var isPlaceholder = string.IsNullOrWhiteSpace(value) || value.Contains("_here", StringComparison.OrdinalIgnoreCase);
+                        if (isPlaceholder)
                         {
-                            value = value.Length > 0 ? "***configured***" : "Not configured";
+                            value = "Not configured";
+                        }
+                        else if (setting.Key.ToLower().Contains("secret"))
+                        {
+                            // Mask sensitive information like client secrets
+                            value = "***configured***";
                         }
                         AppSettings.Add(new AppSettingItem { Key = $"OAuth:{provider.Key}:{setting.Key}", Value = value });
                     }
@@ -420,16 +425,18 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             IsCheckingForUpdates = true;
-            UpdateCheckResult = "Checking for updates...";
-            _logger.LogInformation("Manual update check requested");
-
             var currentVersion = _updateService.GetCurrentVersion();
-            _logger.LogInformation("Current version: {Version}", currentVersion);
             UpdateCheckResult = $"Current version: {currentVersion}\nChecking for updates...";
+            _logger.LogInformation("Manual update check requested (current version {Version})", currentVersion);
 
-            // First try to show update UI directly (which includes checking)
-            await _updateService.ShowUpdateUIAsync();
-            UpdateCheckResult = $"Current version: {currentVersion}\nUpdate check completed. Check logs for results.";
+            var outcome = await _updateService.CheckAndPromptAsync();
+
+            UpdateCheckResult = outcome.Status switch
+            {
+                UpdateCheckStatus.UpdateAvailable => $"Current version: {currentVersion}\n{outcome.Message}",
+                UpdateCheckStatus.UpToDate => outcome.Message,
+                _ => $"Update check failed.\n{outcome.Message}"
+            };
         }
         catch (Exception ex)
         {

@@ -40,6 +40,21 @@ namespace DailyTaskManager.Core.Interfaces
         Task LogoutAsync();
 
         /// <summary>
+        /// Signs in using the "remember me" session saved on this machine, if it is still valid
+        /// </summary>
+        Task<AuthResult> RestoreSessionAsync();
+
+        /// <summary>
+        /// Remembers the currently signed-in user on this machine
+        /// </summary>
+        Task EnableRememberMeAsync();
+
+        /// <summary>
+        /// Forgets any saved "remember me" session
+        /// </summary>
+        Task ClearRememberedSessionAsync();
+
+        /// <summary>
         /// Changes the current user's password
         /// </summary>
         Task<bool> ChangePasswordAsync(string currentPassword, string newPassword);

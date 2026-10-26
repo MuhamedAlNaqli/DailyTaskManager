@@ -22,7 +22,7 @@
                     <TextBlock Text="Settings" 
                                FontSize="28" 
                                FontWeight="Bold" 
-                               Foreground="#FF2E3440"/>
+                               Foreground="{DynamicResource AppTextStrong}"/>
                     <TextBlock Text="Configure application preferences and PDF export settings" 
                                FontSize="14" 
                                Foreground="#FF5E81AC" 
@@ -35,10 +35,10 @@
                 <StackPanel Spacing="24">
                     
                     <!-- PDF Export Settings -->
-                    <Border Background="White" 
+                    <Border Background="{DynamicResource AppSurface}" 
                             CornerRadius="12" 
                             Padding="24" 
-                            BorderBrush="#FFE2E8F0"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1">
                         <StackPanel>
                             <Grid Margin="0,0,0,20">
@@ -52,7 +52,7 @@
                                     <TextBlock Text="PDF Export Customization" 
                                                FontWeight="SemiBold" 
                                                FontSize="18"
-                                               Foreground="#FF374151"/>
+                                               Foreground="{DynamicResource AppText}"/>
                                 </StackPanel>
                                 
                                 <Button Grid.Column="1"
@@ -78,12 +78,12 @@
 
                                 <!-- Left Column - Header Settings -->
                                 <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                    <TextBlock Text="Header Settings" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,16" Foreground="#FF374151"/>
+                                    <TextBlock Text="Header Settings" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,16" Foreground="{DynamicResource AppText}"/>
                                     
                                     <TextBox Text="{Binding PdfSettings.CompanyName}"
                                              Watermark="Company Name"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -92,8 +92,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.CompanyId}"
                                              Watermark="Company ID"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -102,8 +102,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.AddressLine1}"
                                              Watermark="Address Line 1"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -112,8 +112,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.AddressLine2}"
                                              Watermark="Address Line 2"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -122,8 +122,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.Phone}"
                                              Watermark="Phone"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -132,8 +132,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.Email}"
                                              Watermark="Email"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -143,12 +143,12 @@
 
                                 <!-- Right Column - Client & Document Settings -->
                                 <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                                    <TextBlock Text="Client and Document Settings" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,16" Foreground="#FF374151"/>
+                                    <TextBlock Text="Client and Document Settings" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,16" Foreground="{DynamicResource AppText}"/>
                                     
                                     <TextBox Text="{Binding PdfSettings.ClientName}"
                                              Watermark="Client Name"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -157,8 +157,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.ClientId}"
                                              Watermark="Client ID"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -167,8 +167,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.DocumentTitle}"
                                              Watermark="Document Title"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -177,8 +177,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.ContractPrefix}"
                                              Watermark="Contract Number Prefix"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -187,8 +187,8 @@
                                     
                                     <TextBox Text="{Binding PdfSettings.DecisionNumber}"
                                              Watermark="Decision Number"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -197,8 +197,8 @@
 
                                     <TextBox Text="{Binding PdfSettings.ClientVatNumber}"
                                              Watermark="Client VAT Number"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -207,8 +207,8 @@
 
                                     <TextBox Text="{Binding PdfSettings.ClientAddressLine1}"
                                              Watermark="Client Address Line 1"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -217,8 +217,8 @@
 
                                     <TextBox Text="{Binding PdfSettings.ClientAddressLine2}"
                                              Watermark="Client Address Line 2"
-                                             Background="White"
-                                             BorderBrush="#FFD1D5DB"
+                                             Background="{DynamicResource AppInputBg}"
+                                             BorderBrush="{DynamicResource AppBorderStrong}"
                                              BorderThickness="1"
                                              CornerRadius="8"
                                              Padding="12,10"
@@ -239,7 +239,7 @@
                             <Button Command="{Binding PreviewPdfCommand}" 
                                     Classes="secondary"
                                     Background="Transparent"
-                                    BorderBrush="#FFBFDBFE"
+                                    BorderBrush="{DynamicResource AppAccentSoftBorder}"
                                     Foreground="#FF3B82F6"
                                     BorderThickness="1"
                                     CornerRadius="6"
@@ -255,37 +255,37 @@
                     </Border>
                     
                     <!-- Application Settings Section -->
-                    <Border Background="White" 
+                    <Border Background="{DynamicResource AppSurface}" 
                             CornerRadius="12" 
                             Padding="24" 
-                            BorderBrush="#FFE2E8F0"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1">
                         <StackPanel>
                             <TextBlock Text="📱 Application Settings (Read-only)" 
                                        FontWeight="SemiBold" 
                                        FontSize="18"
-                                       Foreground="#FF374151"
+                                       Foreground="{DynamicResource AppText}"
                                        Margin="0,0,0,16"/>
                             
-                            <Border Background="#FFF8FAFC"
-                                    BorderBrush="#FFE2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceAlt}"
+                                    BorderBrush="{DynamicResource AppBorder}"
                                     BorderThickness="1"
                                     CornerRadius="8">
                                 <StackPanel>
                                     <Grid ColumnDefinitions="*,2*" Margin="12,8">
-                                        <TextBlock Grid.Column="0" Text="Key" FontWeight="SemiBold" Foreground="#FF374151"/>
-                                        <TextBlock Grid.Column="1" Text="Value" FontWeight="SemiBold" Foreground="#FF374151"/>
+                                        <TextBlock Grid.Column="0" Text="Key" FontWeight="SemiBold" Foreground="{DynamicResource AppText}"/>
+                                        <TextBlock Grid.Column="1" Text="Value" FontWeight="SemiBold" Foreground="{DynamicResource AppText}"/>
                                     </Grid>
                                     <ItemsControl ItemsSource="{Binding AppSettings}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="White"
-                                                        BorderBrush="#FFE2E8F0"
+                                                <Border Background="{DynamicResource AppSurface}"
+                                                        BorderBrush="{DynamicResource AppBorder}"
                                                         BorderThickness="0,1,0,0"
                                                         Padding="12,8">
                                                     <Grid ColumnDefinitions="*,2*">
-                                                        <TextBlock Grid.Column="0" Text="{Binding Key}" TextWrapping="Wrap" Foreground="#FF374151"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Foreground="#FF374151"/>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Key}" TextWrapping="Wrap" Foreground="{DynamicResource AppText}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Foreground="{DynamicResource AppText}"/>
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>
@@ -297,21 +297,21 @@
                     </Border>
 
                     <!-- Database Settings Section -->
-                    <Border Background="White" 
+                    <Border Background="{DynamicResource AppSurface}" 
                             CornerRadius="12" 
                             Padding="24" 
-                            BorderBrush="#FFE2E8F0"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1">
                         <StackPanel>
                             <TextBlock Text="🗃️ Export Settings"
                                        FontWeight="SemiBold"
                                        FontSize="18"
-                                       Foreground="#FF374151"
+                                       Foreground="{DynamicResource AppText}"
                                        Margin="0,0,0,16"/>
 
                             <!-- PDF Export Path -->
-                            <Border Background="#FFF8FAFC"
-                                    BorderBrush="#FFE2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceAlt}"
+                                    BorderBrush="{DynamicResource AppBorder}"
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="16"
@@ -321,7 +321,7 @@
                                                FontWeight="SemiBold"
                                                FontSize="14"
                                                Margin="0,0,0,8"
-                                               Foreground="#FF374151"/>
+                                               Foreground="{DynamicResource AppText}"/>
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -332,8 +332,8 @@
                                         <TextBox Grid.Column="0"
                                                  Text="{Binding PdfExportPath}"
                                                  Watermark="Select folder path for PDF exports"
-                                                 Background="White"
-                                                 BorderBrush="#FFD1D5DB"
+                                                 Background="{DynamicResource AppInputBg}"
+                                                 BorderBrush="{DynamicResource AppBorderStrong}"
                                                  BorderThickness="1"
                                                  CornerRadius="6"
                                                  Padding="12,8"
@@ -345,7 +345,7 @@
                                                 Command="{Binding BrowsePdfFolderCommand}"
                                                 Classes="secondary"
                                                 Background="Transparent"
-                                                BorderBrush="#FFBFDBFE"
+                                                BorderBrush="{DynamicResource AppAccentSoftBorder}"
                                                 Foreground="#FF3B82F6"
                                                 BorderThickness="1"
                                                 CornerRadius="6"
@@ -359,14 +359,14 @@
 
                                     <TextBlock Text="PDF documents will be exported to this location"
                                                FontSize="11"
-                                               Foreground="#FF6B7280"
+                                               Foreground="{DynamicResource AppTextMuted}"
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- Word Export Path -->
-                            <Border Background="#FFF8FAFC"
-                                    BorderBrush="#FFE2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceAlt}"
+                                    BorderBrush="{DynamicResource AppBorder}"
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="16"
@@ -376,7 +376,7 @@
                                                FontWeight="SemiBold"
                                                FontSize="14"
                                                Margin="0,0,0,8"
-                                               Foreground="#FF374151"/>
+                                               Foreground="{DynamicResource AppText}"/>
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -387,8 +387,8 @@
                                         <TextBox Grid.Column="0"
                                                  Text="{Binding WordExportPath}"
                                                  Watermark="Select folder path for Word exports"
-                                                 Background="White"
-                                                 BorderBrush="#FFD1D5DB"
+                                                 Background="{DynamicResource AppInputBg}"
+                                                 BorderBrush="{DynamicResource AppBorderStrong}"
                                                  BorderThickness="1"
                                                  CornerRadius="6"
                                                  Padding="12,8"
@@ -400,7 +400,7 @@
                                                 Command="{Binding BrowseWordFolderCommand}"
                                                 Classes="secondary"
                                                 Background="Transparent"
-                                                BorderBrush="#FFBFDBFE"
+                                                BorderBrush="{DynamicResource AppAccentSoftBorder}"
                                                 Foreground="#FF3B82F6"
                                                 BorderThickness="1"
                                                 CornerRadius="6"
@@ -414,14 +414,14 @@
 
                                     <TextBlock Text="Word documents will be exported to this location"
                                                FontSize="11"
-                                               Foreground="#FF6B7280"
+                                               Foreground="{DynamicResource AppTextMuted}"
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- Excel Export Path -->
-                            <Border Background="#FFF8FAFC"
-                                    BorderBrush="#FFE2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceAlt}"
+                                    BorderBrush="{DynamicResource AppBorder}"
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="16"
@@ -431,7 +431,7 @@
                                                FontWeight="SemiBold"
                                                FontSize="14"
                                                Margin="0,0,0,8"
-                                               Foreground="#FF374151"/>
+                                               Foreground="{DynamicResource AppText}"/>
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -442,8 +442,8 @@
                                         <TextBox Grid.Column="0"
                                                  Text="{Binding ExcelExportPath}"
                                                  Watermark="Select folder path for Excel exports"
-                                                 Background="White"
-                                                 BorderBrush="#FFD1D5DB"
+                                                 Background="{DynamicResource AppInputBg}"
+                                                 BorderBrush="{DynamicResource AppBorderStrong}"
                                                  BorderThickness="1"
                                                  CornerRadius="6"
                                                  Padding="12,8"
@@ -455,7 +455,7 @@
                                                 Command="{Binding BrowseExcelFolderCommand}"
                                                 Classes="secondary"
                                                 Background="Transparent"
-                                                BorderBrush="#FFBFDBFE"
+                                                BorderBrush="{DynamicResource AppAccentSoftBorder}"
                                                 Foreground="#FF3B82F6"
                                                 BorderThickness="1"
                                                 CornerRadius="6"
@@ -469,7 +469,7 @@
 
                                     <TextBlock Text="Excel files will be exported to this location"
                                                FontSize="11"
-                                               Foreground="#FF6B7280"
+                                               Foreground="{DynamicResource AppTextMuted}"
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
@@ -478,10 +478,10 @@
                     </Border>
 
                     <!-- Updates Section -->
-                    <Border Background="White"
+                    <Border Background="{DynamicResource AppSurface}"
                             CornerRadius="12"
                             Padding="24"
-                            BorderBrush="#FFE2E8F0"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1"
                             Margin="0,0,0,24">
                         <StackPanel Spacing="20">
@@ -490,14 +490,14 @@
                                 <TextBlock Text="🔄 Updates"
                                           FontSize="16"
                                           FontWeight="Bold"
-                                          Foreground="#FF111827"/>
+                                          Foreground="{DynamicResource AppTextStrong}"/>
                                 <TextBlock Text="Check for and manage application updates"
                                           FontSize="13"
-                                          Foreground="#FF6B7280"/>
+                                          Foreground="{DynamicResource AppTextMuted}"/>
                             </StackPanel>
 
                             <!-- Update Check Button -->
-                            <Border Background="#FFFAFAFA"
+                            <Border Background="{DynamicResource AppSurfaceAlt}"
                                     CornerRadius="8"
                                     Padding="16">
                                 <StackPanel Spacing="12">
@@ -516,15 +516,15 @@
                                     </Button>
 
                                     <!-- Update Check Result -->
-                                    <Border Background="White"
+                                    <Border Background="{DynamicResource AppSurface}"
                                             CornerRadius="6"
                                             Padding="12"
-                                            BorderBrush="#FFE2E8F0"
+                                            BorderBrush="{DynamicResource AppBorder}"
                                             BorderThickness="1"
                                             IsVisible="{Binding !!UpdateCheckResult}">
                                         <TextBlock Text="{Binding UpdateCheckResult}"
                                                   FontSize="12"
-                                                  Foreground="#FF374151"
+                                                  Foreground="{DynamicResource AppText}"
                                                   TextWrapping="Wrap"/>
                                     </Border>
                                 </StackPanel>
@@ -540,23 +540,23 @@
             <Grid Grid.RowSpan="2"
                   Background="#80000000"
                   IsVisible="{Binding IsLoading}">
-                <Border Background="White"
+                <Border Background="{DynamicResource AppSurface}"
                         CornerRadius="12"
                         Padding="40"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel HorizontalAlignment="Center" Spacing="16">
                         <ProgressBar IsIndeterminate="True" 
                                     Width="200"
                                     Height="4"
-                                    Background="#FFE2E8F0"
+                                    Background="{DynamicResource AppBorder}"
                                     Foreground="#FF3B82F6"/>
                         <TextBlock Text="Saving settings..." 
                                   HorizontalAlignment="Center" 
                                   FontSize="14"
-                                  Foreground="#FF6B7280"/>
+                                  Foreground="{DynamicResource AppTextMuted}"/>
                     </StackPanel>
                 </Border>
             </Grid>

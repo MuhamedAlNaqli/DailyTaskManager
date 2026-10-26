@@ -111,23 +111,24 @@
 
     <!-- Theme-safe input control styles to ensure text readability -->
     <Style Selector="TextBox">
-        <Setter Property="Foreground" Value="Black"/>
-        <Setter Property="CaretBrush" Value="Black"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource AppInputText}"/>
         <Setter Property="SelectionBrush" Value="#3390FF"/>
         <Setter Property="SelectionForegroundBrush" Value="White"/>
     </Style>
     
     <!-- DatePicker text readability -->
     <Style Selector="DatePicker /template/ TextBox">
-        <Setter Property="Foreground" Value="Black"/>
-        <Setter Property="CaretBrush" Value="Black"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
     </Style>
     
     <!-- DatePicker button styling for classic calendar popup -->
     <Style Selector="DatePicker /template/ Button">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="6,4"/>
         <Setter Property="CornerRadius" Value="0,8,8,0"/>
@@ -136,17 +137,18 @@
     </Style>
     
     <Style Selector="DatePicker /template/ Button:pointerover">
-        <Setter Property="Background" Value="#F3F4F6"/>
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
     </Style>
     
     <Style Selector="DatePicker /template/ Button:pressed">
-        <Setter Property="Background" Value="#E5E7EB"/>
+        <Setter Property="Background" Value="{DynamicResource AppPressed}"/>
     </Style>
     
     <!-- Enhanced DatePicker styling for better visual feedback -->
     <Style Selector="DatePicker">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="8,4"/>
@@ -161,8 +163,9 @@
     </Style>
     
     <Style Selector="DatePicker /template/ Calendar">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#FFD1D5DB"/>
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Margin" Value="0"/>
@@ -171,14 +174,29 @@
     
     <!-- DatePicker watermark styling -->
     <Style Selector="DatePicker /template/ TextBox:placeholder">
-        <Setter Property="Foreground" Value="#FF9CA3AF"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextFaint}"/>
     </Style>
     
     <!-- ComboBox text readability -->
     <Style Selector="ComboBox /template/ TextBox">
-        <Setter Property="Foreground" Value="Black"/>
-        <Setter Property="CaretBrush" Value="Black"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
+    </Style>
+
+    <!-- Calendar (date pickers and the date-range flyout) must follow the theme -->
+    <Style Selector="Calendar">
+        <Setter Property="Background" Value="{DynamicResource AppInputBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+    </Style>
+    <Style Selector="Calendar CalendarDayButton, Calendar CalendarButton, Calendar Button">
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+    </Style>
+    <Style Selector="Calendar CalendarDayButton:pointerover, Calendar CalendarButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
+    </Style>
+    <Style Selector="Calendar TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
     </Style>
     
     <!-- Global input control overrides to ensure readability -->
@@ -243,20 +261,20 @@
     </Style>
 
     <Style Selector="Button.sidebar-nav:pointerover">
-        <Setter Property="Background" Value="#FFF3F4F6"/>
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
     </Style>
 
     <Style Selector="Button.sidebar-nav:pressed">
-        <Setter Property="Background" Value="#FFE5E7EB"/>
+        <Setter Property="Background" Value="{DynamicResource AppPressed}"/>
     </Style>
 
     <!-- Active state for sidebar navigation -->
     <Style Selector="Button.sidebar-nav.active">
-        <Setter Property="Background" Value="#FFF3F4F6"/>
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
     </Style>
 
     <Style Selector="Button.sidebar-nav.active TextBlock">
-        <Setter Property="Foreground" Value="#FF374151"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 

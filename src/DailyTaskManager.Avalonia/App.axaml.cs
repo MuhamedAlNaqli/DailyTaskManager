@@ -1,7 +1,10 @@
 using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using System.Threading.Tasks;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
+using DailyTaskManager.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using DailyTaskManager.Avalonia.Views;
 using DailyTaskManager.Avalonia.ViewModels;
@@ -23,10 +26,48 @@ public partial class App : Application
         {
             
             // Start with the login window instead of main window
-            desktop.MainWindow = CreateLoginWindow();
+            ApplySavedTheme();
+
+            // Skip the login screen when a valid "remember me" session exists on this machine
+            desktop.MainWindow = TryRestoreSession() ? CreateMainWindow() : CreateLoginWindow();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static bool TryRestoreSession()
+    {
+        try
+        {
+            var auth = ServiceProvider?.GetService<IAuthenticationService>();
+            if (auth == null) return false;
+
+            // Run off the UI thread so the database call can't deadlock the startup sequence
+            return Task.Run(() => auth.RestoreSessionAsync()).GetAwaiter().GetResult().IsSuccess;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Could not restore the saved session");
+            return false;
+        }
+    }
+
+    private void ApplySavedTheme()
+    {
+        try
+        {
+            var settings = ServiceProvider?.GetService<ISettingsService>();
+            if (settings == null) return;
+
+            var theme = Task.Run(() => settings.GetSettingAsync<string>("Theme", "Light")).GetAwaiter().GetResult();
+            RequestedThemeVariant = string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase)
+                ? ThemeVariant.Dark
+                : ThemeVariant.Light;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Could not apply the saved theme");
+        }
     }
 
     public LoginWindow CreateLoginWindow()

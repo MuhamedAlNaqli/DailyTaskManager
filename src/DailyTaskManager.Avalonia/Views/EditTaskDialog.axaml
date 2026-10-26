@@ -87,10 +87,10 @@
             
             <Button Content="Cancel" 
                     Command="{Binding CancelCommand}"
-                    Background="White"
-                    BorderBrush="#FFD1D5DB"
+                    Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorderStrong}"
                     BorderThickness="1"
-                    Foreground="#FF374151"
+                    Foreground="{DynamicResource AppText}"
                     CornerRadius="6"
                     Padding="16,8"
                     MinWidth="90"/>

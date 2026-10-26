@@ -69,6 +69,7 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Username} logged in successfully", Username);
+                await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
         }
@@ -152,6 +153,7 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Email} logged in successfully via Google OAuth", oauthResult.Email);
+                await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
         }
@@ -163,6 +165,18 @@ public partial class LoginViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task ApplyRememberMeAsync()
+    {
+        if (RememberMe)
+        {
+            await _authService.EnableRememberMeAsync();
+        }
+        else
+        {
+            await _authService.ClearRememberedSessionAsync();
         }
     }
 

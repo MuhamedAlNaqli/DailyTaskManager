@@ -8,7 +8,7 @@
         Width="400" Height="580"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
-        Background="White"
+        Background="{DynamicResource AppSurface}"
         CornerRadius="12">
 
     <Design.DataContext>
@@ -35,7 +35,7 @@
                     <TextBlock Text="Daily Task Manager" 
                                FontSize="20" 
                                FontWeight="Bold" 
-                               Foreground="#FF2E3440"
+                               Foreground="{DynamicResource AppTextStrong}"
                                HorizontalAlignment="Center"/>
                     <TextBlock Text="Sign in to your account" 
                                FontSize="13" 
@@ -52,7 +52,7 @@
                     <TextBlock Text="Username" 
                                FontSize="13" 
                                FontWeight="Medium" 
-                               Foreground="#FF374151"/>
+                               Foreground="{DynamicResource AppText}"/>
                     <TextBox Text="{Binding Username}"
                              Watermark="Enter your username"
                              BorderThickness="1"
@@ -67,7 +67,7 @@
                     <TextBlock Text="Password" 
                                FontSize="13" 
                                FontWeight="Medium" 
-                               Foreground="#FF374151"/>
+                               Foreground="{DynamicResource AppText}"/>
                     <TextBox Text="{Binding Password}"
                              Watermark="Enter your password"
                              PasswordChar="●"
@@ -81,7 +81,7 @@
                 <!-- Remember Me -->
                 <CheckBox Content="Remember me" 
                           IsChecked="{Binding RememberMe}"
-                          Foreground="#FF374151"
+                          Foreground="{DynamicResource AppText}"
                           FontSize="13"/>
                 
                 <!-- Message -->
@@ -128,14 +128,14 @@
             <!-- Divider -->
             <Grid>
                 <Border Height="1" 
-                        Background="#FFE2E8F0" 
+                        Background="{DynamicResource AppBorder}" 
                         VerticalAlignment="Center"/>
-                <Border Background="White" 
+                <Border Background="{DynamicResource AppSurface}" 
                         Padding="12,0" 
                         HorizontalAlignment="Center">
                     <TextBlock Text="Or continue with" 
                                FontSize="12" 
-                               Foreground="#FF64748B"/>
+                               Foreground="{DynamicResource AppTextMuted}"/>
                 </Border>
             </Grid>
 
@@ -144,8 +144,8 @@
                 
                 <!-- Google Login -->
                 <Button Command="{Binding LoginWithGoogleCommand}"
-                        Background="White"
-                        BorderBrush="#FFD1D5DB"
+                        Background="{DynamicResource AppSurface}"
+                        BorderBrush="{DynamicResource AppBorderStrong}"
                         BorderThickness="1"
                         CornerRadius="6"
                         Padding="0,10"
@@ -168,7 +168,7 @@
                                        VerticalAlignment="Center"/>
                         </Border>
                         <TextBlock Text="Continue with Google" 
-                                   Foreground="#FF374151" 
+                                   Foreground="{DynamicResource AppText}" 
                                    VerticalAlignment="Center"
                                    FontSize="13"/>
                     </StackPanel>
@@ -179,7 +179,7 @@
             <StackPanel HorizontalAlignment="Center" Spacing="4">
                 <TextBlock Text="Don't have an account?" 
                            FontSize="12" 
-                           Foreground="#FF64748B"
+                           Foreground="{DynamicResource AppTextMuted}"
                            HorizontalAlignment="Center"/>
                 <Button Command="{Binding RegisterCommand}"
                         Classes="secondary"

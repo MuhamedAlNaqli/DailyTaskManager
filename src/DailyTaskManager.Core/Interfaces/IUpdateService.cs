@@ -39,6 +39,11 @@ public interface IUpdateService
     void StopAutomaticUpdateChecking();
 
     /// <summary>
+    /// Check for updates, report the result and show the update window when a newer version exists
+    /// </summary>
+    Task<UpdateCheckOutcome> CheckAndPromptAsync();
+
+    /// <summary>
     /// Show update UI to user
     /// </summary>
     Task ShowUpdateUIAsync();
@@ -73,4 +78,45 @@ public class UpdateCheckCompletedEventArgs : EventArgs
     public bool UpdateAvailable { get; set; }
     public bool CheckSuccessful { get; set; }
     public string? ErrorMessage { get; set; }
+}
+
+/// <summary>
+/// Result of an update check
+/// </summary>
+public enum UpdateCheckStatus
+{
+    UpToDate,
+    UpdateAvailable,
+    Failed
+}
+
+public class UpdateCheckOutcome
+{
+    public UpdateCheckStatus Status { get; set; }
+
+    /// <summary>Latest version found on the update feed (when known)</summary>
+    public string? Version { get; set; }
+
+    /// <summary>Human readable summary suitable for showing to the user</summary>
+    public string Message { get; set; } = string.Empty;
+
+    public static UpdateCheckOutcome UpToDate(string currentVersion, string? extra = null) => new UpdateCheckOutcome
+    {
+        Status = UpdateCheckStatus.UpToDate,
+        Version = currentVersion,
+        Message = $"You are up to date (version {currentVersion})." + (extra == null ? string.Empty : " " + extra)
+    };
+
+    public static UpdateCheckOutcome Available(string version) => new UpdateCheckOutcome
+    {
+        Status = UpdateCheckStatus.UpdateAvailable,
+        Version = version,
+        Message = $"Version {version} is available."
+    };
+
+    public static UpdateCheckOutcome Failed(string message) => new UpdateCheckOutcome
+    {
+        Status = UpdateCheckStatus.Failed,
+        Message = message
+    };
 }

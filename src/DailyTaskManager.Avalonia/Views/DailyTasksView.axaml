@@ -106,71 +106,71 @@
                 
                 <!-- Today's Hours -->
                 <Border Grid.Column="0"
-                        Background="#FFF8FAFC"
+                        Background="{DynamicResource AppSurfaceAlt}"
                         CornerRadius="12"
                         Padding="20"
                         Margin="0,0,12,0"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="Today" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding TodayHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
+                        <TextBlock Text="Today" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding TodayHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
                         <TextBlock Text="Target: 7h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- This Week -->
                 <Border Grid.Column="1"
-                        Background="#FFF8FAFC"
+                        Background="{DynamicResource AppSurfaceAlt}"
                         CornerRadius="12"
                         Padding="20"
                         Margin="0,0,12,0"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="This Week" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding ThisWeekHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
+                        <TextBlock Text="This Week" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding ThisWeekHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
                         <TextBlock Text="Target: 35h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- Total Entries -->
                 <Border Grid.Column="2" 
-                        Background="#FFF8FAFC" 
+                        Background="{DynamicResource AppSurfaceAlt}" 
                         CornerRadius="12" 
                         Padding="20" 
                         Margin="0,0,12,0"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="Total Entries" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding FilteredTasks.Count}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
-                        <TextBlock Text="All time" FontSize="11" Foreground="#FF64748B" Margin="0,2,0,0"/>
+                        <TextBlock Text="Total Entries" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding FilteredTasks.Count}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                        <TextBlock Text="All time" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- Average Daily -->
                 <Border Grid.Column="3"
-                        Background="#FFF8FAFC"
+                        Background="{DynamicResource AppSurfaceAlt}"
                         CornerRadius="12"
                         Padding="20"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="Daily Avg" FontSize="12" Foreground="#FF64748B" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding DailyAverage30Days, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="#FF1E293B" Margin="0,4,0,0"/>
-                        <TextBlock Text="Last 30 days" FontSize="11" Foreground="#FF64748B" Margin="0,2,0,0"/>
+                        <TextBlock Text="Daily Avg" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding DailyAverage30Days, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                        <TextBlock Text="Last 30 days" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
 
             <!-- Advanced Filters Section -->
             <Border Grid.Row="2" 
-                    Background="White" 
+                    Background="{DynamicResource AppSurface}" 
                     CornerRadius="12" 
                     Padding="20" 
                     Margin="0,0,0,24"
-                    BorderBrush="#FFE2E8F0"
+                    BorderBrush="{DynamicResource AppBorder}"
                     BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -184,7 +184,7 @@
                         <TextBlock Text="Filters" 
                                    FontSize="16" 
                                    FontWeight="SemiBold" 
-                                   Foreground="#FF374151"/>
+                                   Foreground="{DynamicResource AppText}"/>
                     </StackPanel>
                     
                     <!-- Filter Controls -->
@@ -198,8 +198,8 @@
                         <TextBox Grid.Column="0"
                                  Text="{Binding SearchText}"
                                  Watermark="Search by task description (min 3 characters)..."
-                                 Background="White"
-                                 BorderBrush="#FFD1D5DB"
+                                 Background="{DynamicResource AppInputBg}"
+                                 BorderBrush="{DynamicResource AppBorderStrong}"
                                  BorderThickness="1"
                                  CornerRadius="8"
                                  Padding="16,6"
@@ -210,8 +210,8 @@
                         <!-- Date Range Picker Button -->
                         <Button Grid.Column="1"
                                 Name="DateRangeButton"
-                                Background="White"
-                                BorderBrush="#FFD1D5DB"
+                                Background="{DynamicResource AppSurface}"
+                                BorderBrush="{DynamicResource AppBorderStrong}"
                                 BorderThickness="1"
                                 CornerRadius="8"
                                 Padding="12,6"
@@ -219,8 +219,8 @@
                                 VerticalAlignment="Center">
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedLeft">
-                                    <Border Background="White"
-                                            BorderBrush="#FFE2E8F0"
+                                    <Border Background="{DynamicResource AppSurface}"
+                                            BorderBrush="{DynamicResource AppBorder}"
                                             BorderThickness="1"
                                             CornerRadius="8"
                                             Padding="16">
@@ -228,16 +228,16 @@
                                             <TextBlock Text="Select Date Range"
                                                       FontSize="14"
                                                       FontWeight="SemiBold"
-                                                      Foreground="#FF374151"/>
+                                                      Foreground="{DynamicResource AppText}"/>
                                             <TextBlock Text="Click start date, then click end date"
                                                       FontSize="12"
-                                                      Foreground="#FF6B7280"
+                                                      Foreground="{DynamicResource AppTextMuted}"
                                                       TextWrapping="Wrap"
                                                       MaxWidth="280"/>
                                             <Calendar Name="DateRangeCalendar"
                                                      SelectionMode="SingleRange"
                                                      AllowTapRangeSelection="True"
-                                                     Background="White"/>
+                                                     Background="{DynamicResource AppInputBg}"/>
                                             <StackPanel Orientation="Horizontal"
                                                        HorizontalAlignment="Right"
                                                        Spacing="8">
@@ -267,7 +267,7 @@
                                 <TextBlock Name="DateRangeText"
                                           Text="Select Date Range"
                                           FontSize="12"
-                                          Foreground="#FF374151"
+                                          Foreground="{DynamicResource AppText}"
                                           VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -278,9 +278,9 @@
 
             <!-- Modern Task List -->
             <Border Grid.Row="3" 
-                    Background="White" 
+                    Background="{DynamicResource AppSurface}" 
                     CornerRadius="12" 
-                    BorderBrush="#FFE2E8F0"
+                    BorderBrush="{DynamicResource AppBorder}"
                     BorderThickness="1">
                 
                 <Grid>
@@ -291,7 +291,7 @@
                     
                     <!-- Table Header -->
                     <Border Grid.Row="0" 
-                            Background="#FFF8FAFC" 
+                            Background="{DynamicResource AppSurfaceAlt}" 
                             CornerRadius="12,12,0,0"
                             Padding="20,16">
                         <Grid>
@@ -302,10 +302,10 @@
                                 <ColumnDefinition Width="100"/>
                             </Grid.ColumnDefinitions>
                             
-                            <TextBlock Grid.Column="0" Text="Date" FontWeight="SemiBold" FontSize="12" Foreground="#FF374151"/>
-                            <TextBlock Grid.Column="1" Text="Description" FontWeight="SemiBold" FontSize="12" Foreground="#FF374151"/>
-                            <TextBlock Grid.Column="2" Text="Hours" FontWeight="SemiBold" FontSize="12" Foreground="#FF374151" HorizontalAlignment="Right"/>
-                            <TextBlock Grid.Column="3" Text="Actions" FontWeight="SemiBold" FontSize="12" Foreground="#FF374151" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="0" Text="Date" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource AppText}"/>
+                            <TextBlock Grid.Column="1" Text="Description" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource AppText}"/>
+                            <TextBlock Grid.Column="2" Text="Hours" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource AppText}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="3" Text="Actions" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource AppText}" HorizontalAlignment="Center"/>
                         </Grid>
                     </Border>
                     
@@ -314,7 +314,7 @@
                         <ItemsControl ItemsSource="{Binding FilteredTasks}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="#FFF1F5F9" BorderThickness="0,1,0,0" Padding="20,16">
+                                    <Border BorderBrush="{DynamicResource AppDivider}" BorderThickness="0,1,0,0" Padding="20,16">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="120"/>
@@ -327,21 +327,21 @@
                                             <TextBlock Grid.Column="0" 
                                                       Text="{Binding Date, StringFormat='{}{0:MMM dd}'}" 
                                                       FontSize="14" 
-                                                      Foreground="#FF64748B"
+                                                      Foreground="{DynamicResource AppTextMuted}"
                                                       VerticalAlignment="Center"/>
                                             
                                             <!-- Description -->
                                             <TextBlock Grid.Column="1" 
                                                       Text="{Binding Description}" 
                                                       FontSize="14" 
-                                                      Foreground="#FF1F2937"
+                                                      Foreground="{DynamicResource AppTextStrong}"
                                                       TextWrapping="Wrap"
                                                       VerticalAlignment="Center"
                                                       Margin="0,0,16,0"/>
                                             
                                             <!-- Hours -->
                                             <Border Grid.Column="2" 
-                                                   Background="#FFECFCCB" 
+                                                   Background="{DynamicResource AppBadgeBg}" 
                                                    CornerRadius="6" 
                                                    Padding="8,4"
                                                    HorizontalAlignment="Right"
@@ -349,7 +349,7 @@
                                                 <TextBlock Text="{Binding Hours, StringFormat='{}{0}h'}" 
                                                           FontSize="12" 
                                                           FontWeight="Medium"
-                                                          Foreground="#FF365314"/>
+                                                          Foreground="{DynamicResource AppBadgeText}"/>
                                             </Border>
                                             
                                             <!-- Actions -->
@@ -397,11 +397,11 @@
                         <TextBlock Text="No time entries found" 
                                   FontSize="16" 
                                   FontWeight="Medium"
-                                  Foreground="#FF6B7280"
+                                  Foreground="{DynamicResource AppTextMuted}"
                                   HorizontalAlignment="Center"/>
                         <TextBlock Text="Start tracking your time by adding your first entry" 
                                   FontSize="14" 
-                                  Foreground="#FF9CA3AF"
+                                  Foreground="{DynamicResource AppTextFaint}"
                                   HorizontalAlignment="Center"/>
                         <Button Classes="primary"
                                Command="{Binding AddNewTaskCommand}"
@@ -423,23 +423,23 @@
             <Grid Grid.RowSpan="4"
                   Background="#80000000"
                   IsVisible="{Binding IsLoading}">
-                <Border Background="White"
+                <Border Background="{DynamicResource AppSurface}"
                         CornerRadius="12"
                         Padding="40"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        BorderBrush="#FFE2E8F0"
+                        BorderBrush="{DynamicResource AppBorder}"
                         BorderThickness="1">
                     <StackPanel HorizontalAlignment="Center" Spacing="16">
                         <ProgressBar IsIndeterminate="True" 
                                     Width="200"
                                     Height="4"
-                                    Background="#FFE2E8F0"
+                                    Background="{DynamicResource AppBorder}"
                                     Foreground="#FF3B82F6"/>
                         <TextBlock Text="Loading your time entries..." 
                                   HorizontalAlignment="Center" 
                                   FontSize="14"
-                                  Foreground="#FF6B7280"/>
+                                  Foreground="{DynamicResource AppTextMuted}"/>
                     </StackPanel>
                 </Border>
             </Grid>

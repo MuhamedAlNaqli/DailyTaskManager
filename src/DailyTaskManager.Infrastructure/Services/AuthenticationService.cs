@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,10 +19,14 @@ public class AuthenticationService : IAuthenticationService
 {
     private readonly IDbContextFactory<DailyTaskManagerDbContext> _contextFactory;
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly ISessionStore _sessionStore;
     private User? _currentUser;
 
-    public AuthenticationService(IDbContextFactory<DailyTaskManagerDbContext> contextFactory, ILogger<AuthenticationService> logger)
+    private static readonly TimeSpan RememberMeLifetime = TimeSpan.FromDays(30);
+
+    public AuthenticationService(IDbContextFactory<DailyTaskManagerDbContext> contextFactory, ILogger<AuthenticationService> logger, ISessionStore sessionStore)
     {
+        _sessionStore = sessionStore;
         _contextFactory = contextFactory;
         _logger = logger;
     }
@@ -193,10 +199,103 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    public async Task<AuthResult> RestoreSessionAsync()
+    {
+        try
+        {
+            var saved = _sessionStore.Load();
+            if (saved == null || string.IsNullOrEmpty(saved.Token))
+            {
+                return AuthResult.Failure("No saved session");
+            }
+
+            await using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == saved.UserId && u.IsActive);
+
+            var valid = user?.RememberTokenHash != null
+                        && user.RememberTokenExpiresAt > DateTime.UtcNow
+                        && CryptographicOperations.FixedTimeEquals(
+                            Encoding.UTF8.GetBytes(user.RememberTokenHash),
+                            Encoding.UTF8.GetBytes(HashToken(saved.Token)));
+
+            if (!valid || user == null)
+            {
+                _logger.LogInformation("Saved session is invalid or expired");
+                _sessionStore.Clear();
+                return AuthResult.Failure("Saved session expired");
+            }
+
+            // Sliding expiry: using the app keeps the session alive
+            user.RememberTokenExpiresAt = DateTime.UtcNow.Add(RememberMeLifetime);
+            await context.SaveChangesAsync();
+
+            _currentUser = user;
+            var result = AuthResult.Success(user);
+            AuthenticationChanged?.Invoke(this, result);
+            _logger.LogInformation("Restored saved session for user {Username}", user.Username);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restoring saved session");
+            return AuthResult.Failure("Could not restore the saved session");
+        }
+    }
+
+    public async Task EnableRememberMeAsync()
+    {
+        if (_currentUser == null) return;
+
+        try
+        {
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+            await using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FirstAsync(u => u.Id == _currentUser.Id);
+            user.RememberTokenHash = HashToken(token);
+            user.RememberTokenExpiresAt = DateTime.UtcNow.Add(RememberMeLifetime);
+            await context.SaveChangesAsync();
+
+            _sessionStore.Save(new RememberedSession { UserId = user.Id, Token = token });
+            _logger.LogInformation("Remember-me session enabled for user {Username}", user.Username);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enabling remember me");
+        }
+    }
+
+    public async Task ClearRememberedSessionAsync()
+    {
+        _sessionStore.Clear();
+        if (_currentUser == null) return;
+
+        try
+        {
+            await using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == _currentUser.Id);
+            if (user != null && user.RememberTokenHash != null)
+            {
+                user.RememberTokenHash = null;
+                user.RememberTokenExpiresAt = null;
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing remembered session");
+        }
+    }
+
     public async Task LogoutAsync()
     {
         try
         {
+            await ClearRememberedSessionAsync();
+
             var username = _currentUser?.Username ?? "Unknown";
             _currentUser = null;
             
@@ -230,6 +329,9 @@ public class AuthenticationService : IAuthenticationService
 
             var dbUser = await _context.Users.FirstAsync(u => u.Id == _currentUser.Id);
             dbUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            dbUser.RememberTokenHash = null;
+            dbUser.RememberTokenExpiresAt = null;
+            _sessionStore.Clear();
             dbUser.UpdateTimestamp();
 
             await _context.SaveChangesAsync();

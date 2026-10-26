@@ -100,6 +100,7 @@ class Program
 
                 // Core Services
                 services.AddSingleton<IDatabaseService, DatabaseService>();
+                services.AddSingleton<ISessionStore, SessionStore>();
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();

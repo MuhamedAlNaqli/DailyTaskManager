@@ -49,6 +49,14 @@ namespace DailyTaskManager.Core.Models
         [Column("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>SHA-256 hash of the "remember me" token (the token itself is only kept on the user's machine)</summary>
+        [MaxLength(100)]
+        [Column("RememberTokenHash")]
+        public string? RememberTokenHash { get; set; }
+
+        [Column("RememberTokenExpiresAt")]
+        public DateTime? RememberTokenExpiresAt { get; set; }
+
         [Column("IsActive")]
         public bool IsActive { get; set; } = true;
 

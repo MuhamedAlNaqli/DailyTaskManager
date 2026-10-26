@@ -1,15 +1,17 @@
 using System;
+using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using NetSparkleUpdater;
 using NetSparkleUpdater.SignatureVerifiers;
 using NetSparkleUpdater.UI.Avalonia;
-using NetSparkleUpdater.Events;
+using NetSparkleUpdater.Configurations;
 using NetSparkleUpdater.Enums;
-using Avalonia.Controls.ApplicationLifetimes;
 using DailyTaskManager.Core.Interfaces;
 
 namespace DailyTaskManager.Avalonia.Services;
@@ -19,10 +21,18 @@ namespace DailyTaskManager.Avalonia.Services;
 /// </summary>
 public class UpdateService : IUpdateService, IDisposable
 {
+    private const string DefaultAppCastUrl =
+        "https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/latest/download/appcast.xml";
+
+    private static readonly TimeSpan StartupCheckDelay = TimeSpan.FromSeconds(20);
+
     private readonly ILogger<UpdateService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly SemaphoreSlim _checkLock = new(1, 1);
     private SparkleUpdater? _sparkleUpdater;
-    private Timer? _updateTimer;
+    private System.Timers.Timer? _updateTimer;
+    private string _appCastUrl = DefaultAppCastUrl;
+    private string? _lastPromptedVersion;
     private bool _disposed = false;
 
     public event EventHandler<UpdateAvailableEventArgs>? UpdateAvailable;
@@ -42,41 +52,34 @@ public class UpdateService : IUpdateService, IDisposable
         {
             _logger.LogInformation("Initializing UpdateService...");
 
-            // Get update configuration
-            // Using latest release download URL works for both public and private repos
-            var appCastUrl = _configuration["UpdateService:AppCastUrl"]
-                ?? "https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/latest/download/appcast.xml";
-            
-            var applicationName = _configuration["UpdateService:ApplicationName"] ?? "DailyTaskManager";
+            _appCastUrl = _configuration["UpdateService:AppCastUrl"] is { Length: > 0 } configured
+                ? configured
+                : DefaultAppCastUrl;
+            AutoUpdatesEnabled = _configuration.GetValue("UpdateService:AutoUpdatesEnabled", true);
 
-            _logger.LogInformation("AppCast URL: {AppCastUrl}", appCastUrl);
+            _logger.LogInformation("AppCast URL: {AppCastUrl}", _appCastUrl);
 
-            // Initialize SparkleUpdater with minimal configuration for now
             // Verify update signatures whenever a public key is configured
             var publicKey = _configuration["UpdateService:Ed25519PublicKey"];
             Ed25519Checker checker;
             if (!string.IsNullOrWhiteSpace(publicKey))
             {
-                checker = new Ed25519Checker(NetSparkleUpdater.Enums.SecurityMode.Strict, publicKey);
+                checker = new Ed25519Checker(SecurityMode.Strict, publicKey);
             }
             else
             {
                 _logger.LogWarning("UpdateService:Ed25519PublicKey is not configured - update signatures are NOT verified");
-                checker = new Ed25519Checker(NetSparkleUpdater.Enums.SecurityMode.Unsafe);
+                checker = new Ed25519Checker(SecurityMode.Unsafe);
             }
 
-            _sparkleUpdater = new SparkleUpdater(appCastUrl, checker);
+            _sparkleUpdater = new SparkleUpdater(_appCastUrl, checker)
+            {
+                UIFactory = new UIFactory(),
+                // Report the real assembly version as the installed version (see AppAssemblyAccessor)
+                Configuration = new DefaultConfiguration(new AppAssemblyAccessor())
+            };
 
-            // Configure UI factory
-            _sparkleUpdater.UIFactory = new UIFactory();
-
-            // Subscribe to events  
-            _sparkleUpdater.UpdateDetected += OnUpdateDetected;
-            _sparkleUpdater.UpdateCheckFinished += OnUpdateCheckFinished;
-
-            // Periodic checks are driven by StartAutomaticUpdateChecking (single source of update polling)
-
-            _logger.LogInformation("UpdateService initialized successfully");
+            _logger.LogInformation("UpdateService initialized successfully (current version {Version})", GetCurrentVersion());
             await Task.CompletedTask;
         }
         catch (Exception ex)
@@ -86,33 +89,21 @@ public class UpdateService : IUpdateService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Checks for an update without showing any UI. Returns true only when a newer version exists.
+    /// </summary>
     public async Task<bool> CheckForUpdatesAsync()
     {
-        try
-        {
-            _logger.LogInformation("Checking for updates manually...");
-            
-            if (_sparkleUpdater == null)
-            {
-                _logger.LogWarning("SparkleUpdater not initialized");
-                return false;
-            }
-
-            var updateInfo = await _sparkleUpdater.CheckForUpdatesQuietly();
-            return updateInfo != null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking for updates");
-            UpdateCheckCompleted?.Invoke(this, new UpdateCheckCompletedEventArgs
-            {
-                UpdateAvailable = false,
-                CheckSuccessful = false,
-                ErrorMessage = ex.Message
-            });
-            return false;
-        }
+        var outcome = await RunCheckAsync(promptIfAvailable: false);
+        return outcome.Status == UpdateCheckStatus.UpdateAvailable;
     }
+
+    /// <summary>
+    /// Checks for an update, reports the result and, when one exists, shows the update window
+    /// </summary>
+    public Task<UpdateCheckOutcome> CheckAndPromptAsync() => RunCheckAsync(promptIfAvailable: true);
+
+    public Task ShowUpdateUIAsync() => CheckAndPromptAsync();
 
     public void StartAutomaticUpdateChecking(TimeSpan interval)
     {
@@ -129,22 +120,17 @@ public class UpdateService : IUpdateService, IDisposable
             _updateTimer?.Stop();
             _updateTimer?.Dispose();
 
-            _updateTimer = new Timer(interval.TotalMilliseconds);
-            _updateTimer.Elapsed += async (sender, e) =>
-            {
-                try
-                {
-                    await CheckForUpdatesAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during automatic update check");
-                }
-            };
+            _updateTimer = new System.Timers.Timer(interval.TotalMilliseconds);
+            _updateTimer.Elapsed += async (sender, e) => await SafeAutomaticCheckAsync();
             _updateTimer.AutoReset = true;
             _updateTimer.Start();
 
-            _logger.LogInformation("Automatic update checking started");
+            // Check shortly after startup instead of waiting a full interval for the first check
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(StartupCheckDelay);
+                await SafeAutomaticCheckAsync();
+            });
         }
         catch (Exception ex)
         {
@@ -167,107 +153,156 @@ public class UpdateService : IUpdateService, IDisposable
         }
     }
 
-    public async Task ShowUpdateUIAsync()
-    {
-        try
-        {
-            if (_sparkleUpdater == null)
-            {
-                _logger.LogWarning("SparkleUpdater not initialized");
-                return;
-            }
-
-            await _sparkleUpdater.CheckForUpdatesAtUserRequest();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error showing update UI");
-        }
-    }
-
     public string GetCurrentVersion()
     {
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-            return version?.ToString() ?? "2.4.0.0";
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            return version?.ToString() ?? "0.0.0.0";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current version");
-            return "2.4.0.0";
+            return "0.0.0.0";
         }
     }
 
-    private void OnUpdateDetected(object? sender, UpdateDetectedEventArgs e)
+    private async Task SafeAutomaticCheckAsync()
     {
+        if (!AutoUpdatesEnabled || _disposed) return;
+
         try
         {
-            _logger.LogInformation("Update detected: {Version}", e.LatestVersion?.Version?.ToString());
+            var outcome = await RunCheckAsync(promptIfAvailable: true, automatic: true);
+            _logger.LogInformation("Automatic update check: {Status} {Message}", outcome.Status, outcome.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during automatic update check");
+        }
+    }
 
-            if (e.LatestVersion != null)
+    private async Task<UpdateCheckOutcome> RunCheckAsync(bool promptIfAvailable, bool automatic = false)
+    {
+        if (_sparkleUpdater == null)
+        {
+            return Complete(UpdateCheckOutcome.Failed("The update service is not initialized."));
+        }
+
+        if (!await _checkLock.WaitAsync(0))
+        {
+            return UpdateCheckOutcome.Failed("An update check is already running.");
+        }
+
+        try
+        {
+            _logger.LogInformation("Checking for updates (current {Version})...", GetCurrentVersion());
+
+            // Make a failure to reach the update feed explicit instead of a silent "could not determine"
+            var feedError = await ProbeFeedAsync();
+            if (feedError != null)
             {
-                UpdateAvailable?.Invoke(this, new UpdateAvailableEventArgs
+                _logger.LogWarning("Update feed unreachable: {Error}", feedError);
+                return Complete(UpdateCheckOutcome.Failed(feedError));
+            }
+
+            var info = await _sparkleUpdater.CheckForUpdatesQuietly();
+
+            switch (info.Status)
+            {
+                case UpdateStatus.UpdateAvailable:
                 {
-                    NewVersion = e.LatestVersion.Version?.ToString() ?? "Unknown",
-                    ReleaseNotes = e.LatestVersion.Description ?? string.Empty,
-                    ReleaseDate = e.LatestVersion.PublicationDate != default(DateTime) ? e.LatestVersion.PublicationDate : DateTime.Now,
-                    IsCriticalUpdate = e.LatestVersion.IsCriticalUpdate
-                });
+                    var latest = info.Updates?.FirstOrDefault();
+                    var version = latest?.ShortVersion ?? latest?.Version ?? "unknown";
+
+                    UpdateAvailable?.Invoke(this, new UpdateAvailableEventArgs
+                    {
+                        NewVersion = version,
+                        ReleaseNotes = latest?.Description ?? string.Empty,
+                        ReleaseDate = latest != null && latest.PublicationDate != default ? latest.PublicationDate : DateTime.Now,
+                        IsCriticalUpdate = latest?.IsCriticalUpdate ?? false
+                    });
+
+                    // Automatic checks only bother the user once per version per session
+                    var shouldPrompt = promptIfAvailable && (!automatic || _lastPromptedVersion != version);
+                    if (shouldPrompt && info.Updates != null)
+                    {
+                        _lastPromptedVersion = version;
+                        await Dispatcher.UIThread.InvokeAsync(() => _sparkleUpdater.ShowUpdateNeededUI(info.Updates, false));
+                    }
+
+                    return Complete(UpdateCheckOutcome.Available(version));
+                }
+
+                case UpdateStatus.UserSkipped:
+                    return Complete(UpdateCheckOutcome.UpToDate(GetCurrentVersion(), "A newer version exists but was skipped earlier."));
+
+                case UpdateStatus.CouldNotDetermine:
+                    return Complete(UpdateCheckOutcome.Failed("Could not read the update information from the update feed."));
+
+                default:
+                    return Complete(UpdateCheckOutcome.UpToDate(GetCurrentVersion()));
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling update detected event");
+            _logger.LogError(ex, "Error checking for updates");
+            return Complete(UpdateCheckOutcome.Failed($"Update check failed: {ex.Message}"));
+        }
+        finally
+        {
+            _checkLock.Release();
         }
     }
 
-    private void OnUpdateCheckFinished(object? sender, UpdateStatus status)
+    /// <summary>
+    /// Returns an error message when the appcast cannot be downloaded, otherwise null
+    /// </summary>
+    private async Task<string?> ProbeFeedAsync()
     {
         try
         {
-            var updateRequired = status == UpdateStatus.UpdateAvailable;
-            _logger.LogInformation("Update check finished. Status: {Status}, Update required: {UpdateRequired}", status, updateRequired);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("DailyTaskManager-Updater");
+            using var response = await client.GetAsync(_appCastUrl, HttpCompletionOption.ResponseHeadersRead);
+            if (response.IsSuccessStatusCode) return null;
 
-            UpdateCheckCompleted?.Invoke(this, new UpdateCheckCompletedEventArgs
-            {
-                UpdateAvailable = updateRequired,
-                CheckSuccessful = status != UpdateStatus.CouldNotDetermine,
-                ErrorMessage = status == UpdateStatus.CouldNotDetermine ? "Could not determine update status" : null
-            });
+            return $"The update server answered {(int)response.StatusCode} {response.ReasonPhrase} for {_appCastUrl}. " +
+                   "The update feed must be publicly reachable (a private GitHub repository cannot serve updates).";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling update check finished event");
+            return $"Could not reach the update server ({ex.Message}). Check your internet connection.";
         }
+    }
+
+    private UpdateCheckOutcome Complete(UpdateCheckOutcome outcome)
+    {
+        UpdateCheckCompleted?.Invoke(this, new UpdateCheckCompletedEventArgs
+        {
+            UpdateAvailable = outcome.Status == UpdateCheckStatus.UpdateAvailable,
+            CheckSuccessful = outcome.Status != UpdateCheckStatus.Failed,
+            ErrorMessage = outcome.Status == UpdateCheckStatus.Failed ? outcome.Message : null
+        });
+        return outcome;
     }
 
     public void Dispose()
     {
-        if (!_disposed)
+        if (_disposed) return;
+
+        try
         {
-            try
-            {
-                _logger.LogInformation("Disposing UpdateService");
-
-                StopAutomaticUpdateChecking();
-
-                if (_sparkleUpdater != null)
-                {
-                    _sparkleUpdater.UpdateDetected -= OnUpdateDetected;
-                    _sparkleUpdater.UpdateCheckFinished -= OnUpdateCheckFinished;
-                    
-                    _sparkleUpdater.Dispose();
-                    _sparkleUpdater = null;
-                }
-
-                _disposed = true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error disposing UpdateService");
-            }
+            _logger.LogInformation("Disposing UpdateService");
+            _disposed = true;
+            StopAutomaticUpdateChecking();
+            _sparkleUpdater?.Dispose();
+            _sparkleUpdater = null;
+            _checkLock.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disposing UpdateService");
         }
     }
 }

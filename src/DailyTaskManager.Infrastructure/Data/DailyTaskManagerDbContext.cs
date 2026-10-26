@@ -46,6 +46,7 @@ namespace DailyTaskManager.Infrastructure.Data
                 entity.Property(u => u.OAuthProvider).HasMaxLength(50);
                 entity.Property(u => u.OAuthId).HasMaxLength(255);
                 entity.Property(u => u.DisplayName).HasMaxLength(100);
+                entity.Property(u => u.RememberTokenHash).HasMaxLength(100);
                 
                 // Configure timestamps
                 entity.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -202,6 +203,12 @@ namespace DailyTaskManager.Infrastructure.Data
                 await Database.ExecuteSqlRawAsync(
                     "ALTER TABLE public.daily_tasks ADD COLUMN updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP");
             }
+
+            // "Remember me" session columns on existing databases
+            await Database.ExecuteSqlRawAsync(
+                "ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS \"RememberTokenHash\" character varying(100)");
+            await Database.ExecuteSqlRawAsync(
+                "ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS \"RememberTokenExpiresAt\" timestamp with time zone");
 
             // Settings values were originally limited to 1000 characters
             await Database.ExecuteSqlRawAsync(
