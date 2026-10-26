@@ -8,13 +8,13 @@
 
         
 
-                <!-- Version 2.3.2 - Latest Release -->
+                <!-- Version 2.4.0 - Latest Release -->
         <item>
-            <title>Daily Task Manager 2.3.2</title>
-            <sparkle:version>2.3.2.0</sparkle:version>
-            <sparkle:shortVersionString>2.3.2</sparkle:shortVersionString>
+            <title>Daily Task Manager 2.4.0</title>
+            <sparkle:version>2.4.0.0</sparkle:version>
+            <sparkle:shortVersionString>2.4.0</sparkle:shortVersionString>
             <description><![CDATA[
-                <h3>Daily Task Manager 2.3.2</h3>
+                <h3>Daily Task Manager 2.4.0</h3>
                 <p>Latest release with improvements and bug fixes.</p>
                 <p><strong>What's New:</strong></p>
                 <ul>
@@ -22,21 +22,21 @@
                     <li>Enhanced UI and performance improvements</li>
                     <li>Bug fixes and stability improvements</li>
                 </ul>
-                <p><a href="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.3.2">View full release notes</a></p>
+                <p><a href="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.4.0">View full release notes</a></p>
             ]]></description>
-            <pubDate>Thu, 08 Jan 2026 13:29:56 +0000</pubDate>
-            <link>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.3.2/DailyTaskManager-v2.3.2-win-x64.msi</link>
-            <sparkle:releaseNotesLink>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.3.2</sparkle:releaseNotesLink>
+            <pubDate>Mon, 26 Oct 2026 21:51:25 +0000</pubDate>
+            <link>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.4.0/DailyTaskManager-v2.4.0-win-x64.msi</link>
+            <sparkle:releaseNotesLink>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.4.0</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
             <sparkle:os>windows</sparkle:os>
             <sparkle:installerArguments>/quiet</sparkle:installerArguments>
             <enclosure
-                url="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.3.2/DailyTaskManager-v2.3.2-win-x64.msi"
-                sparkle:version="2.3.2.0"
-                sparkle:shortVersionString="2.3.2"
+                url="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.4.0/DailyTaskManager-v2.4.0-win-x64.msi"
+                sparkle:version="2.4.0.0"
+                sparkle:shortVersionString="2.4.0"
                 sparkle:os="windows"
                 type="application/octet-stream"
-                length="41496576" />
+                length="41451520" />
         </item>
 
 <!-- Version 2.2.1 - Latest Release -->
