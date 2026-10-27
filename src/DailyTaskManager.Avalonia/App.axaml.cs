@@ -25,25 +25,33 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             
-            // Start with the login window instead of main window
-            ApplySavedTheme();
+            // Data access needs the schema; it has been initializing in parallel with the UI toolkit startup
+            Program.DatabaseReady.GetAwaiter().GetResult();
+
+            // Read the theme and check for a remembered session at the same time
+            var themeTask = Task.Run(ReadSavedThemeAsync);
+            var sessionTask = Task.Run(TryRestoreSessionAsync);
+            Task.WaitAll(themeTask, sessionTask);
+
+            RequestedThemeVariant = string.Equals(themeTask.Result, "Dark", StringComparison.OrdinalIgnoreCase)
+                ? ThemeVariant.Dark
+                : ThemeVariant.Light;
 
             // Skip the login screen when a valid "remember me" session exists on this machine
-            desktop.MainWindow = TryRestoreSession() ? CreateMainWindow() : CreateLoginWindow();
+            desktop.MainWindow = sessionTask.Result ? CreateMainWindow() : CreateLoginWindow();
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static bool TryRestoreSession()
+    private static async Task<bool> TryRestoreSessionAsync()
     {
         try
         {
             var auth = ServiceProvider?.GetService<IAuthenticationService>();
             if (auth == null) return false;
 
-            // Run off the UI thread so the database call can't deadlock the startup sequence
-            return Task.Run(() => auth.RestoreSessionAsync()).GetAwaiter().GetResult().IsSuccess;
+            return (await auth.RestoreSessionAsync()).IsSuccess;
         }
         catch (Exception ex)
         {
@@ -52,21 +60,17 @@ public partial class App : Application
         }
     }
 
-    private void ApplySavedTheme()
+    private static async Task<string?> ReadSavedThemeAsync()
     {
         try
         {
             var settings = ServiceProvider?.GetService<ISettingsService>();
-            if (settings == null) return;
-
-            var theme = Task.Run(() => settings.GetSettingAsync<string>("Theme", "Light")).GetAwaiter().GetResult();
-            RequestedThemeVariant = string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase)
-                ? ThemeVariant.Dark
-                : ThemeVariant.Light;
+            return settings == null ? null : await settings.GetSettingAsync<string>("Theme", "Light");
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Could not apply the saved theme");
+            Serilog.Log.Warning(ex, "Could not read the saved theme");
+            return null;
         }
     }
 

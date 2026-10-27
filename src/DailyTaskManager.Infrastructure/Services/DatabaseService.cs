@@ -111,6 +111,94 @@ namespace DailyTaskManager.Infrastructure.Services
             }
         }
 
+        public async Task<PagedResult<DailyTask>> GetTasksPageAsync(TaskQuery query, int page, int pageSize)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+            page = Math.Max(1, page);
+            pageSize = Math.Max(1, pageSize);
+
+            var filtered = ApplyQuery(_context.DailyTasks.AsNoTracking().Where(t => t.UserId == userId), query);
+            var total = await filtered.CountAsync();
+
+            // Stay on the last page when entries were deleted or the filter narrowed
+            var lastPage = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+            page = Math.Min(page, lastPage);
+
+            var items = await filtered
+                .OrderByDescending(t => t.Date)
+                .ThenByDescending(t => t.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<DailyTask>(items, total, page, pageSize);
+        }
+
+        public async Task<List<DailyTask>> GetTasksAsync(TaskQuery query)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            return await ApplyQuery(_context.DailyTasks.AsNoTracking().Where(t => t.UserId == userId), query)
+                .OrderByDescending(t => t.Date)
+                .ThenByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<TaskSummary> GetTaskSummaryAsync()
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var today = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Unspecified);
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            var thirtyDaysAgo = today.AddDays(-30);
+            var tomorrow = today.AddDays(1);
+            var since = startOfWeek < thirtyDaysAgo ? startOfWeek : thirtyDaysAgo;
+
+            // One small query over the recent window instead of the whole table
+            var rows = await _context.DailyTasks
+                .AsNoTracking()
+                .Where(t => t.UserId == userId && t.Date >= since && t.Date < tomorrow)
+                .Select(t => new { t.Date, t.Hours })
+                .ToListAsync();
+
+            var todayHours = rows.Where(t => t.Date.Date == today).Sum(t => t.Hours);
+            var weekHours = rows.Where(t => t.Date.Date >= startOfWeek).Sum(t => t.Hours);
+            var last30 = rows.Where(t => t.Date.Date >= thirtyDaysAgo).ToList();
+            var days = last30.Select(t => t.Date.Date).Distinct().Count();
+            var average = days > 0 ? last30.Sum(t => t.Hours) / days : 0m;
+
+            return new TaskSummary(todayHours, weekHours, average);
+        }
+
+        private static IQueryable<DailyTask> ApplyQuery(IQueryable<DailyTask> source, TaskQuery query)
+        {
+            if (!string.IsNullOrWhiteSpace(query.Search) && query.Search.Trim().Length >= 3)
+            {
+                // Escape LIKE wildcards so "50%" or "a_b" match literally
+                var term = query.Search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+                var pattern = $"%{term}%";
+                source = source.Where(t => EF.Functions.ILike(t.Description, pattern));
+            }
+
+            if (query.DateFrom.HasValue)
+            {
+                // task_date is a SQL date: Unspecified maps to "timestamp", so no time zone shifts the comparison
+                var from = DateTime.SpecifyKind(query.DateFrom.Value.Date, DateTimeKind.Unspecified);
+                source = source.Where(t => t.Date >= from);
+            }
+
+            if (query.DateTo.HasValue)
+            {
+                var toExclusive = DateTime.SpecifyKind(query.DateTo.Value.Date.AddDays(1), DateTimeKind.Unspecified);
+                source = source.Where(t => t.Date < toExclusive);
+            }
+
+            return source;
+        }
+
         public async Task<DailyTask?> GetTaskByIdAsync(int id)
         {
             try

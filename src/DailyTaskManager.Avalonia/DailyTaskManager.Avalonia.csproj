@@ -12,15 +12,18 @@
     <AssemblyCompany>Smart Point</AssemblyCompany>
     <AssemblyCopyright>Copyright © 2024 Smart Point</AssemblyCopyright>
     <!-- Version properties - keeping static for build stability, GitVersion used in installer only -->
-    <AssemblyVersion>2.5.0.0</AssemblyVersion>
-    <FileVersion>2.5.0.0</FileVersion>
-    <ProductVersion>2.5.0.0</ProductVersion>
+    <AssemblyVersion>2.6.0.0</AssemblyVersion>
+    <FileVersion>2.6.0.0</FileVersion>
+    <ProductVersion>2.6.0.0</ProductVersion>
     
     <!-- Publishing Properties -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <PublishTrimmed>false</PublishTrimmed>
+    <!-- Precompile to native code so startup does not spend seconds JIT-compiling EF Core, Npgsql and Avalonia -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <TieredPGO>false</TieredPGO>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- Application Properties -->

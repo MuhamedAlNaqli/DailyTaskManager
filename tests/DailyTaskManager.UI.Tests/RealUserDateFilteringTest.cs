@@ -47,8 +47,12 @@ public class RealUserDateFilteringTest
         // Load tasks
         await _viewModel.RefreshCommand.ExecuteAsync(null);
 
-        Console.WriteLine($"✅ Real user test setup complete. Found {_viewModel.Tasks.Count} total tasks");
+        Console.WriteLine($"✅ Real user test setup complete. Found {_viewModel.TotalCount} total tasks");
     }
+
+    private System.Collections.Generic.List<DailyTaskManager.Core.Models.DailyTask> AllTasks =>
+        _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>()
+            .GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery()).GetAwaiter().GetResult();
 
     [TestCleanup]
     public void TestCleanup()
@@ -64,14 +68,14 @@ public class RealUserDateFilteringTest
 
         // Verify we have tasks loaded
         Assert.IsNotNull(_viewModel, "ViewModel should be initialized");
-        Assert.IsTrue(_viewModel.Tasks.Count > 0, "Should have tasks loaded");
+        Assert.IsTrue(_viewModel.TotalCount > 0, "Should have tasks loaded");
 
-        var totalTasks = _viewModel.Tasks.Count;
+        var totalTasks = _viewModel.TotalCount;
         Console.WriteLine($"📋 Total tasks for Muhamed: {totalTasks}");
 
         // Print all task dates for debugging
         Console.WriteLine("📅 Task dates found for Muhamed:");
-        foreach (var task in _viewModel.Tasks.OrderBy(t => t.Date))
+        foreach (var task in AllTasks.OrderBy(t => t.Date))
         {
             Console.WriteLine($"  - {task.Date:yyyy-MM-dd}: {task.Description?.Substring(0, Math.Min(50, task.Description?.Length ?? 0))}...");
         }
@@ -86,7 +90,7 @@ public class RealUserDateFilteringTest
         Console.WriteLine("📝 Setting ViewModel date filter properties...");
         _viewModel.DateFrom = dateFrom;
         _viewModel.DateTo = dateTo;
-        _viewModel.ApplyFilters(); // date changes are applied explicitly (Apply button)
+        await _viewModel.ApplyFiltersAsync(); // date changes are applied explicitly (Apply button)
 
         // Give the ViewModel time to apply filters
         await Task.Delay(1000);
@@ -131,7 +135,7 @@ public class RealUserDateFilteringTest
         else
         {
             // If no tasks in range, verify that's correct by checking if any tasks should be in range
-            var tasksInRange = _viewModel.Tasks.Where(t =>
+            var tasksInRange = AllTasks.Where(t =>
                 t.Date.Date >= dateFrom.Date && t.Date.Date <= dateTo.Date).Count();
 
             Console.WriteLine($"📊 Expected tasks in range: {tasksInRange}");
@@ -150,11 +154,11 @@ public class RealUserDateFilteringTest
         Console.WriteLine("🔄 Testing filter clearing...");
         _viewModel.DateFrom = null;
         _viewModel.DateTo = null;
-        _viewModel.ApplyFilters();
+        await _viewModel.ApplyFiltersAsync();
 
         await Task.Delay(500);
 
-        Assert.AreEqual(totalTasks, _viewModel.FilteredTasks.Count,
+        Assert.AreEqual(totalTasks, _viewModel.TotalCount,
             "After clearing filters, should show all tasks again");
 
         Console.WriteLine("✅ Filter clearing works correctly");

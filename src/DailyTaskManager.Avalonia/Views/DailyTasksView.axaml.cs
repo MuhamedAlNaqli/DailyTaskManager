@@ -39,7 +39,9 @@ public partial class DailyTasksView : UserControl
         if (DataContext is DailyTasksViewModel viewModel)
         {
             Serilog.Log.Debug("DailyTasksView: DataContext changed to DailyTasksViewModel");
+            if (_currentViewModel != null) _currentViewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _currentViewModel = viewModel;
+            viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             // Defer setup until after UI is loaded
             Dispatcher.UIThread.Post(() => SetupCalendarEvents(), DispatcherPriority.Background);
@@ -48,6 +50,15 @@ public partial class DailyTasksView : UserControl
         {
             Serilog.Log.Debug("DailyTasksView: DataContext is not DailyTasksViewModel");
             _currentViewModel = null;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // A new page starts at the top of the list
+        if (e.PropertyName == nameof(DailyTasksViewModel.CurrentPage))
+        {
+            this.FindControl<ScrollViewer>("PageScroll")?.ScrollToHome();
         }
     }
 

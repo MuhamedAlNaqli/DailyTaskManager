@@ -34,10 +34,11 @@ class Program
             // Configure application with the host's services
             // Store the service provider for global access
             App.ServiceProvider = host.Services;
-            // Initialize database before starting UI
-            InitializeDatabaseAsync(host.Services).GetAwaiter().GetResult();
-            // Initialize update service
-            InitializeUpdateServiceAsync(host.Services).GetAwaiter().GetResult();
+            // Warm up the database (EF model, connection, schema check) on a worker thread while Avalonia
+            // initializes the platform and fonts; the app waits for it before it needs data (see App).
+            DatabaseReady = Task.Run(() => InitializeDatabaseAsync(host.Services));
+            // The update service is not needed to show the first window
+            _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -48,6 +49,9 @@ class Program
             throw;
         }
     }
+
+    /// <summary>Completes when the database schema is ready; faults when initialization failed</summary>
+    public static Task DatabaseReady { get; private set; } = Task.CompletedTask;
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
@@ -70,12 +74,13 @@ class Program
             })
             .UseSerilog((context, configuration) =>
             {
+                // File only (this is a windowed app, nobody reads the console), and no per-SQL-command lines
                 configuration
-                    .WriteTo.Console()
                     .WriteTo.File("logs/dailytaskmanager-.txt", 
                         rollingInterval: RollingInterval.Day,
                         retainedFileCountLimit: 7)
-                    .MinimumLevel.Information();
+                    .MinimumLevel.Information()
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning);
             })
             .ConfigureServices((context, services) =>
             {

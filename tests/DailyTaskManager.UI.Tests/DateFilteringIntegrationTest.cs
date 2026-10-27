@@ -52,8 +52,12 @@ public class DateFilteringIntegrationTest
         // Load tasks by calling refresh (which calls LoadTasksAsync internally)
         await _viewModel.RefreshCommand.ExecuteAsync(null);
 
-        Console.WriteLine($"✅ Integration test setup complete. Found {_viewModel.Tasks.Count} total tasks");
+        Console.WriteLine($"✅ Integration test setup complete. Found {_viewModel.TotalCount} total tasks");
     }
+
+    private System.Collections.Generic.List<DailyTaskManager.Core.Models.DailyTask> AllTasks =>
+        _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>()
+            .GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery()).GetAwaiter().GetResult();
 
     [TestCleanup]
     public void TestCleanup()
@@ -69,14 +73,14 @@ public class DateFilteringIntegrationTest
 
         // Verify we have tasks loaded
         Assert.IsNotNull(_viewModel, "ViewModel should be initialized");
-        Assert.IsTrue(_viewModel.Tasks.Count > 0, "Should have tasks loaded");
+        Assert.IsTrue(_viewModel.TotalCount > 0, "Should have tasks loaded");
 
-        var totalTasks = _viewModel.Tasks.Count;
+        var totalTasks = _viewModel.TotalCount;
         Console.WriteLine($"📋 Total tasks loaded: {totalTasks}");
 
         // Print all task dates for debugging
         Console.WriteLine("📅 Task dates found:");
-        foreach (var task in _viewModel.Tasks.OrderBy(t => t.Date))
+        foreach (var task in AllTasks.OrderBy(t => t.Date))
         {
             Console.WriteLine($"  - {task.Date:yyyy-MM-dd}: {task.Description}");
         }
@@ -91,7 +95,7 @@ public class DateFilteringIntegrationTest
         Console.WriteLine("📝 Setting ViewModel date filter properties...");
         _viewModel.DateFrom = dateFrom;
         _viewModel.DateTo = dateTo;
-        _viewModel.ApplyFilters(); // date changes are applied explicitly (Apply button)
+        await _viewModel.ApplyFiltersAsync(); // date changes are applied explicitly (Apply button)
 
         // Give the ViewModel time to apply filters
         await Task.Delay(1000);
@@ -136,7 +140,7 @@ public class DateFilteringIntegrationTest
         else
         {
             // If no tasks in range, verify that's correct by checking if any tasks should be in range
-            var tasksInRange = _viewModel.Tasks.Where(t =>
+            var tasksInRange = AllTasks.Where(t =>
                 t.Date.Date >= dateFrom.Date && t.Date.Date <= dateTo.Date).Count();
 
             Console.WriteLine($"📊 Expected tasks in range: {tasksInRange}");
@@ -155,15 +159,71 @@ public class DateFilteringIntegrationTest
         Console.WriteLine("🔄 Testing filter clearing...");
         _viewModel.DateFrom = null;
         _viewModel.DateTo = null;
-        _viewModel.ApplyFilters();
+        await _viewModel.ApplyFiltersAsync();
 
         await Task.Delay(500);
 
-        Assert.AreEqual(totalTasks, _viewModel.FilteredTasks.Count,
+        Assert.AreEqual(totalTasks, _viewModel.TotalCount,
             "After clearing filters, should show all tasks again");
 
         Console.WriteLine("✅ Filter clearing works correctly");
         Console.WriteLine("🎉 Date filtering integration test passed!");
+    }
+
+    [TestMethod]
+    public async Task Paging_ShouldLimitPageSizeAndNavigate()
+    {
+        Assert.IsNotNull(_viewModel);
+        var total = _viewModel.TotalCount;
+        Assert.IsTrue(total > 0, "Should have tasks loaded");
+
+        // The list only ever holds one page
+        Assert.IsTrue(_viewModel.FilteredTasks.Count <= DailyTasksViewModel.PageSize);
+        Assert.AreEqual(Math.Min(total, DailyTasksViewModel.PageSize), _viewModel.FilteredTasks.Count);
+        Assert.AreEqual(1, _viewModel.CurrentPage);
+
+        if (total > DailyTasksViewModel.PageSize)
+        {
+            var firstPageIds = _viewModel.FilteredTasks.Select(t => t.Id).ToList();
+
+            await _viewModel.NextPageCommand.ExecuteAsync(null);
+            Assert.AreEqual(2, _viewModel.CurrentPage);
+            Assert.IsFalse(_viewModel.FilteredTasks.Select(t => t.Id).Intersect(firstPageIds).Any(),
+                "Page 2 should contain different tasks than page 1");
+
+            await _viewModel.LastPageCommand.ExecuteAsync(null);
+            Assert.AreEqual(_viewModel.TotalPages, _viewModel.CurrentPage);
+            Assert.IsTrue(_viewModel.FilteredTasks.Count >= 1);
+
+            await _viewModel.FirstPageCommand.ExecuteAsync(null);
+            Assert.AreEqual(1, _viewModel.CurrentPage);
+            CollectionAssert.AreEqual(firstPageIds, _viewModel.FilteredTasks.Select(t => t.Id).ToList());
+        }
+
+        // Pages together cover exactly the filtered set
+        Assert.AreEqual((int)Math.Ceiling(total / (double)DailyTasksViewModel.PageSize), _viewModel.TotalPages);
+    }
+
+    [TestMethod]
+    public async Task Search_ShouldFilterInDatabaseAndResetToFirstPage()
+    {
+        Assert.IsNotNull(_viewModel);
+        var sample = AllTasks.First().Description;
+        var term = sample.Length >= 3 ? sample.Substring(0, 3) : sample;
+
+        _viewModel.SearchText = term;
+        await Task.Delay(1500); // debounce + query
+        await _viewModel.ApplyFiltersAsync();
+
+        var expected = AllTasks.Count(t => t.Description.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
+        Assert.AreEqual(expected, _viewModel.TotalCount, "Search result count should match a case-insensitive contains");
+        Assert.IsTrue(_viewModel.FilteredTasks.All(t => t.Description.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0));
+        Assert.AreEqual(1, _viewModel.CurrentPage);
+
+        // Searches under 3 characters are ignored
+        _viewModel.SearchText = "ab";
+        await _viewModel.ApplyFiltersAsync();
+        Assert.AreEqual(AllTasks.Count, _viewModel.TotalCount);
     }
 
     private IHost CreateTestHost()

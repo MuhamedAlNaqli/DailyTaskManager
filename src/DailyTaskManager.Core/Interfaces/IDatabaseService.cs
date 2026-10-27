@@ -26,6 +26,21 @@ namespace DailyTaskManager.Core.Interfaces
         Task<List<DailyTask>> GetTasksAsync(DateTime startDate, DateTime endDate);
 
         /// <summary>
+        /// Gets one page of the current user's tasks matching the query (newest first)
+        /// </summary>
+        Task<PagedResult<DailyTask>> GetTasksPageAsync(TaskQuery query, int page, int pageSize);
+
+        /// <summary>
+        /// Gets every task matching the query (used by exports)
+        /// </summary>
+        Task<List<DailyTask>> GetTasksAsync(TaskQuery query);
+
+        /// <summary>
+        /// Gets today / this week / 30-day average hours, computed in the database
+        /// </summary>
+        Task<TaskSummary> GetTaskSummaryAsync();
+
+        /// <summary>
         /// Gets a specific task by ID
         /// </summary>
         Task<DailyTask?> GetTaskByIdAsync(int id);

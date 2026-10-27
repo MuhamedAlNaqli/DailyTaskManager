@@ -72,6 +72,8 @@ namespace DailyTaskManager.Infrastructure.Data
                 // Configure properties
                 entity.Property(d => d.Description).HasMaxLength(1000);
                 entity.Property(d => d.Hours).HasColumnType("decimal(5,2)");
+                // The column is a plain SQL date; mapping it as one keeps range filters free of time zone shifts
+                entity.Property(d => d.Date).HasColumnType("date");
                 
                 // Configure timestamps
                 entity.Property(d => d.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -205,19 +207,18 @@ namespace DailyTaskManager.Infrastructure.Data
             }
 
             // "Remember me" session columns on existing databases
-            await Database.ExecuteSqlRawAsync(
-                "ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS \"RememberTokenHash\" character varying(100)");
-            await Database.ExecuteSqlRawAsync(
-                "ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS \"RememberTokenExpiresAt\" timestamp with time zone");
+            // Settings values were originally limited to 1000 characters.
+            // All idempotent statements go out in one round trip instead of five.
+            await Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS ""RememberTokenHash"" character varying(100);
+                ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS ""RememberTokenExpiresAt"" timestamp with time zone;
+                ALTER TABLE IF EXISTS public.settings ALTER COLUMN value TYPE character varying(4000);
+                UPDATE public.daily_tasks SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;
+                UPDATE public.daily_tasks SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL;");
 
-            // Settings values were originally limited to 1000 characters
+            // Composite index matching the list query (filter by user, newest first) so paging stays fast as the table grows
             await Database.ExecuteSqlRawAsync(
-                "ALTER TABLE IF EXISTS public.settings ALTER COLUMN value TYPE character varying(4000)");
-
-            await Database.ExecuteSqlRawAsync(
-                "UPDATE public.daily_tasks SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL");
-            await Database.ExecuteSqlRawAsync(
-                "UPDATE public.daily_tasks SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL");
+                "CREATE INDEX IF NOT EXISTS ix_daily_tasks_user_date_created ON public.daily_tasks (\"UserId\", task_date DESC, created_at DESC)");
         }
     }
 }

@@ -9,7 +9,7 @@
         <vm:DailyTasksViewModel/>
     </Design.DataContext>
 
-    <ScrollViewer>
+    <ScrollViewer Name="PageScroll">
         <Grid Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -144,8 +144,8 @@
                         BorderThickness="1">
                     <StackPanel>
                         <TextBlock Text="Total Entries" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding FilteredTasks.Count}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
-                        <TextBlock Text="All time" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                        <TextBlock Text="Matching filters" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
@@ -287,6 +287,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
                     <!-- Table Header -->
@@ -310,8 +311,7 @@
                     </Border>
                     
                     <!-- Task List -->
-                    <ScrollViewer Grid.Row="1" MaxHeight="500">
-                        <ItemsControl ItemsSource="{Binding FilteredTasks}">
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding FilteredTasks}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource AppDivider}" BorderThickness="0,1,0,0" Padding="20,16">
@@ -383,12 +383,33 @@
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    </ItemsControl>
+
+                    <!-- Pager -->
+                    <Border Grid.Row="2"
+                            BorderBrush="{DynamicResource AppDivider}"
+                            BorderThickness="0,1,0,0"
+                            Padding="20,12"
+                            IsVisible="{Binding TotalCount}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Name="PageInfoText"
+                                       Text="{Binding PageInfo}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppTextMuted}"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <Button Name="FirstPageButton" Content="«" Command="{Binding FirstPageCommand}" ToolTip.Tip="First page" Padding="10,4"/>
+                                <Button Name="PreviousPageButton" Content="‹ Previous" Command="{Binding PreviousPageCommand}" Padding="10,4"/>
+                                <Button Name="NextPageButton" Content="Next ›" Command="{Binding NextPageCommand}" Padding="10,4"/>
+                                <Button Name="LastPageButton" Content="»" Command="{Binding LastPageCommand}" ToolTip.Tip="Last page" Padding="10,4"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                     
                     <!-- Empty State -->
                     <StackPanel Grid.Row="1"
-                               IsVisible="{Binding !FilteredTasks.Count}"
+                               IsVisible="{Binding !TotalCount}"
                                HorizontalAlignment="Center" 
                                VerticalAlignment="Center"
                                Spacing="16"

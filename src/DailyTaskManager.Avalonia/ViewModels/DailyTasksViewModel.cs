@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,18 +21,35 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     private readonly DialogService _dialogService;
     private readonly ILogger<DailyTasksViewModel> _logger;
 
-    [ObservableProperty]
-    private ObservableCollection<DailyTask> _tasks = new();
-    
+    public const int PageSize = 25;
+
+    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(250);
+
+    private CancellationTokenSource? _searchDebounce;
+    private int _loadVersion;
+
+    /// <summary>The tasks on the current page</summary>
     [ObservableProperty]
     private ObservableCollection<DailyTask> _filteredTasks = new();
+
+    /// <summary>Number of tasks matching the current filters, across all pages</summary>
+    [ObservableProperty]
+    private int _totalCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageInfo), nameof(CanGoPrevious), nameof(CanGoNext))]
+    private int _currentPage = 1;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageInfo), nameof(CanGoNext))]
+    private int _totalPages = 1;
 
     [ObservableProperty]
     private DailyTask? _selectedTask;
 
     [ObservableProperty]
     private bool _isLoading = false;
-    
+
     [ObservableProperty]
     private string _searchText = string.Empty;
 
@@ -51,7 +69,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     private decimal _dailyAverage30Days;
 
     public DailyTasksViewModel(
-        IDatabaseService databaseService, 
+        IDatabaseService databaseService,
         IExportService exportService,
         IAuthenticationService authService,
         ISettingsService settingsService,
@@ -64,17 +82,27 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         _settingsService = settingsService;
         _dialogService = dialogService;
         _logger = logger;
-        
+
         // Subscribe to authentication changes
         _authService.AuthenticationChanged += OnAuthenticationChanged;
-        
+
         // Always attempt to load tasks - LoadTasksAsync handles authentication check
         _ = LoadTasksAsync();
     }
 
+    public bool CanGoPrevious => CurrentPage > 1;
+
+    public bool CanGoNext => CurrentPage < TotalPages;
+
+    public string PageInfo => TotalCount == 0
+        ? "No entries"
+        : $"{(CurrentPage - 1) * PageSize + 1}-{Math.Min(CurrentPage * PageSize, TotalCount)} of {TotalCount}  (page {CurrentPage}/{TotalPages})";
+
     public void Dispose()
     {
         _authService.AuthenticationChanged -= OnAuthenticationChanged;
+        _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
     }
 
     private async void OnAuthenticationChanged(object? sender, AuthResult e)
@@ -87,32 +115,54 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         else
         {
             // User logged out, clear tasks
-            Tasks.Clear();
+            Interlocked.Increment(ref _loadVersion);
+            FilteredTasks = new ObservableCollection<DailyTask>();
+            TotalCount = 0;
         }
     }
 
     [RelayCommand]
-    private async Task LoadTasksAsync()
+    private Task LoadTasksAsync() => LoadPageAsync(CurrentPage, showOverlay: true);
+
+    private TaskQuery CurrentQuery => new(SearchText, DateFrom, DateTo);
+
+    /// <summary>
+    /// Loads one page (plus the header statistics) from the database. Only the latest request wins,
+    /// so quick typing or paging never shows stale results.
+    /// </summary>
+    private async Task LoadPageAsync(int page, bool showOverlay)
     {
+        var version = Interlocked.Increment(ref _loadVersion);
+
         try
         {
-            // Check if user is authenticated first
             if (!_authService.IsAuthenticated)
             {
-                _logger.LogInformation("User not authenticated, skipping task loading");
-                Tasks.Clear();
-                ApplyFilters();
+                FilteredTasks = new ObservableCollection<DailyTask>();
+                TotalCount = 0;
                 return;
             }
 
-            IsLoading = true;
-            _logger.LogInformation("Loading tasks for authenticated user...");
+            if (showOverlay) IsLoading = true;
 
-            var tasks = await _databaseService.GetTasksAsync();
-            Tasks = new ObservableCollection<DailyTask>(tasks);
-            ApplyFilters();
+            var pageTask = _databaseService.GetTasksPageAsync(CurrentQuery, page, PageSize);
+            var summaryTask = _databaseService.GetTaskSummaryAsync();
+            await Task.WhenAll(pageTask, summaryTask);
 
-            _logger.LogInformation("Loaded {Count} tasks", tasks.Count);
+            if (version != _loadVersion) return; // a newer request superseded this one
+
+            var result = pageTask.Result;
+            var summary = summaryTask.Result;
+
+            FilteredTasks = new ObservableCollection<DailyTask>(result.Items);
+            TotalCount = result.TotalCount;
+            TotalPages = Math.Max(1, result.TotalPages);
+            CurrentPage = result.Page;
+            OnPropertyChanged(nameof(PageInfo));
+
+            TodayHours = summary.TodayHours;
+            ThisWeekHours = summary.ThisWeekHours;
+            DailyAverage30Days = summary.DailyAverage30Days;
         }
         catch (Exception ex)
         {
@@ -125,8 +175,32 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            if (showOverlay && version == _loadVersion) IsLoading = false;
         }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+    private Task PreviousPageAsync() => LoadPageAsync(CurrentPage - 1, showOverlay: false);
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
+    private Task NextPageAsync() => LoadPageAsync(CurrentPage + 1, showOverlay: false);
+
+    [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+    private Task FirstPageAsync() => LoadPageAsync(1, showOverlay: false);
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
+    private Task LastPageAsync() => LoadPageAsync(TotalPages, showOverlay: false);
+
+    partial void OnCurrentPageChanged(int value) => NotifyPagingCommands();
+
+    partial void OnTotalPagesChanged(int value) => NotifyPagingCommands();
+
+    private void NotifyPagingCommands()
+    {
+        PreviousPageCommand.NotifyCanExecuteChanged();
+        FirstPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
+        LastPageCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -140,7 +214,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
                 IsLoading = true;
                 await _databaseService.AddTaskAsync(newTask);
                 await LoadTasksAsync();
-                
+
                 _logger.LogInformation("Added new task: {Description}", newTask.Description);
             }
         }
@@ -168,7 +242,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
                 IsLoading = true;
                 await _databaseService.UpdateTaskAsync(editedTask);
                 await LoadTasksAsync();
-                
+
                 _logger.LogInformation("Updated task: {Description}", editedTask.Description);
             }
         }
@@ -191,14 +265,14 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         try
         {
             var confirmed = await _dialogService.ShowConfirmDialogAsync(
-                "Delete Task", 
+                "Delete Task",
                 $"Are you sure you want to delete '{task.Description}'?");
-                
+
             if (confirmed)
             {
                 IsLoading = true;
                 var success = await _databaseService.RemoveTaskAsync(task.Id);
-                
+
                 if (success)
                 {
                     await LoadTasksAsync();
@@ -226,18 +300,18 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     {
         try
         {
-            if (!FilteredTasks.Any())
+            if (TotalCount == 0)
             {
                 await _dialogService.ShowInfoDialogAsync("No Data", "No tasks available to export.");
                 return;
             }
 
             IsLoading = true;
-            var filePath = await _exportService.ExportTasksToExcelAsync(FilteredTasks.ToList());
-            
+            var filePath = await _exportService.ExportTasksToExcelAsync(await _databaseService.GetTasksAsync(CurrentQuery));
+
             await _dialogService.ShowInfoDialogAsync("Success", $"Tasks exported successfully to:\n{filePath}");
-            
-            _logger.LogInformation("Exported {Count} tasks to Excel", FilteredTasks.Count);
+
+            _logger.LogInformation("Exported {Count} tasks to Excel", TotalCount);
         }
         catch (Exception ex)
         {
@@ -255,7 +329,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     {
         try
         {
-            if (!FilteredTasks.Any())
+            if (TotalCount == 0)
             {
                 await _dialogService.ShowInfoDialogAsync("No Data", "No tasks available to export.");
                 return;
@@ -264,11 +338,11 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             IsLoading = true;
 
             var pdfSettings = await _settingsService.GetPdfSettingsAsync();
-            var filePath = await _exportService.ExportTasksToPdfAsync(FilteredTasks.ToList(), pdfSettings);
+            var filePath = await _exportService.ExportTasksToPdfAsync(await _databaseService.GetTasksAsync(CurrentQuery), pdfSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"PDF exported successfully to:\n{filePath}");
 
-            _logger.LogInformation("PDF export completed successfully for {Count} tasks: {FilePath}", FilteredTasks.Count, filePath);
+            _logger.LogInformation("PDF export completed successfully for {Count} tasks: {FilePath}", TotalCount, filePath);
         }
         catch (Exception ex)
         {
@@ -286,7 +360,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     {
         try
         {
-            if (!FilteredTasks.Any())
+            if (TotalCount == 0)
             {
                 await _dialogService.ShowInfoDialogAsync("No Data", "No tasks available to export.");
                 return;
@@ -295,11 +369,11 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             IsLoading = true;
 
             var wordSettings = await _settingsService.GetPdfSettingsAsync();
-            var filePath = await _exportService.ExportTasksToWordAsync(FilteredTasks.ToList(), wordSettings);
+            var filePath = await _exportService.ExportTasksToWordAsync(await _databaseService.GetTasksAsync(CurrentQuery), wordSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"Word document exported successfully to:\n{filePath}");
 
-            _logger.LogInformation("Word export completed successfully for {Count} tasks: {FilePath}", FilteredTasks.Count, filePath);
+            _logger.LogInformation("Word export completed successfully for {Count} tasks: {FilePath}", TotalCount, filePath);
         }
         catch (Exception ex)
         {
@@ -317,56 +391,13 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     {
         await LoadTasksAsync();
     }
-    
-    
-    public void ApplyFilters()
-    {
-        _logger.LogInformation("ApplyFilters called. Total tasks: {TotalTasks}, DateFrom: {DateFrom}, DateTo: {DateTo}", 
-            Tasks.Count, DateFrom, DateTo);
-            
-        var filtered = Tasks.Where(FilterTask).ToList();
-        
-        // Clear and repopulate instead of replacing the entire collection
-        // This ensures proper UI notification
-        FilteredTasks.Clear();
-        foreach (var task in filtered)
-        {
-            FilteredTasks.Add(task);
-        }
-        
-        _logger.LogInformation("Filtering complete. Filtered tasks: {FilteredCount}", filtered.Count);
 
-        // Update statistics after filtering
-        UpdateStatistics();
-    }
-    
-    private bool FilterTask(DailyTask task)
-    {
-        if (task == null) return false;
-        
-        // Search filter
-        // Searches shorter than 3 characters are ignored (treated as no search)
-        bool matchesSearch = string.IsNullOrWhiteSpace(SearchText) || SearchText.Length < 3
-            || task.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
-            || task.Date.ToString("d").Contains(SearchText)
-            || task.Hours.ToString().Contains(SearchText);
-        
-        // Date range filters - compare date parts only
-        bool matchesDateFrom = !DateFrom.HasValue || task.Date.Date >= DateFrom.Value.Date;
-        bool matchesDateTo = !DateTo.HasValue || task.Date.Date <= DateTo.Value.Date;
 
-        var result = matchesSearch && matchesDateFrom && matchesDateTo;
+    /// <summary>Re-runs the query from the first page (used by the date range Apply button)</summary>
+    public void ApplyFilters() => _ = ApplyFiltersAsync();
 
-        // Debug logging for date filters specifically
-        if (DateFrom.HasValue || DateTo.HasValue)
-        {
-            _logger.LogInformation("Task {TaskId} ({Date}): SearchMatch={SearchMatch}, DateFromMatch={DateFromMatch} (From: {DateFrom}), DateToMatch={DateToMatch} (To: {DateTo}), Result={Result}",
-                task.Id, task.Date.Date, matchesSearch, matchesDateFrom, DateFrom?.Date, matchesDateTo, DateTo?.Date, result);
-        }
-        
-        return result;
-    }
-    
+    public Task ApplyFiltersAsync() => LoadPageAsync(1, showOverlay: false);
+
     [RelayCommand]
     private void ClearFilters()
     {
@@ -377,50 +408,21 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
     partial void OnSearchTextChanged(string value)
     {
-        _logger.LogInformation("SearchText property changed to: '{SearchText}'", value);
+        // Wait for a pause in typing, then query once instead of once per keystroke
+        _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
+        var cts = _searchDebounce = new CancellationTokenSource();
 
-        ApplyFilters();
-    }
-
-    partial void OnDateFromChanged(DateTime? value)
-    {
-        _logger.LogInformation("DateFrom property changed to: {DateFrom}", value);
-        // Don't auto-apply filters for date changes - let user use search button for control
-    }
-
-    partial void OnDateToChanged(DateTime? value)
-    {
-        _logger.LogInformation("DateTo property changed to: {DateTo}", value);
-        // Don't auto-apply filters for date changes - let user use search button for control
-    }
-
-    private void UpdateStatistics()
-    {
-        try
+        _ = Task.Run(async () =>
         {
-            var today = DateTime.Today;
-            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
-            var thirtyDaysAgo = today.AddDays(-30);
-
-            // Calculate today's hours
-            TodayHours = Tasks.Where(t => t.Date.Date == today).Sum(t => t.Hours);
-
-            // Calculate this week's hours
-            ThisWeekHours = Tasks.Where(t => t.Date.Date >= startOfWeek && t.Date.Date <= today).Sum(t => t.Hours);
-
-            // Calculate daily average for last 30 days
-            var last30DaysTasks = Tasks.Where(t => t.Date.Date >= thirtyDaysAgo && t.Date.Date <= today);
-            var last30DaysTotal = last30DaysTasks.Sum(t => t.Hours);
-            var workingDaysInPeriod = last30DaysTasks.Select(t => t.Date.Date).Distinct().Count();
-
-            DailyAverage30Days = workingDaysInPeriod > 0 ? last30DaysTotal / workingDaysInPeriod : 0m;
-
-            _logger.LogInformation("Statistics updated: Today={TodayHours}h, Week={WeekHours}h, DailyAvg={DailyAvg}h",
-                TodayHours, ThisWeekHours, DailyAverage30Days);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating statistics");
-        }
+            try
+            {
+                await Task.Delay(SearchDebounce, cts.Token);
+                await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => ApplyFiltersAsync());
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
     }
 }
