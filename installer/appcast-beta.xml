@@ -31,7 +31,7 @@
             <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
             <sparkle:os>windows</sparkle:os>
             <sparkle:channel>beta</sparkle:channel>
-            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <sparkle:installerArguments>/passive</sparkle:installerArguments>
             <enclosure 
                 url="https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/vX.X.X-beta.X/DailyTaskManager-vX.X.X.X-win-x64.msi"
                 sparkle:version="X.X.X.X"

@@ -316,7 +316,7 @@ jobs:
           "            <sparkle:releaseNotesLink>$releaseUrl</sparkle:releaseNotesLink>",
           "            <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>",
           "            <sparkle:os>windows</sparkle:os>",
-          "            <sparkle:installerArguments>/quiet</sparkle:installerArguments>",
+          "            <sparkle:installerArguments>/passive</sparkle:installerArguments>",
           "            <enclosure",
           "                url=`"$downloadUrl`"",
           "                sparkle:version=`"$assemblyVersion`"",

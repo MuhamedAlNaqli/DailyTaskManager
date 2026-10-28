@@ -37,7 +37,7 @@
             <sparkle:releaseNotesLink>https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/tag/v2.2.1</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
             <sparkle:os>windows</sparkle:os>
-            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <sparkle:installerArguments>/passive</sparkle:installerArguments>
             <enclosure
                 url="https://github.com/MuhamedAlNaqli/DailyTaskManager/releases/download/v2.2.1/DailyTaskManager-v2.2.1-win-x64.msi"
                 sparkle:version="2.2.1.0"
@@ -114,7 +114,7 @@
             <sparkle:releaseNotesLink>https://github.com/smartpointdevelopment/DailyTaskManager/releases/tag/v2.1.0</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
             <sparkle:os>windows</sparkle:os>
-            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <sparkle:installerArguments>/passive</sparkle:installerArguments>
             <enclosure 
                 url="https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/v2.1.0/DailyTaskManager-v2.1.0.0-win-x64.msi"
                 sparkle:version="2.1.0.0"
@@ -146,7 +146,7 @@
             <sparkle:releaseNotesLink>https://github.com/smartpointdevelopment/DailyTaskManager/releases/tag/vX.X.X</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>10.0</sparkle:minimumSystemVersion>
             <sparkle:os>windows</sparkle:os>
-            <sparkle:installerArguments>/quiet</sparkle:installerArguments>
+            <sparkle:installerArguments>/passive</sparkle:installerArguments>
             <enclosure 
                 url="https://github.com/smartpointdevelopment/DailyTaskManager/releases/download/vX.X.X/DailyTaskManager-vX.X.X.X-win-x64.msi"
                 sparkle:version="X.X.X.X"
