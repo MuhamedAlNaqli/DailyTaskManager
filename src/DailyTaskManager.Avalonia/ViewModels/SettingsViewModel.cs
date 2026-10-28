@@ -23,6 +23,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly DialogService _dialogService;
     private readonly IUpdateService _updateService;
     private readonly IPlatformService _platformService;
+    private readonly IBackupService _backupService;
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -57,8 +58,9 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<AppSettingItem> AppSettings { get; } = new();
 
     public SettingsViewModel(ISettingsService settingsService, IExportService exportService,
-        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService)
+        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService, IBackupService backupService)
     {
+        _backupService = backupService;
         _settingsService = settingsService;
         _exportService = exportService;
         _logger = logger;
@@ -242,6 +244,92 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading settings data");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    // ---- Backup and import ------------------------------------------------------------------------
+
+    private static readonly Dictionary<string, List<string>> JsonFiles = new() { ["Backup file (*.json)"] = new List<string> { "*.json" } };
+
+    private static readonly Dictionary<string, List<string>> SpreadsheetFiles = new()
+    {
+        ["CSV and Excel files"] = new List<string> { "*.csv", "*.xlsx" }
+    };
+
+    [RelayCommand]
+    private async Task BackupDataAsync()
+    {
+        try
+        {
+            var path = await _platformService.ShowSaveFileDialogAsync("Save backup",
+                $"DailyTaskManager-backup-{DateTime.Now:yyyyMMdd}.json", JsonFiles);
+            if (string.IsNullOrEmpty(path)) return;
+
+            IsLoading = true;
+            await _backupService.CreateBackupAsync(path);
+            await _dialogService.ShowInfoDialogAsync("Backup created", $"Your entries and templates were saved to:\n{path}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating backup");
+            await _dialogService.ShowErrorDialogAsync("Backup Error", $"Failed to create the backup: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private Task RestoreBackupAsync() => ImportFromFileAsync("Restore from backup", JsonFiles);
+
+    [RelayCommand]
+    private Task ImportEntriesAsync() => ImportFromFileAsync("Import entries from a CSV or Excel file", SpreadsheetFiles);
+
+    private async Task ImportFromFileAsync(string title, Dictionary<string, List<string>> fileTypes)
+    {
+        try
+        {
+            var path = await _platformService.ShowOpenFileDialogAsync(title, fileTypes);
+            if (string.IsNullOrEmpty(path)) return;
+
+            IsLoading = true;
+            var preview = await _backupService.ReadImportFileAsync(path);
+            IsLoading = false;
+
+            if (preview.Entries.Count == 0 && preview.Templates.Count == 0)
+            {
+                await _dialogService.ShowInfoDialogAsync("Nothing to import",
+                    "No entries could be read from this file. A CSV or Excel file needs Date, Description and Hours columns.");
+                return;
+            }
+
+            var message = new System.Text.StringBuilder();
+            message.AppendLine($"{preview.SourceName}: {preview.Entries.Count} entries" +
+                               (preview.From.HasValue ? $" from {preview.From:d MMM yyyy} to {preview.To:d MMM yyyy}." : "."));
+            message.AppendLine($"{preview.NewCount} are new and {preview.DuplicateCount} already exist (they will be skipped).");
+            if (preview.Templates.Count > 0) message.AppendLine($"{preview.Templates.Count} templates are included (existing names are kept).");
+            if (preview.SkippedRows > 0) message.AppendLine($"{preview.SkippedRows} rows could not be read and will be ignored.");
+            message.AppendLine();
+            message.Append("Import now?");
+
+            if (!await _dialogService.ShowConfirmDialogAsync(title, message.ToString())) return;
+
+            IsLoading = true;
+            var result = await _backupService.ImportAsync(preview);
+            await _dialogService.ShowInfoDialogAsync("Import complete",
+                $"Added {result.Added} entries ({result.Duplicates} skipped as duplicates)." +
+                (result.ClientsCreated > 0 ? $"\nCreated {result.ClientsCreated} new clients." : "") +
+                (result.TemplatesAdded > 0 ? $"\nAdded {result.TemplatesAdded} templates." : ""));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error importing from file");
+            await _dialogService.ShowErrorDialogAsync("Import Error", ex.Message);
         }
         finally
         {

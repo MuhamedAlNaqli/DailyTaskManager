@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using DailyTaskManager.Avalonia.Services;
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Core.Interfaces;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
 
-public partial class AddTaskViewModel : ObservableObject
+public partial class AddTaskViewModel : ObservableObject, IDisposable
 {
     private readonly ILogger<AddTaskViewModel> _logger;
     private readonly IAutoCompleteService _autoCompleteService;
@@ -71,12 +72,33 @@ public partial class AddTaskViewModel : ObservableObject
 
     public event EventHandler<bool>? RequestClose;
 
-    public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService, IDatabaseService databaseService)
+    /// <summary>Dictation for the description (hidden when Windows has no speech recognizer)</summary>
+    public DictationController Dictation { get; }
+
+    public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService, IDatabaseService databaseService,
+        ISpeechRecognitionService speechService)
     {
         _logger = logger;
         _autoCompleteService = autoCompleteService;
         _databaseService = databaseService;
+        Dictation = new DictationController(speechService, logger);
+        Dictation.TextRecognized += AppendDictatedText;
         _ = LoadClientsAsync();
+    }
+
+    /// <summary>Adds dictated text to the end of the description</summary>
+    public void AppendDictatedText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        text = text.Trim();
+        Description = string.IsNullOrWhiteSpace(Description) ? char.ToUpper(text[0]) + text.Substring(1) : Description.TrimEnd() + " " + text;
+    }
+
+    public void Dispose()
+    {
+        Dictation.TextRecognized -= AppendDictatedText;
+        Dictation.Dispose();
     }
 
     /// <summary>Starts the dialog from an existing entry (used by "duplicate"); the date is today</summary>

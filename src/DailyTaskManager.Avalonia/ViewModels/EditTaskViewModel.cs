@@ -5,12 +5,13 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using DailyTaskManager.Avalonia.Services;
 using DailyTaskManager.Core.Interfaces;
 using DailyTaskManager.Core.Models;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
 
-public partial class EditTaskViewModel : ObservableObject
+public partial class EditTaskViewModel : ObservableObject, IDisposable
 {
     private readonly ILogger<EditTaskViewModel> _logger;
     private readonly IDatabaseService _databaseService;
@@ -46,11 +47,31 @@ public partial class EditTaskViewModel : ObservableObject
 
     public event EventHandler<bool>? RequestClose;
 
-    public EditTaskViewModel(ILogger<EditTaskViewModel> logger, IDatabaseService databaseService)
+    /// <summary>Dictation for the description (hidden when Windows has no speech recognizer)</summary>
+    public DictationController Dictation { get; }
+
+    public EditTaskViewModel(ILogger<EditTaskViewModel> logger, IDatabaseService databaseService, ISpeechRecognitionService speechService)
     {
         _logger = logger;
         _databaseService = databaseService;
+        Dictation = new DictationController(speechService, logger);
+        Dictation.TextRecognized += AppendDictatedText;
         _ = LoadClientsAsync();
+    }
+
+    /// <summary>Adds dictated text to the end of the description</summary>
+    public void AppendDictatedText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        text = text.Trim();
+        Description = string.IsNullOrWhiteSpace(Description) ? char.ToUpper(text[0]) + text.Substring(1) : Description.TrimEnd() + " " + text;
+    }
+
+    public void Dispose()
+    {
+        Dictation.TextRecognized -= AppendDictatedText;
+        Dictation.Dispose();
     }
 
     private async Task LoadClientsAsync()

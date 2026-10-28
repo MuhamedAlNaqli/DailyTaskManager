@@ -52,7 +52,7 @@ public class DialogService
         try
         {
             _logger.LogError("ERROR: {Title} - {Message}", title, message);
-            
+
             var mainWindow = GetMainWindow();
             if (mainWindow != null)
             {
@@ -73,15 +73,15 @@ public class DialogService
         try
         {
             _logger.LogInformation("CONFIRM: {Title} - {Message}", title, message);
-            
+
             var mainWindow = GetMainWindow();
             if (mainWindow != null)
             {
-                var result = await ShowMessageBoxAsync(mainWindow, title, message, Icon.Question, 
+                var result = await ShowMessageBoxAsync(mainWindow, title, message, Icon.Question,
                     ButtonEnum.YesNo);
                 return result == ButtonResult.Yes;
             }
-            
+
             // Fallback to safe default
             return false;
         }
@@ -100,7 +100,7 @@ public class DialogService
         try
         {
             _logger.LogDebug("Add task dialog requested");
-            
+
             var viewModel = App.GetService<AddTaskViewModel>();
             if (template != null) viewModel.Prefill(template);
             if (date.HasValue) viewModel.Date = new DateTimeOffset(date.Value.Date);
@@ -117,12 +117,13 @@ public class DialogService
 
             if (mainWindow == null) return null;
             var result = await dialog.ShowDialog<bool>(mainWindow);
-            
+            viewModel.Dispose(); // stops dictation if it was still running
+
             if (result)
             {
                 return viewModel.CreateTask();
             }
-            
+
             return null;
         }
         catch (Exception ex)
@@ -140,10 +141,10 @@ public class DialogService
         try
         {
             _logger.LogDebug("Edit task dialog requested for task {TaskId}", task.Id);
-            
+
             var viewModel = App.GetService<EditTaskViewModel>();
             viewModel.LoadTask(task);
-            
+
             var dialog = new Views.EditTaskDialog
             {
                 DataContext = viewModel
@@ -157,12 +158,13 @@ public class DialogService
 
             if (mainWindow == null) return null;
             var result = await dialog.ShowDialog<bool>(mainWindow);
-            
+            viewModel.Dispose(); // stops dictation if it was still running
+
             if (result)
             {
                 return viewModel.GetUpdatedTask();
             }
-            
+
             return null;
         }
         catch (Exception ex)
@@ -247,7 +249,7 @@ public class DialogService
     /// <summary>
     /// Helper method to show a message box using MessageBox.Avalonia
     /// </summary>
-    private async Task<ButtonResult> ShowMessageBoxAsync(Window? parentWindow, string title, string message, 
+    private async Task<ButtonResult> ShowMessageBoxAsync(Window? parentWindow, string title, string message,
         Icon icon = Icon.Info, ButtonEnum buttons = ButtonEnum.Ok)
     {
         try

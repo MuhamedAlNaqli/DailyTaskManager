@@ -616,6 +616,201 @@ public class DateFilteringIntegrationTest
         }
     }
 
+    [TestMethod]
+    public async Task Backup_ShouldRoundTripEntriesClientsAndTemplates()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var backup = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IBackupService>();
+        var marker = "UT-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var clientName = "UT-cl-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var path = Path.Combine(Path.GetTempPath(), $"dtm_backup_{Guid.NewGuid():N}.json");
+
+        try
+        {
+            var client = await db.GetOrCreateClientAsync(clientName);
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = new DateTime(2019, 3, 4), Description = marker + " one\n- second line", Hours = 2.5m, ClientId = client.Id });
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = new DateTime(2019, 3, 5), Description = marker + " two", Hours = 7m });
+            await db.SaveTemplateAsync(new DailyTaskManager.Core.Models.TaskTemplate { Name = marker, Description = marker + " template", Hours = 1.5m, ClientId = client.Id });
+
+            await backup.CreateBackupAsync(path);
+            StringAssert.Contains(await File.ReadAllTextAsync(path), marker);
+
+            // Wipe the test data, then restore it from the file
+            await CleanUpTestDataAsync(marker, clientName);
+            Assert.AreEqual(0, (await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker))).Count);
+
+            var preview = await backup.ReadImportFileAsync(path);
+            Assert.AreEqual(2, preview.Entries.Count(e => e.Description.Contains(marker)));
+            Assert.AreEqual(2, preview.NewCount, "Everything else in the backup already exists");
+            Assert.AreEqual(1, preview.Templates.Count(x => x.Name == marker));
+
+            var result = await backup.ImportAsync(preview);
+            Assert.AreEqual(2, result.Added);
+            Assert.AreEqual(1, result.ClientsCreated);
+            Assert.AreEqual(1, result.TemplatesAdded);
+
+            var restored = await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker));
+            Assert.AreEqual(2, restored.Count);
+            Assert.AreEqual(clientName, restored.Single(x => x.Hours == 2.5m).Client?.Name);
+            StringAssert.Contains(restored.Single(x => x.Hours == 2.5m).Description, "\n- second line");
+
+            // Importing the same file again adds nothing
+            var again = await backup.ImportAsync(await backup.ReadImportFileAsync(path));
+            Assert.AreEqual(0, again.Added);
+            Assert.AreEqual(0, again.ClientsCreated);
+            Assert.AreEqual(0, again.TemplatesAdded);
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, clientName);
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [TestMethod]
+    public async Task Import_ShouldReadCsvWithQuotesSemicolonsAndBadRows()
+    {
+        var backup = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IBackupService>();
+        var path = Path.Combine(Path.GetTempPath(), $"dtm_import_{Guid.NewGuid():N}.csv");
+        var path2 = Path.Combine(Path.GetTempPath(), $"dtm_import_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            await File.WriteAllTextAsync(path,
+                "Date,Description,Hours,Client\r\n" +
+                "2019-04-01,\"First line\r\n- second line\",7,Acme\r\n" +
+                "2019-04-02,\"With \"\"quotes\"\"\",2.5,\r\n" +
+                "not-a-date,Bad row,3,\r\n" +
+                "2019-04-03,No hours,,\r\n" +
+                "2019-04-01,\"First line\r\n- second line\",7,Acme\r\n");
+
+            var preview = await backup.ReadImportFileAsync(path);
+            Assert.AreEqual(3, preview.Entries.Count, "Two good rows plus the repeated one");
+            Assert.AreEqual(2, preview.SkippedRows);
+            Assert.AreEqual(1, preview.DuplicateCount, "The repeated row is a duplicate");
+            Assert.AreEqual("First line\n- second line", preview.Entries[0].Description.Replace("\r\n", "\n"));
+            Assert.AreEqual("Acme", preview.Entries[0].Client);
+            Assert.AreEqual("With \"quotes\"", preview.Entries[1].Description);
+            Assert.AreEqual(2.5m, preview.Entries[1].Hours);
+            Assert.AreEqual(new DateTime(2019, 4, 1), preview.From);
+            Assert.AreEqual(new DateTime(2019, 4, 2), preview.To);
+
+            // Semicolons, local date format and decimal commas
+            await File.WriteAllTextAsync(path2, "Datum;Opis;Sati\n15.04.2019.;Test;\"7,5\"\n");
+            var local = await backup.ReadImportFileAsync(path2);
+            Assert.AreEqual(1, local.Entries.Count);
+            Assert.AreEqual(new DateTime(2019, 4, 15), local.Entries[0].Date);
+            Assert.AreEqual(7.5m, local.Entries[0].Hours);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path2)) File.Delete(path2);
+        }
+    }
+
+    [TestMethod]
+    public async Task Import_ShouldReadTheAppsOwnExcelExport()
+    {
+        var export = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IExportService>();
+        var backup = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IBackupService>();
+        var path = Path.Combine(Path.GetTempPath(), $"dtm_excel_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            var tasks = new List<DailyTaskManager.Core.Models.DailyTask>
+            {
+                new() { Date = new DateTime(2019, 5, 6), Description = "- Daily\n- Review", Hours = 7m },
+                new() { Date = new DateTime(2019, 5, 7), Description = "- Release", Hours = 2.5m },
+                new() { Date = new DateTime(2019, 5, 8), Description = "- Testing", Hours = 7m }
+            };
+            await export.ExportTasksToExcelAsync(tasks, path);
+
+            var preview = await backup.ReadImportFileAsync(path);
+            Assert.AreEqual(3, preview.Entries.Count);
+            Assert.AreEqual(0, preview.SkippedRows, "The totals row is not an entry and not an error");
+            Assert.AreEqual(new DateTime(2019, 5, 6), preview.Entries[0].Date);
+            Assert.AreEqual("- Daily\n- Review", preview.Entries[0].Description.Replace("\r\n", "\n"));
+            Assert.AreEqual(2.5m, preview.Entries[1].Hours);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [TestMethod]
+    public async Task InlineEdit_ShouldSaveChangesAndRejectInvalidOnes()
+    {
+        Assert.IsNotNull(_viewModel);
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var marker = "UT-inl-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        try
+        {
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = new DateTime(2019, 6, 3), Description = marker, Hours = 7m });
+            _viewModel.SearchText = marker;
+            await _viewModel.ApplyFiltersAsync();
+            Assert.AreEqual(1, _viewModel.TotalCount);
+
+            Assert.IsTrue(await _viewModel.UpdateInlineAsync(_viewModel.FilteredTasks[0], marker + " edited", 3.5m));
+            Assert.AreEqual(1, _viewModel.TotalCount);
+            Assert.AreEqual(marker + " edited", _viewModel.FilteredTasks[0].Description);
+            Assert.AreEqual(3.5m, _viewModel.FilteredTasks[0].Hours);
+
+            var current = _viewModel.FilteredTasks[0];
+            Assert.IsFalse(await _viewModel.UpdateInlineAsync(current, "   ", null), "An empty description is rejected");
+            Assert.IsFalse(await _viewModel.UpdateInlineAsync(current, null, 0m), "Zero hours are rejected");
+            Assert.IsFalse(await _viewModel.UpdateInlineAsync(current, null, 25m), "More than 24 hours are rejected");
+            Assert.IsTrue(await _viewModel.UpdateInlineAsync(current, current.Description, current.Hours), "No change is fine");
+            Assert.AreEqual(marker + " edited", _viewModel.FilteredTasks[0].Description);
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, "ut-none-" + marker);
+        }
+    }
+
+    [TestMethod]
+    public async Task Speech_ShouldReportAvailabilityAndHandleStartStopGracefully()
+    {
+        var speech = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.ISpeechRecognitionService>();
+
+        var languages = await speech.GetAvailableLanguagesAsync();
+        if (speech.IsSupported) Assert.IsTrue(languages.Count > 0, "A supported system lists its recognizers");
+
+        string? error = null;
+        EventHandler<string> onError = (_, message) => error = message;
+        speech.RecognitionError += onError;
+        try
+        {
+            await speech.StartContinuousRecognitionAsync();
+            // Either listening without an error, or not listening with a readable error (e.g. no microphone)
+            Assert.AreEqual(error == null && speech.IsSupported, speech.IsListening);
+            if (!speech.IsListening && speech.IsSupported) Assert.IsFalse(string.IsNullOrWhiteSpace(error));
+        }
+        finally
+        {
+            await speech.StopContinuousRecognitionAsync();
+            speech.RecognitionError -= onError;
+        }
+
+        Assert.IsFalse(speech.IsListening);
+    }
+
+    [TestMethod]
+    public void AddDialog_ShouldAppendDictatedText()
+    {
+        var dialog = _serviceProvider!.GetRequiredService<AddTaskViewModel>();
+        dialog.AppendDictatedText("daily meeting");
+        Assert.AreEqual("Daily meeting", dialog.Description);
+        dialog.AppendDictatedText("and release");
+        Assert.AreEqual("Daily meeting and release", dialog.Description);
+        dialog.AppendDictatedText("   ");
+        Assert.AreEqual("Daily meeting and release", dialog.Description);
+        dialog.Dispose();
+    }
+
     private IHost CreateTestHost()
     {
         return Host.CreateDefaultBuilder()
@@ -659,6 +854,7 @@ public class DateFilteringIntegrationTest
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
                 services.AddTransient<ActivityCalendarViewModel>();
+                services.AddSingleton<DailyTaskManager.Core.Interfaces.IBackupService, BackupService>();
                 services.AddTransient<AddTaskViewModel>();
                 services.AddSingleton<DailyTaskManager.Core.Interfaces.IAutoCompleteService, AutoCompleteService>();
                 services.AddTransient<ReportsViewModel>();

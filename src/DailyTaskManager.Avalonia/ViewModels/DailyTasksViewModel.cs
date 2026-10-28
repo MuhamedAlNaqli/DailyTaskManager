@@ -243,6 +243,58 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Saves a change made directly in the list (description and/or hours); returns false when the change was rejected
+    /// </summary>
+    public async Task<bool> UpdateInlineAsync(DailyTask task, string? description, decimal? hours)
+    {
+        try
+        {
+            var newDescription = description == null ? task.Description : description.Trim();
+            var newHours = hours ?? task.Hours;
+
+            if (newDescription.Length == 0)
+            {
+                _ = ShowToastAsync("The description can't be empty");
+                return false;
+            }
+
+            if (newDescription.Length > 1000)
+            {
+                _ = ShowToastAsync("The description is too long (max 1000 characters)");
+                return false;
+            }
+
+            if (newHours <= 0 || newHours > 24)
+            {
+                _ = ShowToastAsync("Hours must be between 0 and 24");
+                return false;
+            }
+
+            if (newDescription == task.Description && newHours == task.Hours) return true;
+
+            await _databaseService.UpdateTaskAsync(new DailyTask
+            {
+                Id = task.Id,
+                UserId = task.UserId,
+                Date = task.Date,
+                Description = newDescription,
+                Hours = newHours,
+                ClientId = task.ClientId,
+                CreatedAt = task.CreatedAt
+            });
+            await LoadTasksAsync();
+            _ = ShowToastAsync("Saved");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving inline edit of task {TaskId}", task.Id);
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to save the change. Please try again.");
+            return false;
+        }
+    }
+
     [RelayCommand]
     private async Task QuickAddTemplateAsync(TaskTemplate? template)
     {

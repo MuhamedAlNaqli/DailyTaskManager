@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using DailyTaskManager.Avalonia.ViewModels;
+using DailyTaskManager.Core.Models;
 
 namespace DailyTaskManager.Avalonia.Views;
 
@@ -89,6 +90,121 @@ public partial class DailyTasksView : UserControl
             Serilog.Log.Debug("DailyTasksView: DataContext is not DailyTasksViewModel");
             _currentViewModel = null;
         }
+    }
+
+    private void OnDescriptionDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not TextBlock display || display.DataContext is not DailyTask task || _currentViewModel == null) return;
+
+        var viewModel = _currentViewModel;
+        BeginInlineEdit(display, task.Description, multiline: true,
+            text => viewModel.UpdateInlineAsync(task, text, null));
+        e.Handled = true;
+    }
+
+    private void OnHoursDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not TextBlock display || display.DataContext is not DailyTask task || _currentViewModel == null) return;
+
+        var viewModel = _currentViewModel;
+        BeginInlineEdit(display, task.Hours.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), multiline: false, text =>
+        {
+            var normalized = text.Trim().Replace(',', '.');
+            if (!decimal.TryParse(normalized, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var hours))
+            {
+                return viewModel.UpdateInlineAsync(task, null, 0); // rejected with a message
+            }
+
+            return viewModel.UpdateInlineAsync(task, null, hours);
+        });
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Replaces a text block with an editor: Enter saves (Ctrl+Enter for multi-line text), Esc cancels, leaving the field saves
+    /// </summary>
+    private static void BeginInlineEdit(TextBlock display, string initial, bool multiline, Func<string, System.Threading.Tasks.Task<bool>> commit)
+    {
+        var box = new TextBox
+        {
+            Text = initial,
+            AcceptsReturn = multiline,
+            TextWrapping = multiline ? global::Avalonia.Media.TextWrapping.Wrap : global::Avalonia.Media.TextWrapping.NoWrap,
+            MinWidth = multiline ? 240 : 56,
+            FontSize = display.FontSize,
+            VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
+        };
+        ToolTip.SetTip(box, multiline ? "Ctrl+Enter or click away to save, Esc to cancel" : "Enter to save, Esc to cancel");
+
+        var panel = display.Parent as Panel;
+        var border = display.Parent as Border;
+        if (panel != null)
+        {
+            display.IsVisible = false;
+            panel.Children.Insert(panel.Children.IndexOf(display) + 1, box);
+        }
+        else if (border != null)
+        {
+            border.Child = box;
+        }
+        else
+        {
+            return;
+        }
+
+        var finished = false;
+
+        void Restore()
+        {
+            if (panel != null)
+            {
+                panel.Children.Remove(box);
+                display.IsVisible = true;
+            }
+            else if (border != null && ReferenceEquals(border.Child, box))
+            {
+                border.Child = display;
+            }
+        }
+
+        async System.Threading.Tasks.Task Finish(bool save)
+        {
+            if (finished) return;
+            finished = true;
+
+            var text = box.Text ?? "";
+            if (save && text != initial)
+            {
+                var ok = await commit(text);
+                if (!ok) Restore();
+                // On success the list reloads and replaces this row
+                else Restore();
+            }
+            else
+            {
+                Restore();
+            }
+        }
+
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                _ = Finish(false);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter && (!multiline || e.KeyModifiers.HasFlag(KeyModifiers.Control)))
+            {
+                _ = Finish(true);
+                e.Handled = true;
+            }
+        };
+        box.LostFocus += (_, _) => _ = Finish(true);
+        box.AttachedToVisualTree += (_, _) =>
+        {
+            box.Focus();
+            box.SelectAll();
+        };
     }
 
     private void OnTemplateClicked(object? sender, RoutedEventArgs e)

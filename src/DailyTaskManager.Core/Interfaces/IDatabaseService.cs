@@ -16,6 +16,11 @@ namespace DailyTaskManager.Core.Interfaces
         event EventHandler? TasksChanged;
 
         /// <summary>
+        /// Adds many entries at once, skipping those that already exist (same date, description and hours); returns how many were added
+        /// </summary>
+        Task<int> ImportTasksAsync(IReadOnlyList<DailyTask> tasks);
+
+        /// <summary>
         /// Gets the date of the user's earliest entry, or null when there are none
         /// </summary>
         Task<DateTime?> GetFirstEntryDateAsync();

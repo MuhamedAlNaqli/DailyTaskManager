@@ -479,7 +479,10 @@
                                                 <TextBlock Text="{Binding Description}"
                                                            FontSize="14"
                                                            Foreground="{DynamicResource AppTextStrong}"
-                                                           TextWrapping="Wrap"/>
+                                                           TextWrapping="Wrap"
+                                                           Background="Transparent"
+                                                           DoubleTapped="OnDescriptionDoubleTapped"
+                                                           ToolTip.Tip="Double-click to edit"/>
                                                 <Border IsVisible="{Binding Client, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                         Background="{DynamicResource AppBadgeBg}"
                                                         CornerRadius="4"
@@ -498,8 +501,8 @@
                                                    Padding="8,4"
                                                    HorizontalAlignment="Right"
                                                    VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Hours, StringFormat='{}{0:0.##}h'}" 
-                                                          FontSize="12" 
+                                                <TextBlock DoubleTapped="OnHoursDoubleTapped" ToolTip.Tip="Double-click to edit"
+                                                          Text="{Binding Hours, StringFormat='{}{0:0.##}h'}" FontSize="12" 
                                                           FontWeight="Medium"
                                                           Foreground="{DynamicResource AppBadgeText}"/>
                                             </Border>

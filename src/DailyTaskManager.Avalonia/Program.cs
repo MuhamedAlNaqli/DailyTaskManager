@@ -109,6 +109,7 @@ class Program
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
+                services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();

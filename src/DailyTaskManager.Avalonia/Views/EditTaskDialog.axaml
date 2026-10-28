@@ -32,9 +32,29 @@
             
             <!-- Task Description -->
             <StackPanel>
-                <TextBlock Text="Description *" 
-                           Classes="label" 
-                           Margin="0,0,0,5"/>
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,5">
+                    <TextBlock Grid.Column="0"
+                               Text="Description *"
+                               Classes="label"
+                               VerticalAlignment="Center"/>
+                    <Button Name="DictateButton"
+                            Grid.Column="1"
+                            Command="{Binding Dictation.ToggleCommand}"
+                            Content="{Binding Dictation.ButtonText}"
+                            IsVisible="{Binding Dictation.IsAvailable}"
+                            Padding="10,3"
+                            FontSize="12"
+                            CornerRadius="6"
+                            ToolTip.Tip="Dictate the description with your microphone"/>
+                    <TextBlock Name="DictationStatusText"
+                               Grid.Row="1"
+                               Grid.ColumnSpan="2"
+                               Text="{Binding Dictation.Status}"
+                               IsVisible="{Binding !!Dictation.Status}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppTextMuted}"/>
+                </Grid>
                 <TextBox Text="{Binding Description}" 
                          Watermark="Enter task description (supports multiple lines)"
                          Classes="primary"

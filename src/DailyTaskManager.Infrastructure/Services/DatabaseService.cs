@@ -254,6 +254,52 @@ namespace DailyTaskManager.Infrastructure.Services
                 .ToList();
         }
 
+        public async Task<int> ImportTasksAsync(IReadOnlyList<DailyTask> tasks)
+        {
+            if (tasks.Count == 0) return 0;
+
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var min = tasks.Min(t => t.Date.Date);
+            var max = tasks.Max(t => t.Date.Date);
+            var existing = await _context.DailyTasks.AsNoTracking()
+                .Where(t => t.UserId == userId && t.Date >= min && t.Date <= max)
+                .Select(t => new { t.Date, t.Description, t.Hours })
+                .ToListAsync();
+
+            var keys = new HashSet<string>(existing.Select(e => TaskKeys.For(e.Date, e.Description, e.Hours)));
+            var added = 0;
+            var now = DateTime.UtcNow;
+
+            foreach (var task in tasks)
+            {
+                if (!keys.Add(TaskKeys.For(task.Date, task.Description, task.Hours))) continue;
+
+                var description = task.Description.Length > 1000 ? task.Description.Substring(0, 1000) : task.Description;
+                _context.DailyTasks.Add(new DailyTask
+                {
+                    UserId = userId,
+                    Date = DateTime.SpecifyKind(task.Date.Date, DateTimeKind.Utc),
+                    Description = description,
+                    Hours = task.Hours,
+                    ClientId = task.ClientId,
+                    CreatedAt = task.CreatedAt == default ? now : task.CreatedAt.ToUniversalTime(),
+                    UpdatedAt = now
+                });
+                added++;
+            }
+
+            if (added > 0)
+            {
+                await _context.SaveChangesAsync();
+                NotifyTasksChanged();
+            }
+
+            _logger.LogInformation("Imported {Added} of {Total} entries for user {UserId}", added, tasks.Count, userId);
+            return added;
+        }
+
         public async Task<DateTime?> GetFirstEntryDateAsync()
         {
             await using var _context = _contextFactory.CreateDbContext();

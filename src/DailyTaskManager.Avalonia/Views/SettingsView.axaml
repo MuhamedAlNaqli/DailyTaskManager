@@ -477,6 +477,48 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Data Section -->
+                    <Border Background="{DynamicResource AppSurface}"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            Margin="0,0,0,24">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="💾 Backup and import"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource AppTextStrong}"/>
+                                <TextBlock Text="Save your entries and templates to a file, restore them, or bring entries in from a spreadsheet"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button Name="BackupButton"
+                                        Content="Back up my data"
+                                        Command="{Binding BackupDataCommand}"
+                                        Background="#FF4C566A" Foreground="White" BorderBrush="Transparent"
+                                        CornerRadius="6" Padding="16,10"/>
+                                <Button Name="RestoreButton"
+                                        Content="Restore from backup"
+                                        Command="{Binding RestoreBackupCommand}"
+                                        Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                        CornerRadius="6" Padding="16,10"/>
+                                <Button Name="ImportButton"
+                                        Content="Import CSV / Excel"
+                                        Command="{Binding ImportEntriesCommand}"
+                                        Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                        CornerRadius="6" Padding="16,10"/>
+                            </StackPanel>
+                            <TextBlock Text="Restoring or importing never deletes anything: entries that already exist (same date, description and hours) are skipped. CSV and Excel files need Date, Description and Hours columns (the app's own exports work)."
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppTextFaint}"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Reminder Section -->
                     <Border Background="{DynamicResource AppSurface}"
                             CornerRadius="12"
