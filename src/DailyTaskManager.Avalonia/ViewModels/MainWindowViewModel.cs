@@ -7,6 +7,9 @@ using CommunityToolkit.Mvvm.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
+using Avalonia.Threading;
+using System.Linq;
+using DailyTaskManager.Core.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Interfaces;
@@ -23,6 +26,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IConfiguration _configuration;
     private readonly ISettingsService _settingsService;
+    private readonly IDatabaseService _databaseService;
+    private readonly DialogService _dialogService;
+    private DispatcherTimer? _reminderTimer;
+    private string _reminderSignature = "";
+    private string _dismissedSignature = "";
+    private DateTime? _reminderTargetDate;
 
     [ObservableProperty]
     private UserControl? _currentView;
@@ -34,7 +43,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "2.8.0";
+    private string _appVersion = "2.9.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -43,7 +52,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _loadingMessage = "Loading...";
 
     private bool _isDarkTheme = false;
-    
+
     public bool IsDarkTheme
     {
         get => _isDarkTheme;
@@ -66,6 +75,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private bool _isAnalyticsViewSelected = false;
 
     [ObservableProperty]
+    private bool _isCalendarViewSelected = false;
+
+    [ObservableProperty]
+    private bool _isReminderVisible;
+
+    [ObservableProperty]
+    private string _reminderText = "";
+
+    [ObservableProperty]
+    private string _reminderActionText = "";
+
+    [ObservableProperty]
     private bool _isReportsViewSelected = false;
 
 
@@ -75,8 +96,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         NavigationService navigationService,
         ILogger<MainWindowViewModel> logger,
         IConfiguration configuration,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        IDatabaseService databaseService,
+        DialogService dialogService)
     {
+        _databaseService = databaseService;
+        _dialogService = dialogService;
         _settingsService = settingsService;
         _authService = authService;
         _oauthService = oauthService;
@@ -86,7 +111,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         // Subscribe to authentication changes
         _authService.AuthenticationChanged += OnAuthenticationChanged;
-        
+        _databaseService.TasksChanged += OnTasksChanged;
+        _settingsService.SettingChanged += OnSettingChanged;
+
         // Initialize non-UI properties only
         InitializePropertiesOnly();
     }
@@ -104,7 +131,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<DailyTasksView, DailyTasksViewModel>();
-            
+
             SetSelectedView(tasks: true);
 
             _logger.LogInformation("Navigated to Tasks view");
@@ -120,12 +147,37 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SetSelectedView(bool tasks = false, bool analytics = false, bool reports = false, bool settings = false)
+    private void SetSelectedView(bool tasks = false, bool analytics = false, bool reports = false, bool settings = false, bool calendar = false)
     {
+        IsCalendarViewSelected = calendar;
         IsTasksViewSelected = tasks;
         IsAnalyticsViewSelected = analytics;
         IsReportsViewSelected = reports;
         IsSettingsViewSelected = settings;
+    }
+
+    [RelayCommand]
+    private async Task NavigateToCalendarAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            LoadingMessage = "Loading calendar...";
+
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
+            CurrentView = await _navigationService.CreateViewAsync<ActivityCalendarView, ActivityCalendarViewModel>();
+            SetSelectedView(calendar: true);
+
+            _logger.LogInformation("Navigated to Calendar view");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error navigating to Calendar view");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
@@ -186,7 +238,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<SettingsView, SettingsViewModel>();
-            
+
             SetSelectedView(settings: true);
 
             _logger.LogInformation("Navigated to Settings view");
@@ -209,22 +261,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             IsDarkTheme = !IsDarkTheme;
-            
+
             // Apply theme change
             if (App.Current != null)
             {
                 var theme = IsDarkTheme ? "Dark" : "Light";
                 App.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
-                
+
                 _logger.LogInformation("Theme changed to {Theme}", theme);
-                
+
                 // Trigger property change notifications for theme-related properties
                 OnPropertyChanged(nameof(ThemeIcon));
                 OnPropertyChanged(nameof(ThemeText));
-                
+
                 // Force UI refresh by triggering property change for IsDarkTheme
                 OnPropertyChanged(nameof(IsDarkTheme));
-                
+
                 // Save theme preference to settings
                 await _settingsService.SetSettingAsync("Theme", theme);
             }
@@ -247,13 +299,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             Dispose();
 
             await _authService.LogoutAsync();
-            
+
             // Clear loading state before showing login window
             IsLoading = false;
-            
+
             // Navigate to login window
             ShowLoginWindow();
-            
+
             _logger.LogInformation("User logged out successfully");
         }
         catch (Exception ex)
@@ -271,20 +323,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 var currentMainWindow = desktop.MainWindow;
-                
+
                 // Create a fresh login window with proper DI
                 var app = App.Current as App;
                 if (app != null)
                 {
                     var loginWindow = app.CreateLoginWindow();
                     loginWindow.Show();
-                    
+
                     // Set the new login window as the main window
                     desktop.MainWindow = loginWindow;
-                    
+
                     // Close the current main window
                     currentMainWindow?.Close();
-                    
+
                     _logger.LogInformation("Redirected to login window with fresh ViewModel");
                 }
                 else
@@ -304,7 +356,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "2.8.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "2.9.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();
@@ -328,7 +380,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 // Sync ViewModel state with actual application theme
                 IsDarkTheme = App.Current.RequestedThemeVariant == ThemeVariant.Dark;
-                
+
                 _logger.LogDebug("Theme state initialized: IsDarkTheme = {IsDarkTheme}", IsDarkTheme);
             }
         }
@@ -346,6 +398,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             // Navigate to default view - this must be called from UI thread
             await NavigateToTasksAsync();
+            StartReminder();
 
             _logger.LogInformation("Main window view initialized successfully");
         }
@@ -355,8 +408,123 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ---- Missing-day reminder -------------------------------------------------------------------------
+
+    private void StartReminder()
+    {
+        _reminderTimer?.Stop();
+        _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
+        _reminderTimer.Tick += (_, _) => _ = RefreshReminderAsync();
+        _reminderTimer.Start();
+        _ = RefreshReminderAsync();
+    }
+
+    private void OnTasksChanged(object? sender, EventArgs e) => PostReminderRefresh();
+
+    private void OnSettingChanged(object? sender, (string Key, object? Value) e)
+    {
+        if (e.Key.StartsWith(ReminderSettings.KeyPrefix, StringComparison.Ordinal)) PostReminderRefresh();
+    }
+
+    private void PostReminderRefresh()
+    {
+        try
+        {
+            Dispatcher.UIThread.Post(() => _ = RefreshReminderAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not schedule a reminder refresh");
+        }
+    }
+
+    public async Task RefreshReminderAsync()
+    {
+        try
+        {
+            if (!_authService.IsAuthenticated)
+            {
+                IsReminderVisible = false;
+                return;
+            }
+
+            var enabledText = await _settingsService.GetSettingAsync<string>(ReminderSettings.EnabledKey, null);
+            var enabled = enabledText == null ? ReminderSettings.DefaultEnabled : string.Equals(enabledText, "true", StringComparison.OrdinalIgnoreCase);
+            if (!enabled)
+            {
+                IsReminderVisible = false;
+                return;
+            }
+
+            var hourText = await _settingsService.GetSettingAsync<string>(ReminderSettings.HourKey, null);
+            var hour = int.TryParse(hourText, out var h) && h >= 0 && h <= 23 ? h : ReminderSettings.DefaultHour;
+
+            var first = await _databaseService.GetFirstEntryDateAsync();
+            if (first == null)
+            {
+                IsReminderVisible = false;
+                return;
+            }
+
+            var today = DateTime.Today;
+            var from = first.Value.Date > today.AddDays(-(MissingDays.LookbackDays - 1)) ? first.Value.Date : today.AddDays(-(MissingDays.LookbackDays - 1));
+            var days = await _databaseService.GetDailyHoursAsync(new Core.Models.TaskQuery(null, from, today));
+            var logged = days.Where(d => d.Hours > 0).Select(d => d.Date.Date).ToHashSet();
+
+            var missing = MissingDays.Find(first, today, DateTime.Now, logged, hour);
+            _reminderSignature = string.Join(",", missing.Select(d => d.ToString("yyyyMMdd")));
+
+            if (missing.Count == 0 || _reminderSignature == _dismissedSignature)
+            {
+                IsReminderVisible = false;
+                return;
+            }
+
+            _reminderTargetDate = missing[0];
+            ReminderText = MissingDays.Describe(missing, today);
+            ReminderActionText = $"Add {missing[0]:ddd d MMM}";
+            IsReminderVisible = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not check for missing days");
+        }
+    }
+
+    [RelayCommand]
+    private void DismissReminder()
+    {
+        _dismissedSignature = _reminderSignature;
+        IsReminderVisible = false;
+    }
+
+    [RelayCommand]
+    private async Task AddMissingEntryAsync()
+    {
+        var date = _reminderTargetDate;
+        if (date == null) return;
+
+        try
+        {
+            var task = await _dialogService.ShowAddTaskDialogAsync(null, date);
+            if (task != null)
+            {
+                await _databaseService.AddTaskAsync(task);
+                // TasksChanged refreshes the banner
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding a missing entry");
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to add the entry. Please try again.");
+        }
+    }
+
     public void Dispose()
     {
+        _reminderTimer?.Stop();
+        _databaseService.TasksChanged -= OnTasksChanged;
+        _settingsService.SettingChanged -= OnSettingChanged;
         _authService.AuthenticationChanged -= OnAuthenticationChanged;
         (CurrentView?.DataContext as IDisposable)?.Dispose();
     }

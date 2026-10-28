@@ -16,6 +16,10 @@ namespace DailyTaskManager.Infrastructure.Services
     public class DatabaseService : IDatabaseService
     {
         private readonly IDbContextFactory<DailyTaskManagerDbContext> _contextFactory;
+
+        public event EventHandler? TasksChanged;
+
+        private void NotifyTasksChanged() => TasksChanged?.Invoke(this, EventArgs.Empty);
         private readonly IAuthenticationService _authService;
         private readonly ILogger<DatabaseService> _logger;
 
@@ -43,6 +47,7 @@ namespace DailyTaskManager.Infrastructure.Services
 
                 _context.DailyTasks.Add(task);
                 await _context.SaveChangesAsync();
+                NotifyTasksChanged();
 
                 _logger.LogInformation("Added new task with ID {TaskId} for user {UserId}", 
                     task.Id, task.UserId);
@@ -249,6 +254,63 @@ namespace DailyTaskManager.Infrastructure.Services
                 .ToList();
         }
 
+        public async Task<DateTime?> GetFirstEntryDateAsync()
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var any = await _context.DailyTasks.AnyAsync(t => t.UserId == userId);
+            if (!any) return null;
+
+            return (await _context.DailyTasks.Where(t => t.UserId == userId).MinAsync(t => t.Date)).Date;
+        }
+
+        public async Task<List<TaskTemplate>> GetTemplatesAsync()
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            return await _context.Templates.AsNoTracking()
+                .Include(t => t.Client)
+                .Where(t => t.UserId == userId)
+                .OrderBy(t => t.Name)
+                .ToListAsync();
+        }
+
+        public async Task<TaskTemplate> SaveTemplateAsync(TaskTemplate template)
+        {
+            var name = (template.Name ?? string.Empty).Trim();
+            if (name.Length == 0) throw new ArgumentException("Template name is required", nameof(template));
+            if (name.Length > 100) name = name.Substring(0, 100);
+
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var lower = name.ToLower();
+            var existing = await _context.Templates.FirstOrDefaultAsync(t => t.UserId == userId && t.Name.ToLower() == lower);
+            if (existing == null)
+            {
+                existing = new TaskTemplate { UserId = userId };
+                _context.Templates.Add(existing);
+            }
+
+            existing.Name = name;
+            existing.Description = template.Description;
+            existing.Hours = template.Hours;
+            existing.ClientId = template.ClientId;
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+
+        public async Task<bool> DeleteTemplateAsync(int id)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var deleted = await _context.Templates.Where(t => t.Id == id && t.UserId == userId).ExecuteDeleteAsync();
+            return deleted > 0;
+        }
+
         public async Task<List<Client>> GetClientsAsync()
         {
             await using var _context = _contextFactory.CreateDbContext();
@@ -295,6 +357,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.ClientId, clientId));
 
             _logger.LogInformation("Assigned client {ClientId} to {Count} tasks for user {UserId}", clientId, count, userId);
+            NotifyTasksChanged();
             return count;
         }
 
@@ -313,6 +376,7 @@ namespace DailyTaskManager.Infrastructure.Services
             };
             _context.DailyTasks.Add(restored);
             await _context.SaveChangesAsync();
+            NotifyTasksChanged();
             return restored;
         }
 
@@ -362,6 +426,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 existingTask.UpdateTimestamp();
 
                 await _context.SaveChangesAsync();
+                NotifyTasksChanged();
 
                 _logger.LogInformation("Updated task with ID {TaskId} for user {UserId}", 
                     task.Id, userId);
@@ -393,6 +458,7 @@ namespace DailyTaskManager.Infrastructure.Services
 
                 _context.DailyTasks.Remove(task);
                 await _context.SaveChangesAsync();
+                NotifyTasksChanged();
 
                 _logger.LogInformation("Removed task with ID {TaskId} for user {UserId}", id, userId);
                 return true;

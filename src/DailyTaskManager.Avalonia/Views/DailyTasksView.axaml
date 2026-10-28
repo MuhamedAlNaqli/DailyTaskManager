@@ -41,6 +41,73 @@
                            Orientation="Horizontal" 
                            Spacing="12"
                            VerticalAlignment="Center">
+                    <Button Name="QuickAddButton"
+                            Background="Transparent"
+                            BorderBrush="#FF3B82F6"
+                            Foreground="#FF3B82F6"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16,10"
+                            FontWeight="Medium">
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <Border Background="{DynamicResource AppSurface}"
+                                        BorderBrush="{DynamicResource AppBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="12"
+                                        MinWidth="260">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Quick add for today"
+                                                   FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AppText}"/>
+                                        <ItemsControl Name="TemplateList" ItemsSource="{Binding Templates}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                                        <Button Grid.Column="0"
+                                                                Click="OnTemplateClicked"
+                                                                Command="{Binding $parent[ItemsControl].DataContext.QuickAddTemplateCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                HorizontalAlignment="Stretch"
+                                                                HorizontalContentAlignment="Left"
+                                                                Background="Transparent"
+                                                                BorderBrush="Transparent"
+                                                                Padding="10,8">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Medium" Foreground="{DynamicResource AppTextStrong}"/>
+                                                                <TextBlock Text="{Binding Hours, StringFormat='{}{0:0.##}h'}" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Grid.Column="1"
+                                                                Command="{Binding $parent[ItemsControl].DataContext.DeleteTemplateCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="Transparent"
+                                                                BorderBrush="Transparent"
+                                                                Padding="8,6"
+                                                                ToolTip.Tip="Delete template">
+                                                            <TextBlock Text="✕" FontSize="12" Foreground="#FFEF4444"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="No templates yet. Tick &quot;Save as a template&quot; when adding an entry."
+                                                   IsVisible="{Binding !HasTemplates}"
+                                                   TextWrapping="Wrap"
+                                                   MaxWidth="260"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AppTextMuted}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Flyout>
+                        </Button.Flyout>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Quick add" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button Classes="primary" 
                             Command="{Binding AddNewTaskCommand}"
                             Background="#FF4C566A"
@@ -431,7 +498,7 @@
                                                    Padding="8,4"
                                                    HorizontalAlignment="Right"
                                                    VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Hours, StringFormat='{}{0}h'}" 
+                                                <TextBlock Text="{Binding Hours, StringFormat='{}{0:0.##}h'}" 
                                                           FontSize="12" 
                                                           FontWeight="Medium"
                                                           Foreground="{DynamicResource AppBadgeText}"/>
@@ -533,6 +600,20 @@
                         </Button>
                     </StackPanel>
                 </Grid>
+            </Border>
+
+            <!-- Toast -->
+            <Border Grid.RowSpan="4"
+                    Name="ToastBar"
+                    IsVisible="{Binding IsToastVisible}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,0,80"
+                    Padding="16,10"
+                    CornerRadius="8"
+                    Background="#FF166534"
+                    BoxShadow="0 4 16 0 #40000000">
+                <TextBlock Text="{Binding ToastMessage}" Foreground="White" FontSize="13"/>
             </Border>
 
             <!-- Undo bar -->

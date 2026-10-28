@@ -11,6 +11,31 @@ namespace DailyTaskManager.Core.Interfaces
     public interface IDatabaseService
     {
         /// <summary>
+        /// Raised after tasks were added, changed, removed or reassigned (lets other views refresh)
+        /// </summary>
+        event EventHandler? TasksChanged;
+
+        /// <summary>
+        /// Gets the date of the user's earliest entry, or null when there are none
+        /// </summary>
+        Task<DateTime?> GetFirstEntryDateAsync();
+
+        /// <summary>
+        /// Gets the current user's templates ordered by name
+        /// </summary>
+        Task<List<TaskTemplate>> GetTemplatesAsync();
+
+        /// <summary>
+        /// Saves a template; a template with the same name (case-insensitive) is replaced
+        /// </summary>
+        Task<TaskTemplate> SaveTemplateAsync(TaskTemplate template);
+
+        /// <summary>
+        /// Deletes a template
+        /// </summary>
+        Task<bool> DeleteTemplateAsync(int id);
+
+        /// <summary>
         /// Adds a new task to the database
         /// </summary>
         Task<DailyTask> AddTaskAsync(DailyTask task);

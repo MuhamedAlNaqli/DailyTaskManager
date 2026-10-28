@@ -243,9 +243,10 @@ public class ExportService : IExportService
 
             foreach (var task in tasks)
             {
+                var hoursText = task.Hours.ToString("0.##", CultureInfo.InvariantCulture);
                 var line = $"{task.Date:yyyy-MM-dd}," +
                           $"\"{task.Description.Replace("\"", "\"\"")}\"," +
-                          $"{task.Hours}," +
+                          $"{hoursText}," +
                           $"{task.CreatedAt:yyyy-MM-dd HH:mm:ss}," +
                           $"{task.UpdatedAt:yyyy-MM-dd HH:mm:ss}";
                 lines.Add(line);
@@ -317,6 +318,9 @@ public class ExportService : IExportService
             throw;
         }
     }
+
+    /// <summary>Hours without trailing zeros: 7, 7.5 (the database keeps two decimals)</summary>
+    private static string FormatHours(decimal hours) => hours.ToString("0.##", CultureInfo.CurrentCulture);
 
     private static string FormatMoney(decimal value)
     {
@@ -558,14 +562,14 @@ public class ExportService : IExportService
                                 table.Cell().Border(1).Padding(4).AlignCenter().Text(index++.ToString()).FontSize(11);
                                 table.Cell().Border(1).Padding(4).Text($"{task.Description}").FontSize(11);
                                 table.Cell().Border(1).Padding(4).AlignCenter().Text($"{task.Date:d. M. yyyy}.").FontSize(11);
-                                table.Cell().Border(1).Padding(4).AlignCenter().Text(task.Hours.ToString()).FontSize(11);
+                                table.Cell().Border(1).Padding(4).AlignCenter().Text(FormatHours(task.Hours)).FontSize(11);
                             }
 
                             // Total row
                             table.Cell().Border(1).Padding(4).Text("").FontSize(11);
                             table.Cell().Border(1).Padding(4).Text("").FontSize(11);
                             table.Cell().Border(1).Padding(4).AlignRight().Text("Ukupan broj sati").Bold().FontSize(11);
-                            table.Cell().Border(1).Padding(4).AlignCenter().Text(total.ToString()).Bold().FontSize(11);
+                            table.Cell().Border(1).Padding(4).AlignCenter().Text(FormatHours(total)).Bold().FontSize(11);
                         });
 
                         if (settings.IncludeSignatures)
@@ -768,7 +772,7 @@ public class ExportService : IExportService
             dataRow.AppendChild(CreateTableCell(index++.ToString(), false, true, false, false)); // Centered H & V
             dataRow.AppendChild(CreateTableCell($"{task.Description}", false, false, false, true)); // Left-aligned H, Center V
             dataRow.AppendChild(CreateTableCell($"{task.Date:d. M. yyyy}.", false, false, false, true)); // Left-aligned H, Center V
-            dataRow.AppendChild(CreateTableCell(task.Hours.ToString(), false, true, false, false)); // Centered H & V
+            dataRow.AppendChild(CreateTableCell(FormatHours(task.Hours), false, true, false, false)); // Centered H & V
             table.AppendChild(dataRow);
         }
 
@@ -777,7 +781,7 @@ public class ExportService : IExportService
         totalRow.AppendChild(CreateTableCell("", false, true, false, false));
         totalRow.AppendChild(CreateTableCell("", false, false, false, false));
         totalRow.AppendChild(CreateTableCell("Ukupan broj sati", true, false, false, true)); // Bold, Left-aligned H, Center V
-        totalRow.AppendChild(CreateTableCell(total.ToString(), true, true, false, false)); // Bold, Centered H & V
+        totalRow.AppendChild(CreateTableCell(FormatHours(total), true, true, false, false)); // Bold, Centered H & V
         table.AppendChild(totalRow);
 
         body.AppendChild(table);

@@ -233,6 +233,8 @@ public class DateFilteringIntegrationTest
         await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(
             ctx.DailyTasks.Where(t => t.Description.Contains(marker)));
         await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(
+            ctx.Templates.Where(x => x.Name.Contains(marker) || x.Description.Contains(marker)));
+        await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(
             ctx.Clients.Where(c => c.Name.ToLower() == clientName.ToLower()));
     }
 
@@ -442,6 +444,178 @@ public class DateFilteringIntegrationTest
         Assert.AreEqual(vm.NetText, vm.GrossText);
     }
 
+    [TestMethod]
+    public async Task Templates_ShouldBeSavedReplacedAndDeleted()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var marker = "UT-tpl-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        try
+        {
+            var saved = await db.SaveTemplateAsync(new DailyTaskManager.Core.Models.TaskTemplate { Name = marker, Description = marker + " v1", Hours = 3.5m });
+            Assert.IsTrue(saved.Id > 0);
+
+            // Same name (any case) replaces the template instead of adding another
+            var replaced = await db.SaveTemplateAsync(new DailyTaskManager.Core.Models.TaskTemplate { Name = marker.ToUpper(), Description = marker + " v2", Hours = 2m });
+            Assert.AreEqual(saved.Id, replaced.Id);
+
+            var all = (await db.GetTemplatesAsync()).Where(x => x.Name.ToLower() == marker.ToLower()).ToList();
+            Assert.AreEqual(1, all.Count);
+            Assert.AreEqual(marker + " v2", all[0].Description);
+            Assert.AreEqual(2m, all[0].Hours);
+
+            Assert.IsTrue(await db.DeleteTemplateAsync(saved.Id));
+            Assert.IsFalse(await db.DeleteTemplateAsync(saved.Id), "Deleting twice reports nothing deleted");
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, "ut-none-" + marker);
+        }
+    }
+
+    [TestMethod]
+    public async Task TasksChanged_ShouldFireOnWritesAndFirstEntryDateShouldBeKnown()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var marker = "UT-evt-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var fired = 0;
+        EventHandler handler = (_, _) => fired++;
+        db.TasksChanged += handler;
+
+        try
+        {
+            var first = await db.GetFirstEntryDateAsync();
+            Assert.IsNotNull(first, "The test account has entries");
+
+            var task = await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = DateTime.Today, Description = marker, Hours = 1 });
+            Assert.AreEqual(1, fired);
+            await db.RemoveTaskAsync(task.Id);
+            Assert.AreEqual(2, fired);
+        }
+        finally
+        {
+            db.TasksChanged -= handler;
+            await CleanUpTestDataAsync(marker, "ut-none-" + marker);
+        }
+    }
+
+    [TestMethod]
+    public void MissingDays_ShouldFindWorkingDaysWithoutEntries()
+    {
+        // Wed 28 Oct 2026 is "today"; the user started on Mon 19 Oct
+        var today = new DateTime(2026, 10, 28);
+        var first = new DateTime(2026, 10, 19);
+        var logged = new HashSet<DateTime> { new(2026, 10, 19), new(2026, 10, 20), new(2026, 10, 22), new(2026, 10, 23) };
+
+        // Before the reminder hour today does not count: only Wed 21 and Mon 26, Tue 27 are missing (weekend skipped)
+        var morning = DailyTaskManager.Avalonia.Services.MissingDays.Find(first, today, today.AddHours(9), logged, 16);
+        CollectionAssert.AreEqual(new[] { new DateTime(2026, 10, 21), new DateTime(2026, 10, 26), new DateTime(2026, 10, 27) }, morning);
+
+        // After the reminder hour today is included
+        var evening = DailyTaskManager.Avalonia.Services.MissingDays.Find(first, today, today.AddHours(17), logged, 16);
+        Assert.AreEqual(4, evening.Count);
+        Assert.AreEqual(today, evening.Last());
+
+        // Nothing is reported before the user's first entry, or for a brand-new account
+        Assert.AreEqual(0, DailyTaskManager.Avalonia.Services.MissingDays.Find(null, today, today.AddHours(17), logged, 16).Count);
+        Assert.IsFalse(DailyTaskManager.Avalonia.Services.MissingDays.Find(today, today, today.AddHours(9), new HashSet<DateTime>(), 16).Any());
+
+        // Description
+        Assert.AreEqual("You haven't logged any hours today yet.", DailyTaskManager.Avalonia.Services.MissingDays.Describe(new List<DateTime> { today }, today));
+        StringAssert.Contains(DailyTaskManager.Avalonia.Services.MissingDays.Describe(evening, today), "No entries for 4 working days");
+    }
+
+    [TestMethod]
+    public async Task CalendarViewModel_ShouldBuildMonthGridAndNavigate()
+    {
+        var vm = _serviceProvider!.GetRequiredService<ActivityCalendarViewModel>();
+        await Task.Delay(2500);
+
+        Assert.AreEqual(0, vm.Days.Count % 7, "The grid is made of whole weeks");
+        Assert.IsTrue(vm.Days.Count == 35 || vm.Days.Count == 42 || vm.Days.Count == 28);
+        Assert.AreEqual(DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month), vm.Days.Count(d => d.InMonth));
+        Assert.AreEqual(DayOfWeek.Monday, vm.Days[0].Date.DayOfWeek, "Weeks start on Monday");
+        Assert.AreEqual(1, vm.Days.Count(d => d.IsToday));
+
+        var title = vm.MonthTitle;
+        vm.PreviousMonthCommand.Execute(null);
+        await Task.Delay(1500);
+        Assert.AreNotEqual(title, vm.MonthTitle);
+        vm.GoToTodayCommand.Execute(null);
+        await Task.Delay(1500);
+        Assert.AreEqual(title, vm.MonthTitle);
+    }
+
+    [TestMethod]
+    public async Task AddDialog_ShouldSaveTemplateAndQuickAddShouldCreateEntry()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var marker = "UT-quick-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        try
+        {
+            // Saving from the Add dialog creates a template
+            var dialog = _serviceProvider!.GetRequiredService<AddTaskViewModel>();
+            dialog.Description = marker + " description";
+            dialog.Hours = 2.5m;
+            dialog.SaveAsTemplate = true;
+            dialog.TemplateName = marker;
+            await dialog.SaveCommand.ExecuteAsync(null);
+
+            var template = (await db.GetTemplatesAsync()).SingleOrDefault(x => x.Name == marker);
+            Assert.IsNotNull(template, "The template was saved");
+            Assert.AreEqual(2.5m, template.Hours);
+
+            // A new dialog offers it and applies it
+            var second = _serviceProvider!.GetRequiredService<AddTaskViewModel>();
+            await Task.Delay(1500);
+            Assert.IsTrue(second.HasTemplates);
+            second.SelectedTemplate = second.Templates.Single(x => x.Name == marker);
+            Assert.AreEqual(marker + " description", second.Description);
+            Assert.AreEqual(2.5m, second.Hours);
+
+            // Quick add on the list creates an entry for today
+            _viewModel!.SearchText = marker;
+            await _viewModel.ApplyFiltersAsync();
+            Assert.AreEqual(0, _viewModel.TotalCount);
+            await _viewModel.QuickAddTemplateCommand.ExecuteAsync(template);
+            _viewModel.SearchText = marker;
+            await _viewModel.ApplyFiltersAsync();
+            Assert.AreEqual(1, _viewModel.TotalCount);
+            Assert.AreEqual(DateTime.Today, _viewModel.FilteredTasks[0].Date.Date);
+            Assert.AreEqual(2.5m, _viewModel.FilteredTasks[0].Hours);
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, "ut-none-" + marker);
+        }
+    }
+
+    [TestMethod]
+    public async Task Export_ShouldFormatHoursWithoutTrailingZeros()
+    {
+        var export = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IExportService>();
+        var path = Path.Combine(Path.GetTempPath(), $"dtm_hours_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            var tasks = new List<DailyTaskManager.Core.Models.DailyTask>
+            {
+                new() { Date = new DateTime(2026, 10, 1), Description = "a", Hours = 7.00m },
+                new() { Date = new DateTime(2026, 10, 2), Description = "b", Hours = 2.50m }
+            };
+            await export.ExportTasksToCsvAsync(tasks, path);
+
+            var lines = await File.ReadAllLinesAsync(path);
+            StringAssert.Contains(lines[1], ",7,");
+            StringAssert.Contains(lines[2], ",2.5,");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
     private IHost CreateTestHost()
     {
         return Host.CreateDefaultBuilder()
@@ -484,6 +658,9 @@ public class DateFilteringIntegrationTest
                 // ViewModels
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
+                services.AddTransient<ActivityCalendarViewModel>();
+                services.AddTransient<AddTaskViewModel>();
+                services.AddSingleton<DailyTaskManager.Core.Interfaces.IAutoCompleteService, AutoCompleteService>();
                 services.AddTransient<ReportsViewModel>();
                 services.AddTransient<LoginViewModel>();
 

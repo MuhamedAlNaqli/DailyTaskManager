@@ -95,7 +95,7 @@ public class DialogService
     /// <summary>
     /// Shows the Add Task dialog
     /// </summary>
-    public async Task<DailyTask?> ShowAddTaskDialogAsync(DailyTask? template = null)
+    public async Task<DailyTask?> ShowAddTaskDialogAsync(DailyTask? template = null, DateTime? date = null)
     {
         try
         {
@@ -103,6 +103,7 @@ public class DialogService
             
             var viewModel = App.GetService<AddTaskViewModel>();
             if (template != null) viewModel.Prefill(template);
+            if (date.HasValue) viewModel.Date = new DateTimeOffset(date.Value.Date);
             var dialog = new Views.AddTaskDialog
             {
                 DataContext = viewModel

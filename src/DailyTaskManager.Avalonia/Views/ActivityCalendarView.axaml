@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.ActivityCalendarView"
+             x:DataType="vm:ActivityCalendarViewModel">
+
+    <ScrollViewer>
+        <Grid Margin="24">
+            <StackPanel Spacing="16">
+
+                <!-- Header with month navigation -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Calendar"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialBodyBrush}"/>
+                        <TextBlock Name="CalendarSummaryText"
+                                   Text="{Binding SummaryText}"
+                                   FontSize="14"
+                                   Foreground="#FF5E81AC"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Name="PreviousMonthButton"
+                                Content="‹"
+                                Command="{Binding PreviousMonthCommand}"
+                                Padding="14,6" FontSize="16"
+                                ToolTip.Tip="Previous month"/>
+                        <TextBlock Name="MonthTitleText"
+                                   Text="{Binding MonthTitle}"
+                                   MinWidth="150"
+                                   TextAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextStrong}"/>
+                        <Button Name="NextMonthButton"
+                                Content="›"
+                                Command="{Binding NextMonthCommand}"
+                                Padding="14,6" FontSize="16"
+                                ToolTip.Tip="Next month"/>
+                        <Button Name="TodayButton"
+                                Content="Today"
+                                Command="{Binding GoToTodayCommand}"
+                                Padding="14,6"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Weekday header -->
+                <ItemsControl ItemsSource="{Binding WeekdayNames}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="7"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{Binding}"
+                                       HorizontalAlignment="Center"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppTextMuted}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Day grid -->
+                <ItemsControl Name="DaysGrid" ItemsSource="{Binding Days}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="7"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CalendarDay">
+                            <Button Command="{Binding $parent[ItemsControl].DataContext.AddForDayCommand}"
+                                    CommandParameter="{Binding}"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                    Height="84"
+                                    Margin="3"
+                                    Padding="8,6"
+                                    CornerRadius="8"
+                                    Background="{Binding Fill}"
+                                    BorderBrush="{Binding Border}"
+                                    BorderThickness="{Binding BorderWidth}"
+                                    Opacity="{Binding CellOpacity}"
+                                    ToolTip.Tip="{Binding Tooltip}"
+                                    AutomationProperties.Name="{Binding Tooltip}">
+                                <Grid RowDefinitions="Auto,*">
+                                    <TextBlock Grid.Row="0"
+                                               Text="{Binding DayText}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppTextStrong}"/>
+                                    <TextBlock Grid.Row="1"
+                                               Text="{Binding HoursText}"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Bottom"
+                                               FontSize="14" FontWeight="Bold"
+                                               Foreground="{DynamicResource AppTextStrong}"/>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Legend -->
+                <StackPanel Orientation="Horizontal" Spacing="18">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="12" Height="12" CornerRadius="3" Background="#4010B981" VerticalAlignment="Center"/>
+                        <TextBlock Text="7h or more" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="12" Height="12" CornerRadius="3" Background="#40F59E0B" VerticalAlignment="Center"/>
+                        <TextBlock Text="under 7h" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="12" Height="12" CornerRadius="3" Background="#33EF4444" VerticalAlignment="Center"/>
+                        <TextBlock Text="working day without an entry" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                    </StackPanel>
+                    <TextBlock Text="Click a day to add an entry for it." FontSize="12" Foreground="{DynamicResource AppTextFaint}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

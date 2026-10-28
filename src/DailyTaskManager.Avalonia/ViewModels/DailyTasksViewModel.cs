@@ -44,6 +44,19 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private ClientChoice? _assignTarget = ClientChoice.NoClient;
 
+    public ObservableCollection<TaskTemplate> Templates { get; } = new();
+
+    private CancellationTokenSource? _toastTimer;
+
+    [ObservableProperty]
+    private bool _hasTemplates;
+
+    [ObservableProperty]
+    private bool _isToastVisible;
+
+    [ObservableProperty]
+    private string _toastMessage = "";
+
     [ObservableProperty]
     private bool _isUndoVisible;
 
@@ -107,6 +120,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
         // Subscribe to authentication changes
         _authService.AuthenticationChanged += OnAuthenticationChanged;
+        _databaseService.TasksChanged += OnTasksChanged;
 
         // Always attempt to load tasks - LoadTasksAsync handles authentication check
         _ = LoadTasksAsync();
@@ -125,8 +139,11 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         _authService.AuthenticationChanged -= OnAuthenticationChanged;
         _searchDebounce?.Cancel();
         _searchDebounce?.Dispose();
+        _databaseService.TasksChanged -= OnTasksChanged;
         _undoTimer?.Cancel();
         _undoTimer?.Dispose();
+        _toastTimer?.Cancel();
+        _toastTimer?.Dispose();
     }
 
     private async void OnAuthenticationChanged(object? sender, AuthResult e)
@@ -173,13 +190,20 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             var summaryTask = _databaseService.GetTaskSummaryAsync();
             // Full reloads (start, add, edit, delete) also refresh the client lists, as they may have changed
             var clientsTask = showOverlay ? _databaseService.GetClientsAsync() : Task.FromResult<List<Client>?>(null);
-            await Task.WhenAll(pageTask, summaryTask, clientsTask);
+            var templatesTask = showOverlay ? _databaseService.GetTemplatesAsync() : Task.FromResult<List<TaskTemplate>?>(null);
+            await Task.WhenAll(pageTask, summaryTask, clientsTask, templatesTask);
 
             if (version != _loadVersion) return; // a newer request superseded this one
 
             var result = pageTask.Result;
             var summary = summaryTask.Result;
             if (clientsTask.Result != null) RebuildClientOptions(clientsTask.Result);
+            if (templatesTask.Result != null)
+            {
+                Templates.Clear();
+                foreach (var template in templatesTask.Result) Templates.Add(template);
+                HasTemplates = Templates.Count > 0;
+            }
 
             FilteredTasks = new ObservableCollection<DailyTask>(result.Items);
             TotalCount = result.TotalCount;
@@ -203,6 +227,80 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         finally
         {
             if (showOverlay && version == _loadVersion) IsLoading = false;
+        }
+    }
+
+    private void OnTasksChanged(object? sender, EventArgs e)
+    {
+        // Entries changed elsewhere (calendar, reminder banner...): refresh the current page quietly
+        try
+        {
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = LoadPageAsync(CurrentPage, showOverlay: false));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not schedule a refresh");
+        }
+    }
+
+    [RelayCommand]
+    private async Task QuickAddTemplateAsync(TaskTemplate? template)
+    {
+        if (template == null) return;
+
+        try
+        {
+            await _databaseService.AddTaskAsync(new DailyTask
+            {
+                Date = DateTime.Today,
+                Description = template.Description,
+                Hours = template.Hours,
+                ClientId = template.ClientId
+            });
+            await LoadTasksAsync();
+            _ = ShowToastAsync($"Added \"{template.Name}\" for today");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding entry from template {TemplateId}", template.Id);
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to add the entry. Please try again.");
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteTemplateAsync(TaskTemplate? template)
+    {
+        if (template == null) return;
+
+        try
+        {
+            if (await _databaseService.DeleteTemplateAsync(template.Id))
+            {
+                Templates.Remove(template);
+                HasTemplates = Templates.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting template {TemplateId}", template.Id);
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to delete the template.");
+        }
+    }
+
+    private async Task ShowToastAsync(string message)
+    {
+        ToastMessage = message;
+        IsToastVisible = true;
+
+        _toastTimer?.Cancel();
+        var cts = _toastTimer = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4), cts.Token);
+            IsToastVisible = false;
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 

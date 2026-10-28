@@ -77,6 +77,36 @@
                         </Grid>
                     </Button>
 
+                    <!-- Calendar -->
+                    <Button AutomationProperties.AutomationId="NavCalendar"
+                            AutomationProperties.Name="Calendar"
+                            Classes="sidebar-nav"
+                            Command="{Binding NavigateToCalendarCommand}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Padding="12,10"
+                            Margin="0,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="20" Height="20"
+                                    Margin="0,0,12,0">
+                                <TextBlock Text="🗓️" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="Calendar"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource AppText}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <!-- Analytics -->
                     <Button AutomationProperties.AutomationId="NavAnalytics"
                             AutomationProperties.Name="Analytics"
@@ -237,10 +267,49 @@
         </Border>
 
         <!-- Main Content Area -->
-        <ContentControl Grid.Column="1"
-                        Content="{Binding CurrentView}"
-                        Classes="fade-in"
-                        Margin="10"/>
+        <DockPanel Grid.Column="1" Margin="10">
+            <!-- Missing-day reminder -->
+            <Border DockPanel.Dock="Top"
+                    Name="ReminderBanner"
+                    IsVisible="{Binding IsReminderVisible}"
+                    Background="#33F59E0B"
+                    BorderBrush="#66F59E0B"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="14,10"
+                    Margin="14,4,14,0">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <TextBlock Grid.Column="0" Text="⏰" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="1"
+                               Name="ReminderText"
+                               Text="{Binding ReminderText}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppTextStrong}"/>
+                    <Button Grid.Column="2"
+                            Name="ReminderAddButton"
+                            Content="{Binding ReminderActionText}"
+                            Command="{Binding AddMissingEntryCommand}"
+                            Margin="12,0,8,0"
+                            Background="#FF4C566A"
+                            Foreground="White"
+                            BorderBrush="Transparent"
+                            CornerRadius="6"
+                            Padding="12,6"/>
+                    <Button Grid.Column="3"
+                            Name="ReminderDismissButton"
+                            Content="Dismiss"
+                            Command="{Binding DismissReminderCommand}"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Foreground="{DynamicResource AppTextMuted}"
+                            Padding="10,6"/>
+                </Grid>
+            </Border>
+
+            <ContentControl Content="{Binding CurrentView}"
+                            Classes="fade-in"/>
+        </DockPanel>
 
         <!-- Loading Overlay -->
         <Grid Grid.ColumnSpan="2"

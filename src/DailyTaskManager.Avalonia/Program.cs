@@ -123,6 +123,7 @@ class Program
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<SettingsViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
+                services.AddTransient<ActivityCalendarViewModel>();
                 services.AddTransient<ReportsViewModel>();
                 services.AddTransient<LoginViewModel>();
                 services.AddTransient<AddTaskViewModel>();

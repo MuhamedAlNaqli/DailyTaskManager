@@ -477,6 +477,40 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Reminder Section -->
+                    <Border Background="{DynamicResource AppSurface}"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            Margin="0,0,0,24">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="⏰ Reminders"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource AppTextStrong}"/>
+                                <TextBlock Text="Show a banner when a working day (Mon-Fri) has no entry"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                            <CheckBox Name="ReminderEnabledCheckBox"
+                                      Content="Remind me about working days without an entry"
+                                      IsChecked="{Binding ReminderEnabled}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding ReminderEnabled}">
+                                <TextBlock Text="Remind me about today from (hour, 0-23)"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AppText}"/>
+                                <NumericUpDown Name="ReminderHourInput"
+                                               Value="{Binding ReminderHour}"
+                                               Minimum="0" Maximum="23" Increment="1"
+                                               FormatString="0"
+                                               Width="120"
+                                               Classes="primary"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Updates Section -->
                     <Border Background="{DynamicResource AppSurface}"
                             CornerRadius="12"

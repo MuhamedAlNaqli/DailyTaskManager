@@ -91,6 +91,12 @@ public partial class DailyTasksView : UserControl
         }
     }
 
+    private void OnTemplateClicked(object? sender, RoutedEventArgs e)
+    {
+        // Close the quick-add flyout once a template was picked
+        this.FindControl<Button>("QuickAddButton")?.Flyout?.Hide();
+    }
+
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         // A new page starts at the top of the list

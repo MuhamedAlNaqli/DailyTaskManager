@@ -40,6 +40,14 @@ public partial class SettingsViewModel : ObservableObject
     private string _excelExportPath = string.Empty;
 
     [ObservableProperty]
+    private bool _reminderEnabled = ReminderSettings.DefaultEnabled;
+
+    [ObservableProperty]
+    private decimal _reminderHour = ReminderSettings.DefaultHour;
+
+    private bool _loadingReminder;
+
+    [ObservableProperty]
     private bool _isCheckingForUpdates = false;
 
     [ObservableProperty]
@@ -228,6 +236,8 @@ public partial class SettingsViewModel : ObservableObject
 
             // Load export paths
             await LoadExportPathsAsync();
+
+            await LoadReminderSettingsAsync();
         }
         catch (Exception ex)
         {
@@ -237,6 +247,36 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    private async Task LoadReminderSettingsAsync()
+    {
+        try
+        {
+            _loadingReminder = true;
+            var enabled = await _settingsService.GetSettingAsync<string>(ReminderSettings.EnabledKey, null);
+            var hour = await _settingsService.GetSettingAsync<string>(ReminderSettings.HourKey, null);
+            ReminderEnabled = enabled == null ? ReminderSettings.DefaultEnabled : string.Equals(enabled, "true", StringComparison.OrdinalIgnoreCase);
+            ReminderHour = int.TryParse(hour, out var h) && h >= 0 && h <= 23 ? h : ReminderSettings.DefaultHour;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not load reminder settings");
+        }
+        finally
+        {
+            _loadingReminder = false;
+        }
+    }
+
+    partial void OnReminderEnabledChanged(bool value)
+    {
+        if (!_loadingReminder) _ = _settingsService.SetSettingAsync(ReminderSettings.EnabledKey, value ? "true" : "false");
+    }
+
+    partial void OnReminderHourChanged(decimal value)
+    {
+        if (!_loadingReminder) _ = _settingsService.SetSettingAsync(ReminderSettings.HourKey, ((int)Math.Clamp(value, 0, 23)).ToString());
     }
 
     private async Task LoadPdfSettingsAsync()

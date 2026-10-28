@@ -51,9 +51,23 @@ public partial class AddTaskViewModel : ObservableObject
     [ObservableProperty]
     private string _newClientName = "";
 
+    [ObservableProperty]
+    private TaskTemplate? _selectedTemplate;
+
+    [ObservableProperty]
+    private bool _hasTemplates;
+
+    [ObservableProperty]
+    private bool _saveAsTemplate;
+
+    [ObservableProperty]
+    private string _templateName = "";
+
     public ObservableCollection<string> Suggestions { get; } = new();
 
     public ObservableCollection<ClientChoice> Clients { get; } = new();
+
+    public ObservableCollection<TaskTemplate> Templates { get; } = new();
 
     public event EventHandler<bool>? RequestClose;
 
@@ -85,6 +99,11 @@ public partial class AddTaskViewModel : ObservableObject
             Clients.Add(ClientChoice.NoClient);
             foreach (var client in clients) Clients.Add(ClientChoice.From(client));
             SelectPendingClient();
+
+            var templates = await _databaseService.GetTemplatesAsync();
+            Templates.Clear();
+            foreach (var template in templates) Templates.Add(template);
+            HasTemplates = Templates.Count > 0;
         }
         catch (Exception ex)
         {
@@ -111,6 +130,11 @@ public partial class AddTaskViewModel : ObservableObject
 
             _resolvedClientId = await ResolveClientIdAsync();
 
+            if (SaveAsTemplate)
+            {
+                await SaveTemplateAsync();
+            }
+
             _logger.LogInformation("Task validation completed successfully");
             RequestClose?.Invoke(this, true); // Dialog result = true
         }
@@ -129,6 +153,45 @@ public partial class AddTaskViewModel : ObservableObject
     private void Cancel()
     {
         RequestClose?.Invoke(this, false); // Dialog result = false
+    }
+
+    partial void OnSelectedTemplateChanged(TaskTemplate? value)
+    {
+        if (value == null) return;
+
+        _skipSuggestionsFor = value.Description;
+        Description = value.Description;
+        Hours = value.Hours;
+        NewClientName = "";
+        _pendingClientId = value.ClientId;
+        SelectPendingClient();
+    }
+
+    private async Task SaveTemplateAsync()
+    {
+        try
+        {
+            var name = TemplateName.Trim();
+            if (name.Length == 0)
+            {
+                var firstLine = Description.Replace("\r", "").Split('\n').Select(l => l.Trim().TrimStart('-', ' ')).FirstOrDefault(l => l.Length > 0) ?? "Template";
+                name = firstLine.Length > 40 ? firstLine.Substring(0, 40) : firstLine;
+            }
+
+            var clientId = !string.IsNullOrWhiteSpace(NewClientName) ? _resolvedClientId : SelectedClient?.Id;
+            await _databaseService.SaveTemplateAsync(new TaskTemplate
+            {
+                Name = name,
+                Description = Description.Trim(),
+                Hours = Hours,
+                ClientId = clientId
+            });
+        }
+        catch (Exception ex)
+        {
+            // The entry itself is still added; only the template failed to save
+            _logger.LogError(ex, "Error saving template");
+        }
     }
 
     private async Task<int?> ResolveClientIdAsync()
