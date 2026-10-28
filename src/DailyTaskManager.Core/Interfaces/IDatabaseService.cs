@@ -41,6 +41,16 @@ namespace DailyTaskManager.Core.Interfaces
         Task<TaskSummary> GetTaskSummaryAsync();
 
         /// <summary>
+        /// Gets hours per day for the tasks matching the query (days without entries are not returned)
+        /// </summary>
+        Task<List<DayHours>> GetDailyHoursAsync(TaskQuery query);
+
+        /// <summary>
+        /// Gets hours per client for the tasks matching the query
+        /// </summary>
+        Task<List<ClientHours>> GetClientHoursAsync(TaskQuery query);
+
+        /// <summary>
         /// Gets the current user's clients ordered by name
         /// </summary>
         Task<List<Client>> GetClientsAsync();

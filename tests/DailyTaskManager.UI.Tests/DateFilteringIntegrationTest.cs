@@ -307,6 +307,141 @@ public class DateFilteringIntegrationTest
         }
     }
 
+    [TestMethod]
+    public async Task Analytics_ShouldAggregateHoursPerDayAndClient()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var name = "UT-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var marker = "UT-agg-" + name;
+        var day1 = new DateTime(2020, 1, 6);
+        var day2 = new DateTime(2020, 1, 7);
+
+        try
+        {
+            var client = await db.GetOrCreateClientAsync(name);
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = day1, Description = marker + " a", Hours = 3, ClientId = client.Id });
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = day1, Description = marker + " b", Hours = 4 });
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = day2, Description = marker + " c", Hours = 2.5m, ClientId = client.Id });
+
+            var query = new DailyTaskManager.Core.Models.TaskQuery(marker);
+            var days = await db.GetDailyHoursAsync(query);
+            Assert.AreEqual(2, days.Count);
+            Assert.AreEqual(7m, days[0].Hours);
+            Assert.AreEqual(2, days[0].Entries);
+            Assert.AreEqual(day1, days[0].Date.Date);
+            Assert.AreEqual(2.5m, days[1].Hours);
+
+            var clients = await db.GetClientHoursAsync(query);
+            Assert.AreEqual(2, clients.Count);
+            Assert.AreEqual(4m, clients.Single(c => c.ClientId == null).Hours);
+            Assert.AreEqual("Unassigned", clients.Single(c => c.ClientId == null).ClientName);
+            Assert.AreEqual(5.5m, clients.Single(c => c.ClientId == client.Id).Hours);
+            Assert.AreEqual(name, clients.Single(c => c.ClientId == client.Id).ClientName);
+
+            // The date range limits the result
+            var onlyDay2 = await db.GetDailyHoursAsync(new DailyTaskManager.Core.Models.TaskQuery(marker, day2, day2));
+            Assert.AreEqual(1, onlyDay2.Count);
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, name);
+        }
+    }
+
+    [TestMethod]
+    public void Invoice_ShouldComputeAmounts()
+    {
+        var invoice = new DailyTaskManager.Core.Models.InvoiceData { Hours = 10.5m, HourlyRate = 20m, VatPercent = 17m };
+        Assert.AreEqual(210.00m, invoice.NetAmount);
+        Assert.AreEqual(35.70m, invoice.VatAmount);
+        Assert.AreEqual(245.70m, invoice.GrossAmount);
+
+        var noVat = new DailyTaskManager.Core.Models.InvoiceData { Hours = 3m, HourlyRate = 33.333m };
+        Assert.AreEqual(100.00m, noVat.NetAmount, "Net amount is rounded to two decimals");
+        Assert.AreEqual(0m, noVat.VatAmount);
+        Assert.AreEqual(noVat.NetAmount, noVat.GrossAmount);
+    }
+
+    [TestMethod]
+    public async Task Invoice_ShouldCreatePdf()
+    {
+        var export = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IExportService>();
+        var settings = new DailyTaskManager.Core.Models.PdfSettings();
+        var path = Path.Combine(Path.GetTempPath(), $"dtm_invoice_{Guid.NewGuid():N}.pdf");
+
+        try
+        {
+            var invoice = new DailyTaskManager.Core.Models.InvoiceData
+            {
+                InvoiceNumber = "001/26",
+                IssueDate = new DateTime(2026, 10, 31),
+                PeriodFrom = new DateTime(2026, 10, 1),
+                PeriodTo = new DateTime(2026, 10, 31),
+                Hours = 147m,
+                HourlyRate = 25m,
+                VatPercent = 17m,
+                PaymentNote = "Račun: 123-456-789\nRok plaćanja: 15 dana"
+            };
+
+            var result = await export.ExportInvoiceToPdfAsync(invoice, settings, path);
+            Assert.AreEqual(path, result);
+            var bytes = await File.ReadAllBytesAsync(path);
+            Assert.IsTrue(bytes.Length > 1000, "PDF should not be empty");
+            Assert.AreEqual("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+            // Optional: keep a copy for manual inspection
+            var keep = Environment.GetEnvironmentVariable("DTM_KEEP_INVOICE");
+            if (!string.IsNullOrEmpty(keep)) File.Copy(path, keep, true);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [TestMethod]
+    public async Task AnalyticsViewModel_ShouldBuildChartsForPeriods()
+    {
+        var vm = _serviceProvider!.GetRequiredService<AnalyticsViewModel>();
+        await Task.Delay(2500);
+
+        // "This month" is a daily chart with one bar per calendar day
+        var daysInMonth = DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month);
+        Assert.IsTrue(vm.IsDailyChart);
+        Assert.AreEqual(daysInMonth, vm.Bars.Count);
+
+        vm.SelectedPeriod = vm.Periods.Single(p => p.Name == "This year");
+        await Task.Delay(2500);
+        Assert.IsFalse(vm.IsDailyChart, "A year is shown per month");
+        Assert.AreEqual(12, vm.Bars.Count);
+
+        vm.SelectedPeriod = vm.Periods.Single(p => p.Name == "All time");
+        await Task.Delay(2500);
+        Assert.IsTrue(vm.HasData, "The test account has entries");
+        Assert.IsTrue(vm.Bars.Count >= 1);
+        Assert.IsTrue(vm.ClientRows.Count >= 1);
+    }
+
+    [TestMethod]
+    public async Task ReportsViewModel_ShouldSummariseMonthAndComputeInvoice()
+    {
+        var vm = _serviceProvider!.GetRequiredService<ReportsViewModel>();
+        await Task.Delay(2500);
+
+        Assert.IsNotNull(vm.SelectedMonth);
+        Assert.AreEqual(24, vm.Months.Count);
+
+        vm.SelectedMonth = vm.Months.Single(m => m.From == new DateTime(2025, 8, 1));
+        await Task.Delay(2000);
+        Assert.IsTrue(vm.TotalHours > 0, "The test account has entries in August 2025");
+        Assert.IsTrue(vm.EntryCount > 0);
+
+        vm.HourlyRate = 10m;
+        vm.VatPercent = 0m;
+        var expectedNet = Math.Round(vm.TotalHours * 10m, 2);
+        Assert.AreEqual(expectedNet.ToString("N2", new System.Globalization.CultureInfo("de-DE")), vm.NetText);
+        Assert.AreEqual(vm.NetText, vm.GrossText);
+    }
+
     private IHost CreateTestHost()
     {
         return Host.CreateDefaultBuilder()
@@ -348,6 +483,8 @@ public class DateFilteringIntegrationTest
 
                 // ViewModels
                 services.AddTransient<DailyTasksViewModel>();
+                services.AddTransient<AnalyticsViewModel>();
+                services.AddTransient<ReportsViewModel>();
                 services.AddTransient<LoginViewModel>();
 
                 // App Services

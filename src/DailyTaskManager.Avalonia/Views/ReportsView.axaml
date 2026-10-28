@@ -1,0 +1,170 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.ReportsView"
+             x:DataType="vm:ReportsViewModel">
+
+    <ScrollViewer>
+        <Grid Margin="24">
+            <StackPanel Spacing="24" MaxWidth="900" HorizontalAlignment="Stretch">
+
+                <StackPanel>
+                    <TextBlock Text="Reports"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource MaterialBodyBrush}"/>
+                    <TextBlock Text="Create work orders and invoices for a month"
+                               FontSize="14"
+                               Foreground="#FF5E81AC"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- Selection and work order exports -->
+                <Border Background="{DynamicResource AppSurface}"
+                        CornerRadius="12" Padding="20"
+                        BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Work order"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppText}"/>
+
+                        <Grid ColumnDefinitions="*,16,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Month" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <ComboBox Name="MonthComboBox"
+                                          ItemsSource="{Binding Months}"
+                                          SelectedItem="{Binding SelectedMonth}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MonthChoice">
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="Client" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <ComboBox Name="ReportClientComboBox"
+                                          ItemsSource="{Binding ClientOptions}"
+                                          SelectedItem="{Binding SelectedClient}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ClientChoice">
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="14,10">
+                            <TextBlock Name="SummaryTextBlock"
+                                       Text="{Binding SummaryText}"
+                                       Foreground="{DynamicResource AppTextStrong}"
+                                       FontWeight="Medium"/>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Name="ExportPdfButton"
+                                    Content="Export PDF"
+                                    Command="{Binding ExportPdfCommand}"
+                                    IsEnabled="{Binding !IsBusy}"
+                                    Background="#FF4C566A" Foreground="White" BorderBrush="Transparent"
+                                    CornerRadius="6" Padding="16,10"/>
+                            <Button Name="ExportWordButton"
+                                    Content="Export Word"
+                                    Command="{Binding ExportWordCommand}"
+                                    IsEnabled="{Binding !IsBusy}"
+                                    Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                    CornerRadius="6" Padding="16,10"/>
+                            <Button Name="ExportExcelButton"
+                                    Content="Export Excel"
+                                    Command="{Binding ExportExcelCommand}"
+                                    IsEnabled="{Binding !IsBusy}"
+                                    Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                    CornerRadius="6" Padding="16,10"/>
+                        </StackPanel>
+                        <TextBlock Text="Header, company and recipient details come from Settings. The files are saved to your configured export folders."
+                                   FontSize="12" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppTextFaint}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Invoice builder -->
+                <Border Background="{DynamicResource AppSurface}"
+                        CornerRadius="12" Padding="20"
+                        BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Invoice"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppText}"/>
+                        <TextBlock Text="Invoices the hours of the month and client selected above."
+                                   FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+
+                        <Grid ColumnDefinitions="*,16,*,16,120">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Invoice number" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <TextBox Name="InvoiceNumberTextBox" Text="{Binding InvoiceNumber}" Classes="primary"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="Issue date" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <DatePicker SelectedDate="{Binding IssueDate, Mode=TwoWay}" Classes="primary"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="4">
+                                <TextBlock Text="Currency" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <TextBox Name="CurrencyTextBox" Text="{Binding Currency}" Classes="primary"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,16,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Hourly rate" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <NumericUpDown Name="HourlyRateInput"
+                                               Value="{Binding HourlyRate}"
+                                               Minimum="0" Maximum="100000" Increment="1" FormatString="0.00"
+                                               Classes="primary"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="VAT % (0 = no VAT)" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                <NumericUpDown Name="VatInput"
+                                               Value="{Binding VatPercent}"
+                                               Minimum="0" Maximum="100" Increment="1" FormatString="0.##"
+                                               Classes="primary"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Payment note (bank account, deadline...)" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                            <TextBox Name="PaymentNoteTextBox"
+                                     Text="{Binding PaymentNote}"
+                                     AcceptsReturn="True" TextWrapping="Wrap"
+                                     MinHeight="60" MaxHeight="120"
+                                     Classes="primary"/>
+                        </StackPanel>
+
+                        <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="14,12">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Foreground="{DynamicResource AppTextMuted}">
+                                    <Run Text="Net ("/><Run Text="{Binding TotalHours, StringFormat='{}{0:0.##}'}"/><Run Text=" h)"/>
+                                </TextBlock>
+                                <TextBlock Name="NetAmountText" Grid.Row="0" Grid.Column="1" Text="{Binding NetText}" Foreground="{DynamicResource AppTextStrong}" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="VAT" Foreground="{DynamicResource AppTextMuted}"/>
+                                <TextBlock Name="VatAmountText" Grid.Row="1" Grid.Column="1" Text="{Binding VatText}" Foreground="{DynamicResource AppTextStrong}" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Total" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}"/>
+                                <TextBlock Name="GrossAmountText" Grid.Row="2" Grid.Column="1" Text="{Binding GrossText}" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <Button Name="CreateInvoiceButton"
+                                Content="Create invoice (PDF)"
+                                Command="{Binding CreateInvoiceCommand}"
+                                IsEnabled="{Binding !IsBusy}"
+                                HorizontalAlignment="Left"
+                                Background="#FF4C566A" Foreground="White" BorderBrush="Transparent"
+                                CornerRadius="6" Padding="16,10"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

@@ -295,6 +295,144 @@ public class ExportService : IExportService
         }
     }
 
+    public async Task<string> ExportInvoiceToPdfAsync(InvoiceData invoice, PdfSettings settings, string? filePath = null)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                var folder = await _settingsService.GetPdfExportPathAsync();
+                filePath = Path.Combine(folder, $"Racun_{string.Concat(invoice.InvoiceNumber.Split(Path.GetInvalidFileNameChars()))}.pdf");
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
+            _logger.LogInformation("Creating invoice {Number}: {FilePath}", invoice.InvoiceNumber, filePath);
+
+            await Task.Run(() => GenerateInvoicePdf(invoice, settings, filePath));
+            return filePath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating invoice PDF");
+            throw;
+        }
+    }
+
+    private static string FormatMoney(decimal value)
+    {
+        CultureInfo culture;
+        try { culture = new CultureInfo("de-DE"); } catch (CultureNotFoundException) { culture = CultureInfo.InvariantCulture; }
+        return value.ToString("N2", culture);
+    }
+
+    private string FormatPeriod(DateTime from, DateTime to)
+    {
+        string Month(DateTime d) => _months[d.ToString("MMMM", CultureInfo.InvariantCulture)];
+        return from.Year == to.Year && from.Month == to.Month
+            ? $"{Month(to)} {to.Year}."
+            : $"{from:d. M. yyyy}. - {to:d. M. yyyy}.";
+    }
+
+    private void GenerateInvoicePdf(InvoiceData invoice, PdfSettings settings, string filePath)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+
+        const string headingsFontColor = "#FF4B4B";
+        var period = FormatPeriod(invoice.PeriodFrom, invoice.PeriodTo);
+        var description = $"Usluge po radnom nalogu za period: {period}";
+
+        QuestPDF.Fluent.Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(70);
+                page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Trebuchet MS"));
+
+                page.Content().Column(column =>
+                {
+                    // Issuer
+                    column.Item().PaddingBottom(15).Text(text =>
+                    {
+                        text.DefaultTextStyle(x => x.LineHeight(1.0f));
+                        text.Span(settings.CompanyName).Bold().FontSize(16).FontColor(headingsFontColor);
+                        text.Span($"\nID broj: {settings.CompanyId}\n" +
+                                  $"Broj rješenja: {settings.DecisionNumber}\n" +
+                                  $"{settings.AddressLine1}\n{settings.AddressLine2}\n" +
+                                  $"Telefon: {settings.Phone}\nEmail: {settings.Email}").FontSize(11);
+                    });
+
+                    // Recipient
+                    column.Item().PaddingBottom(28).Text(text =>
+                    {
+                        text.DefaultTextStyle(x => x.LineHeight(1.0f));
+                        text.Span(settings.ClientName).Bold().FontSize(16).FontColor(headingsFontColor);
+                        text.Span($"\nID broj: {settings.ClientId}\n" +
+                                  $"PDV broj: {settings.ClientVatNumber}\n" +
+                                  $"{settings.ClientAddressLine1}\n{settings.ClientAddressLine2}").FontSize(11);
+                    });
+
+                    column.Item().AlignCenter().Text($"RAČUN br. {invoice.InvoiceNumber}").Bold().FontSize(18).FontColor(headingsFontColor);
+                    column.Item().PaddingBottom(18).AlignCenter().Text($"Datum izdavanja: {invoice.IssueDate:d. M. yyyy}.").FontSize(11);
+
+                    column.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(6);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+                        table.Cell().Border(1).Padding(5).AlignCenter().Text("Opis usluge").Bold();
+                        table.Cell().Border(1).Padding(5).AlignCenter().Text("Količina (sati)").Bold();
+                        table.Cell().Border(1).Padding(5).AlignCenter().Text($"Cijena po satu ({invoice.Currency})").Bold();
+                        table.Cell().Border(1).Padding(5).AlignCenter().Text($"Iznos ({invoice.Currency})").Bold();
+
+                        table.Cell().Border(1).Padding(4).Text(description);
+                        table.Cell().Border(1).Padding(4).AlignCenter().Text(invoice.Hours.ToString("0.##", CultureInfo.InvariantCulture));
+                        table.Cell().Border(1).Padding(4).AlignRight().Text(FormatMoney(invoice.HourlyRate));
+                        table.Cell().Border(1).Padding(4).AlignRight().Text(FormatMoney(invoice.NetAmount));
+
+                        table.Cell().ColumnSpan(3).Border(1).Padding(4).AlignRight().Text("Osnovica").Bold();
+                        table.Cell().Border(1).Padding(4).AlignRight().Text(FormatMoney(invoice.NetAmount));
+
+                        if (invoice.VatPercent > 0)
+                        {
+                            table.Cell().ColumnSpan(3).Border(1).Padding(4).AlignRight().Text($"PDV ({invoice.VatPercent:0.##}%)").Bold();
+                            table.Cell().Border(1).Padding(4).AlignRight().Text(FormatMoney(invoice.VatAmount));
+                        }
+
+                        table.Cell().ColumnSpan(3).Border(1).Padding(4).AlignRight().Text($"Ukupno za uplatu ({invoice.Currency})").Bold();
+                        table.Cell().Border(1).Padding(4).AlignRight().Text(FormatMoney(invoice.GrossAmount)).Bold();
+                    });
+
+                    if (!string.IsNullOrWhiteSpace(invoice.PaymentNote))
+                    {
+                        column.Item().PaddingTop(24).Text(text =>
+                        {
+                            text.Span("Napomena / uplata:").Bold();
+                            text.Span("\n" + invoice.PaymentNote.Trim());
+                        });
+                    }
+
+                    if (settings.IncludeSignatures)
+                    {
+                        column.Item().PaddingTop(50).AlignRight().Text(text =>
+                        {
+                            text.Span("Izvršilac");
+                            text.EmptyLine();
+                            text.EmptyLine();
+                            text.EmptyLine();
+                            text.Span("_".PadRight(25, '_'));
+                        });
+                    }
+                });
+            });
+        }).GeneratePdf(filePath);
+    }
+
     public List<string> GetAvailableFormats()
     {
         return new List<string> { "Excel", "CSV", "PDF", "Word" };

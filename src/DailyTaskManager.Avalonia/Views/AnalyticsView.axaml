@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.AnalyticsView"
+             x:DataType="vm:AnalyticsViewModel">
+
+    <ScrollViewer Name="AnalyticsScroll">
+        <Grid Margin="24">
+            <StackPanel Spacing="24">
+
+                <!-- Header with filters -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Analytics"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialBodyBrush}"/>
+                        <TextBlock Text="See where your hours go"
+                                   FontSize="14"
+                                   Foreground="#FF5E81AC"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <ComboBox Name="PeriodComboBox"
+                                  ItemsSource="{Binding Periods}"
+                                  SelectedItem="{Binding SelectedPeriod}"
+                                  MinWidth="150">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PeriodChoice">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ComboBox Name="AnalyticsClientComboBox"
+                                  ItemsSource="{Binding ClientOptions}"
+                                  SelectedItem="{Binding SelectedClient}"
+                                  MinWidth="150">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientChoice">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Summary cards -->
+                <Grid ColumnDefinitions="*,*,*,*">
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource AppSurfaceAlt}"
+                            CornerRadius="12" Padding="20" Margin="0,0,12,0"
+                            BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Total hours" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AppTextMuted}"/>
+                            <TextBlock Name="TotalHoursValue" Text="{Binding TotalHoursText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding EntriesText}" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource AppSurfaceAlt}"
+                            CornerRadius="12" Padding="20" Margin="0,0,12,0"
+                            BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Days worked" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AppTextMuted}"/>
+                            <TextBlock Text="{Binding DaysWorkedText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                            <TextBlock Text="with at least one entry" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource AppSurfaceAlt}"
+                            CornerRadius="12" Padding="20" Margin="0,0,12,0"
+                            BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Average per day" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AppTextMuted}"/>
+                            <TextBlock Text="{Binding AverageText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                            <TextBlock Text="on days worked" FontSize="11" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="3"
+                            Background="{DynamicResource AppSurfaceAlt}"
+                            CornerRadius="12" Padding="20"
+                            BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Target (7h per working day)" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AppTextMuted}"/>
+                            <TextBlock Text="{Binding TargetText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
+                            <TextBlock Name="TargetDetailText" Text="{Binding TargetDetail}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Hours chart -->
+                <Border Background="{DynamicResource AppSurface}"
+                        CornerRadius="12" Padding="20"
+                        BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Name="ChartTitleText"
+                                       Text="{Binding ChartTitle}"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppText}"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" IsVisible="{Binding IsDailyChart}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Border Width="10" Height="10" CornerRadius="2" Background="#FF10B981" VerticalAlignment="Center"/>
+                                    <TextBlock Text="7h or more" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Border Width="10" Height="10" CornerRadius="2" Background="#FFF59E0B" VerticalAlignment="Center"/>
+                                    <TextBlock Text="under 7h" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Border Width="10" Height="10" CornerRadius="2" Background="#FFEF4444" VerticalAlignment="Center"/>
+                                    <TextBlock Text="missing" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding Bars}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ChartBar">
+                                        <StackPanel Width="{Binding SlotWidth}" ToolTip.Tip="{Binding Tooltip}" Background="Transparent">
+                                            <Grid Height="170">
+                                                <Border Height="{Binding BarHeight}"
+                                                        Width="{Binding BarWidth}"
+                                                        VerticalAlignment="Bottom"
+                                                        HorizontalAlignment="Center"
+                                                        Background="{Binding Brush}"
+                                                        CornerRadius="3,3,0,0"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Label}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource AppTextMuted}" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding SubLabel}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource AppTextStrong}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock Text="No entries in this period"
+                                   IsVisible="{Binding !HasData}"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextFaint}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Client breakdown -->
+                <Border Background="{DynamicResource AppSurface}"
+                        CornerRadius="12" Padding="20"
+                        BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Hours by client"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppText}"/>
+                        <ItemsControl ItemsSource="{Binding ClientRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientRow">
+                                    <Grid ColumnDefinitions="180,*,70,50" Margin="0,6">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{DynamicResource AppTextStrong}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Share}" Height="8" Margin="12,0" VerticalAlignment="Center"
+                                                     Foreground="#FF3B82F6" Background="{DynamicResource AppBorder}"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding HoursText}" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding ShareText}" HorizontalAlignment="Right" Foreground="{DynamicResource AppTextMuted}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Assign clients to your entries to see a breakdown here."
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppTextFaint}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

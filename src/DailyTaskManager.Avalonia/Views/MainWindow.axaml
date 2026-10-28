@@ -78,7 +78,10 @@
                     </Button>
 
                     <!-- Analytics -->
-                    <Button Classes="sidebar-nav"
+                    <Button AutomationProperties.AutomationId="NavAnalytics"
+                            AutomationProperties.Name="Analytics"
+                            Classes="sidebar-nav"
+                            Command="{Binding NavigateToAnalyticsCommand}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Left"
                             Background="Transparent"
@@ -99,13 +102,16 @@
                                        Text="Analytics"
                                        FontSize="14"
                                        FontWeight="Medium"
-                                       Foreground="{DynamicResource AppTextFaint}"
+                                       Foreground="{DynamicResource AppText}"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
 
                     <!-- Reports -->
-                    <Button Classes="sidebar-nav"
+                    <Button AutomationProperties.AutomationId="NavReports"
+                            AutomationProperties.Name="Reports"
+                            Classes="sidebar-nav"
+                            Command="{Binding NavigateToReportsCommand}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Left"
                             Background="Transparent"
@@ -126,7 +132,7 @@
                                        Text="Reports"
                                        FontSize="14"
                                        FontWeight="Medium"
-                                       Foreground="{DynamicResource AppTextFaint}"
+                                       Foreground="{DynamicResource AppText}"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>

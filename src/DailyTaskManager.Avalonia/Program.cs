@@ -122,6 +122,8 @@ class Program
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<SettingsViewModel>();
+                services.AddTransient<AnalyticsViewModel>();
+                services.AddTransient<ReportsViewModel>();
                 services.AddTransient<LoginViewModel>();
                 services.AddTransient<AddTaskViewModel>();
                 services.AddTransient<EditTaskViewModel>();

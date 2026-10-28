@@ -211,6 +211,44 @@ namespace DailyTaskManager.Infrastructure.Services
             return source;
         }
 
+        public async Task<List<DayHours>> GetDailyHoursAsync(TaskQuery query)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            return await ApplyQuery(_context.DailyTasks.AsNoTracking().Where(t => t.UserId == userId), query)
+                .GroupBy(t => t.Date)
+                .Select(g => new DayHours { Date = g.Key, Hours = g.Sum(x => x.Hours), Entries = g.Count() })
+                .OrderBy(d => d.Date)
+                .ToListAsync();
+        }
+
+        public async Task<List<ClientHours>> GetClientHoursAsync(TaskQuery query)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var rows = await ApplyQuery(_context.DailyTasks.AsNoTracking().Where(t => t.UserId == userId), query)
+                .GroupBy(t => t.ClientId)
+                .Select(g => new { ClientId = g.Key, Hours = g.Sum(x => x.Hours), Entries = g.Count() })
+                .ToListAsync();
+
+            var names = await _context.Clients.AsNoTracking()
+                .Where(c => c.UserId == userId)
+                .ToDictionaryAsync(c => c.Id, c => c.Name);
+
+            return rows
+                .Select(r => new ClientHours
+                {
+                    ClientId = r.ClientId,
+                    ClientName = r.ClientId.HasValue && names.TryGetValue(r.ClientId.Value, out var n) ? n : "Unassigned",
+                    Hours = r.Hours,
+                    Entries = r.Entries
+                })
+                .OrderByDescending(r => r.Hours)
+                .ToList();
+        }
+
         public async Task<List<Client>> GetClientsAsync()
         {
             await using var _context = _contextFactory.CreateDbContext();

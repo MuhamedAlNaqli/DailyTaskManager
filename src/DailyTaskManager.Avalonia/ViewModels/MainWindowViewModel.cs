@@ -34,7 +34,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "2.7.0";
+    private string _appVersion = "2.8.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -61,6 +61,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isSettingsViewSelected = false;
+
+    [ObservableProperty]
+    private bool _isAnalyticsViewSelected = false;
+
+    [ObservableProperty]
+    private bool _isReportsViewSelected = false;
 
 
     public MainWindowViewModel(
@@ -99,8 +105,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<DailyTasksView, DailyTasksViewModel>();
             
-            IsTasksViewSelected = true;
-            IsSettingsViewSelected = false;
+            SetSelectedView(tasks: true);
 
             _logger.LogInformation("Navigated to Tasks view");
         }
@@ -108,6 +113,62 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             _logger.LogError(ex, "Error navigating to Tasks view");
             // TODO: Show error dialog
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void SetSelectedView(bool tasks = false, bool analytics = false, bool reports = false, bool settings = false)
+    {
+        IsTasksViewSelected = tasks;
+        IsAnalyticsViewSelected = analytics;
+        IsReportsViewSelected = reports;
+        IsSettingsViewSelected = settings;
+    }
+
+    [RelayCommand]
+    private async Task NavigateToAnalyticsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            LoadingMessage = "Loading analytics...";
+
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
+            CurrentView = await _navigationService.CreateViewAsync<AnalyticsView, AnalyticsViewModel>();
+            SetSelectedView(analytics: true);
+
+            _logger.LogInformation("Navigated to Analytics view");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error navigating to Analytics view");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task NavigateToReportsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            LoadingMessage = "Loading reports...";
+
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
+            CurrentView = await _navigationService.CreateViewAsync<ReportsView, ReportsViewModel>();
+            SetSelectedView(reports: true);
+
+            _logger.LogInformation("Navigated to Reports view");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error navigating to Reports view");
         }
         finally
         {
@@ -126,8 +187,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             (CurrentView?.DataContext as IDisposable)?.Dispose();
             CurrentView = await _navigationService.CreateViewAsync<SettingsView, SettingsViewModel>();
             
-            IsTasksViewSelected = false;
-            IsSettingsViewSelected = true;
+            SetSelectedView(settings: true);
 
             _logger.LogInformation("Navigated to Settings view");
         }
@@ -244,7 +304,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "2.7.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "2.8.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();

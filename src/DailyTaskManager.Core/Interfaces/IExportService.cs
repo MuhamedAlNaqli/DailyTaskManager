@@ -36,6 +36,11 @@ namespace DailyTaskManager.Core.Interfaces
         Task<string> ExportTasksToWordAsync(List<DailyTask> tasks, PdfSettings settings, string? filePath = null);
 
         /// <summary>
+        /// Creates an invoice PDF
+        /// </summary>
+        Task<string> ExportInvoiceToPdfAsync(InvoiceData invoice, PdfSettings settings, string? filePath = null);
+
+        /// <summary>
         /// Gets available export formats
         /// </summary>
         List<string> GetAvailableFormats();
