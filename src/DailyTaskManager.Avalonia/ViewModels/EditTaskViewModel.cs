@@ -1,8 +1,11 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using DailyTaskManager.Core.Interfaces;
 using DailyTaskManager.Core.Models;
 
 namespace DailyTaskManager.Avalonia.ViewModels;
@@ -10,7 +13,10 @@ namespace DailyTaskManager.Avalonia.ViewModels;
 public partial class EditTaskViewModel : ObservableObject
 {
     private readonly ILogger<EditTaskViewModel> _logger;
+    private readonly IDatabaseService _databaseService;
     private DailyTask? _originalTask;
+    private int? _pendingClientId;
+    private int? _resolvedClientId;
 
     [ObservableProperty]
     private DateTimeOffset? _date = DateTimeOffset.Now.Date;
@@ -30,11 +36,43 @@ public partial class EditTaskViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasValidationError = false;
 
+    [ObservableProperty]
+    private ClientChoice? _selectedClient;
+
+    [ObservableProperty]
+    private string _newClientName = "";
+
+    public ObservableCollection<ClientChoice> Clients { get; } = new();
+
     public event EventHandler<bool>? RequestClose;
 
-    public EditTaskViewModel(ILogger<EditTaskViewModel> logger)
+    public EditTaskViewModel(ILogger<EditTaskViewModel> logger, IDatabaseService databaseService)
     {
         _logger = logger;
+        _databaseService = databaseService;
+        _ = LoadClientsAsync();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        try
+        {
+            var clients = await _databaseService.GetClientsAsync();
+            Clients.Clear();
+            Clients.Add(ClientChoice.NoClient);
+            foreach (var client in clients) Clients.Add(ClientChoice.From(client));
+            SelectPendingClient();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading clients");
+        }
+    }
+
+    private void SelectPendingClient()
+    {
+        if (Clients.Count == 0) return;
+        SelectedClient = Clients.FirstOrDefault(c => c.Id == _pendingClientId && c != ClientChoice.NoClient) ?? ClientChoice.NoClient;
     }
 
     public void LoadTask(DailyTask task)
@@ -43,6 +81,8 @@ public partial class EditTaskViewModel : ObservableObject
         Date = new DateTimeOffset(task.Date);
         Description = task.Description;
         Hours = task.Hours;
+        _pendingClientId = task.ClientId;
+        SelectPendingClient();
     }
 
     [RelayCommand]
@@ -55,6 +95,10 @@ public partial class EditTaskViewModel : ObservableObject
 
             IsLoading = true;
             _logger.LogInformation("Updating task: {Description}", Description);
+
+            _resolvedClientId = !string.IsNullOrWhiteSpace(NewClientName)
+                ? (await _databaseService.GetOrCreateClientAsync(NewClientName)).Id
+                : SelectedClient?.Id;
 
             _logger.LogInformation("Task updated successfully");
             RequestClose?.Invoke(this, true); // Dialog result = true
@@ -117,6 +161,7 @@ public partial class EditTaskViewModel : ObservableObject
             Date = Date?.DateTime ?? DateTime.Today,
             Description = Description.Trim(),
             Hours = Hours,
+            ClientId = _resolvedClientId,
             CreatedAt = _originalTask.CreatedAt
         };
     }

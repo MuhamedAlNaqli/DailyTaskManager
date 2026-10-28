@@ -41,6 +41,26 @@ namespace DailyTaskManager.Core.Interfaces
         Task<TaskSummary> GetTaskSummaryAsync();
 
         /// <summary>
+        /// Gets the current user's clients ordered by name
+        /// </summary>
+        Task<List<Client>> GetClientsAsync();
+
+        /// <summary>
+        /// Returns the client with this name (case-insensitive), creating it when it does not exist
+        /// </summary>
+        Task<Client> GetOrCreateClientAsync(string name);
+
+        /// <summary>
+        /// Sets (or clears, when clientId is null) the client of every task matching the query; returns the number changed
+        /// </summary>
+        Task<int> AssignClientAsync(TaskQuery query, int? clientId);
+
+        /// <summary>
+        /// Re-inserts a previously deleted task keeping its original timestamps (used by undo)
+        /// </summary>
+        Task<DailyTask> RestoreTaskAsync(DailyTask task);
+
+        /// <summary>
         /// Gets a specific task by ID
         /// </summary>
         Task<DailyTask?> GetTaskByIdAsync(int id);

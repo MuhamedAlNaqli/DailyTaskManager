@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -26,7 +27,28 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(250);
 
     private CancellationTokenSource? _searchDebounce;
+    private CancellationTokenSource? _undoTimer;
+    private DailyTask? _lastDeleted;
+    private bool _rebuildingClients;
     private int _loadVersion;
+
+    /// <summary>Client filter drop-down: all, unassigned, then each client</summary>
+    public ObservableCollection<ClientChoice> ClientFilterOptions { get; } = new() { ClientChoice.All, ClientChoice.Unassigned };
+
+    /// <summary>Targets for "assign client to all matching entries"</summary>
+    public ObservableCollection<ClientChoice> AssignOptions { get; } = new() { ClientChoice.NoClient };
+
+    [ObservableProperty]
+    private ClientChoice? _selectedClientFilter = ClientChoice.All;
+
+    [ObservableProperty]
+    private ClientChoice? _assignTarget = ClientChoice.NoClient;
+
+    [ObservableProperty]
+    private bool _isUndoVisible;
+
+    [ObservableProperty]
+    private string _undoMessage = "";
 
     /// <summary>The tasks on the current page</summary>
     [ObservableProperty]
@@ -103,6 +125,8 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         _authService.AuthenticationChanged -= OnAuthenticationChanged;
         _searchDebounce?.Cancel();
         _searchDebounce?.Dispose();
+        _undoTimer?.Cancel();
+        _undoTimer?.Dispose();
     }
 
     private async void OnAuthenticationChanged(object? sender, AuthResult e)
@@ -124,7 +148,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private Task LoadTasksAsync() => LoadPageAsync(CurrentPage, showOverlay: true);
 
-    private TaskQuery CurrentQuery => new(SearchText, DateFrom, DateTo);
+    private TaskQuery CurrentQuery => new(SearchText, DateFrom, DateTo, SelectedClientFilter?.Id);
 
     /// <summary>
     /// Loads one page (plus the header statistics) from the database. Only the latest request wins,
@@ -147,12 +171,15 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
             var pageTask = _databaseService.GetTasksPageAsync(CurrentQuery, page, PageSize);
             var summaryTask = _databaseService.GetTaskSummaryAsync();
-            await Task.WhenAll(pageTask, summaryTask);
+            // Full reloads (start, add, edit, delete) also refresh the client lists, as they may have changed
+            var clientsTask = showOverlay ? _databaseService.GetClientsAsync() : Task.FromResult<List<Client>?>(null);
+            await Task.WhenAll(pageTask, summaryTask, clientsTask);
 
             if (version != _loadVersion) return; // a newer request superseded this one
 
             var result = pageTask.Result;
             var summary = summaryTask.Result;
+            if (clientsTask.Result != null) RebuildClientOptions(clientsTask.Result);
 
             FilteredTasks = new ObservableCollection<DailyTask>(result.Items);
             TotalCount = result.TotalCount;
@@ -176,6 +203,131 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         finally
         {
             if (showOverlay && version == _loadVersion) IsLoading = false;
+        }
+    }
+
+    private void RebuildClientOptions(List<Client> clients)
+    {
+        var filterId = SelectedClientFilter?.Id;
+        var assignId = AssignTarget?.Id;
+        _rebuildingClients = true;
+        try
+        {
+            while (ClientFilterOptions.Count > 2) ClientFilterOptions.RemoveAt(2);
+            while (AssignOptions.Count > 1) AssignOptions.RemoveAt(1);
+            foreach (var client in clients)
+            {
+                ClientFilterOptions.Add(ClientChoice.From(client));
+                AssignOptions.Add(ClientChoice.From(client));
+            }
+
+            SelectedClientFilter = ClientFilterOptions.FirstOrDefault(c => c.Id == filterId) ?? ClientChoice.All;
+            AssignTarget = AssignOptions.FirstOrDefault(c => c.Id == assignId) ?? ClientChoice.NoClient;
+        }
+        finally
+        {
+            _rebuildingClients = false;
+        }
+    }
+
+    partial void OnSelectedClientFilterChanged(ClientChoice? value)
+    {
+        if (!_rebuildingClients) ApplyFilters();
+    }
+
+    [RelayCommand]
+    private async Task AssignClientToFilteredAsync()
+    {
+        if (AssignTarget == null || TotalCount == 0) return;
+
+        try
+        {
+            var target = AssignTarget;
+            var what = target.Id.HasValue ? $"assign client '{target.Name}' to" : "remove the client from";
+            var confirmed = await _dialogService.ShowConfirmDialogAsync(
+                "Assign client", $"Do you want to {what} all {TotalCount} entries matching the current filters?");
+            if (!confirmed) return;
+
+            IsLoading = true;
+            var changed = await _databaseService.AssignClientAsync(CurrentQuery, target.Id);
+            _logger.LogInformation("Bulk client assignment changed {Count} entries", changed);
+            await LoadTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning client");
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to assign the client. Please try again.");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DuplicateTaskAsync(DailyTask? task)
+    {
+        if (task == null) return;
+
+        try
+        {
+            var copy = await _dialogService.ShowAddTaskDialogAsync(task);
+            if (copy != null)
+            {
+                IsLoading = true;
+                await _databaseService.AddTaskAsync(copy);
+                await LoadTasksAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error duplicating task {TaskId}", task.Id);
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to duplicate the task. Please try again.");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task UndoDeleteAsync()
+    {
+        var task = _lastDeleted;
+        if (task == null) return;
+
+        try
+        {
+            _lastDeleted = null;
+            IsUndoVisible = false;
+            _undoTimer?.Cancel();
+            await _databaseService.RestoreTaskAsync(task);
+            await LoadTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restoring deleted task");
+            await _dialogService.ShowErrorDialogAsync("Error", "Failed to restore the task.");
+        }
+    }
+
+    private async Task ShowUndoAsync(DailyTask deleted)
+    {
+        _lastDeleted = deleted;
+        var text = deleted.Description.Replace("\r", " ").Replace("\n", " ").Trim();
+        UndoMessage = $"Deleted \"{(text.Length > 50 ? text.Substring(0, 50) + "..." : text)}\"";
+        IsUndoVisible = true;
+
+        _undoTimer?.Cancel();
+        var cts = _undoTimer = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(8), cts.Token);
+            IsUndoVisible = false;
+            _lastDeleted = null;
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 
@@ -264,24 +416,19 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
         try
         {
-            var confirmed = await _dialogService.ShowConfirmDialogAsync(
-                "Delete Task",
-                $"Are you sure you want to delete '{task.Description}'?");
+            // No confirmation: the entry can be restored from the undo bar
+            IsLoading = true;
+            var success = await _databaseService.RemoveTaskAsync(task.Id);
 
-            if (confirmed)
+            if (success)
             {
-                IsLoading = true;
-                var success = await _databaseService.RemoveTaskAsync(task.Id);
-
-                if (success)
-                {
-                    await LoadTasksAsync();
-                    _logger.LogInformation("Deleted task: {Description}", task.Description);
-                }
-                else
-                {
-                    await _dialogService.ShowErrorDialogAsync("Error", "Task not found or could not be deleted.");
-                }
+                await LoadTasksAsync();
+                _logger.LogInformation("Deleted task: {Description}", task.Description);
+                _ = ShowUndoAsync(task);
+            }
+            else
+            {
+                await _dialogService.ShowErrorDialogAsync("Error", "Task not found or could not be deleted.");
             }
         }
         catch (Exception ex)

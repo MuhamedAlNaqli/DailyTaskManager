@@ -8,12 +8,19 @@ namespace DailyTaskManager.Core.Models
     /// </summary>
     public class TaskQuery
     {
-        public TaskQuery(string? search = null, DateTime? dateFrom = null, DateTime? dateTo = null)
+        /// <summary>Client filter value meaning "entries without a client"</summary>
+        public const int Unassigned = -1;
+
+        public TaskQuery(string? search = null, DateTime? dateFrom = null, DateTime? dateTo = null, int? clientId = null)
         {
             Search = search;
             DateFrom = dateFrom;
             DateTo = dateTo;
+            ClientId = clientId;
         }
+
+        /// <summary>null = any client, <see cref="Unassigned"/> = no client, otherwise a client id</summary>
+        public int? ClientId { get; }
 
         public string? Search { get; }
         public DateTime? DateFrom { get; }

@@ -35,8 +35,14 @@ namespace DailyTaskManager.Core.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>Optional client this entry is billed to (null = unassigned)</summary>
+        [Column("ClientId")]
+        public int? ClientId { get; set; }
+
         // Navigation property (will be configured in EF Core)
         public virtual User? User { get; set; }
+
+        public virtual Client? Client { get; set; }
 
         // Helper methods
         public void UpdateTimestamp() => UpdatedAt = DateTime.UtcNow;

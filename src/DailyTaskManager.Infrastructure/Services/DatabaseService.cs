@@ -126,6 +126,7 @@ namespace DailyTaskManager.Infrastructure.Services
             page = Math.Min(page, lastPage);
 
             var items = await filtered
+                .Include(t => t.Client)
                 .OrderByDescending(t => t.Date)
                 .ThenByDescending(t => t.CreatedAt)
                 .Skip((page - 1) * pageSize)
@@ -141,6 +142,7 @@ namespace DailyTaskManager.Infrastructure.Services
             var userId = GetCurrentUserId();
 
             return await ApplyQuery(_context.DailyTasks.AsNoTracking().Where(t => t.UserId == userId), query)
+                .Include(t => t.Client)
                 .OrderByDescending(t => t.Date)
                 .ThenByDescending(t => t.CreatedAt)
                 .ToListAsync();
@@ -183,6 +185,16 @@ namespace DailyTaskManager.Infrastructure.Services
                 source = source.Where(t => EF.Functions.ILike(t.Description, pattern));
             }
 
+            if (query.ClientId == TaskQuery.Unassigned)
+            {
+                source = source.Where(t => t.ClientId == null);
+            }
+            else if (query.ClientId.HasValue)
+            {
+                var clientId = query.ClientId.Value;
+                source = source.Where(t => t.ClientId == clientId);
+            }
+
             if (query.DateFrom.HasValue)
             {
                 // task_date is a SQL date: Unspecified maps to "timestamp", so no time zone shifts the comparison
@@ -197,6 +209,73 @@ namespace DailyTaskManager.Infrastructure.Services
             }
 
             return source;
+        }
+
+        public async Task<List<Client>> GetClientsAsync()
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            return await _context.Clients.AsNoTracking()
+                .Where(c => c.UserId == userId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<Client> GetOrCreateClientAsync(string name)
+        {
+            name = (name ?? string.Empty).Trim();
+            if (name.Length == 0) throw new ArgumentException("Client name is required", nameof(name));
+            if (name.Length > 150) name = name.Substring(0, 150);
+
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            var lower = name.ToLower();
+            var existing = await _context.Clients.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.Name.ToLower() == lower);
+            if (existing != null) return existing;
+
+            var client = new Client { UserId = userId, Name = name, CreatedAt = DateTime.UtcNow };
+            _context.Clients.Add(client);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Created client {ClientId} for user {UserId}", client.Id, userId);
+            return client;
+        }
+
+        public async Task<int> AssignClientAsync(TaskQuery query, int? clientId)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var userId = GetCurrentUserId();
+
+            if (clientId.HasValue && !await _context.Clients.AnyAsync(c => c.Id == clientId.Value && c.UserId == userId))
+            {
+                throw new InvalidOperationException("Client not found for current user");
+            }
+
+            var count = await ApplyQuery(_context.DailyTasks.Where(t => t.UserId == userId), query)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.ClientId, clientId));
+
+            _logger.LogInformation("Assigned client {ClientId} to {Count} tasks for user {UserId}", clientId, count, userId);
+            return count;
+        }
+
+        public async Task<DailyTask> RestoreTaskAsync(DailyTask task)
+        {
+            await using var _context = _contextFactory.CreateDbContext();
+            var restored = new DailyTask
+            {
+                UserId = GetCurrentUserId(),
+                Date = DateTime.SpecifyKind(task.Date.Date, DateTimeKind.Utc),
+                Description = task.Description,
+                Hours = task.Hours,
+                ClientId = task.ClientId,
+                CreatedAt = task.CreatedAt,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.DailyTasks.Add(restored);
+            await _context.SaveChangesAsync();
+            return restored;
         }
 
         public async Task<DailyTask?> GetTaskByIdAsync(int id)
@@ -241,6 +320,7 @@ namespace DailyTaskManager.Infrastructure.Services
                 existingTask.Date = DateTime.SpecifyKind(task.Date.Date, DateTimeKind.Utc);
                 existingTask.Description = task.Description;
                 existingTask.Hours = task.Hours;
+                existingTask.ClientId = task.ClientId;
                 existingTask.UpdateTimestamp();
 
                 await _context.SaveChangesAsync();

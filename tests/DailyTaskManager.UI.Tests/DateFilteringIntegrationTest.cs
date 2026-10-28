@@ -226,6 +226,87 @@ public class DateFilteringIntegrationTest
         Assert.AreEqual(AllTasks.Count, _viewModel.TotalCount);
     }
 
+    private async Task CleanUpTestDataAsync(string marker, string clientName)
+    {
+        var factory = _serviceProvider!.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<DailyTaskManager.Infrastructure.Data.DailyTaskManagerDbContext>>();
+        await using var ctx = factory.CreateDbContext();
+        await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(
+            ctx.DailyTasks.Where(t => t.Description.Contains(marker)));
+        await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.ExecuteDeleteAsync(
+            ctx.Clients.Where(c => c.Name.ToLower() == clientName.ToLower()));
+    }
+
+    [TestMethod]
+    public async Task Clients_ShouldCreateAssignFilterAndRestore()
+    {
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var name = "UT-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var marker = "UT-task-" + name;
+
+        try
+        {
+            var client = await db.GetOrCreateClientAsync(name);
+            var again = await db.GetOrCreateClientAsync("  " + name.ToLower() + " ");
+            Assert.AreEqual(client.Id, again.Id, "Client names are matched case-insensitively");
+
+            var task = await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = DateTime.Today, Description = marker, Hours = 1 });
+
+            var unassigned = await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker, clientId: DailyTaskManager.Core.Models.TaskQuery.Unassigned));
+            Assert.AreEqual(1, unassigned.Count, "A new entry has no client");
+
+            var changed = await db.AssignClientAsync(new DailyTaskManager.Core.Models.TaskQuery(marker), client.Id);
+            Assert.AreEqual(1, changed);
+
+            var assigned = await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker, clientId: client.Id));
+            Assert.AreEqual(1, assigned.Count);
+            Assert.AreEqual(name, assigned[0].Client?.Name);
+            Assert.AreEqual(0, (await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker, clientId: DailyTaskManager.Core.Models.TaskQuery.Unassigned))).Count);
+
+            // Bulk-clear
+            Assert.AreEqual(1, await db.AssignClientAsync(new DailyTaskManager.Core.Models.TaskQuery(marker), null));
+            Assert.AreEqual(1, (await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker, clientId: DailyTaskManager.Core.Models.TaskQuery.Unassigned))).Count);
+
+            // Restore keeps the data and timestamps of the deleted entry
+            Assert.IsTrue(await db.RemoveTaskAsync(task.Id));
+            var restored = await db.RestoreTaskAsync(task);
+            Assert.AreEqual(marker, restored.Description);
+            Assert.AreEqual(task.CreatedAt, restored.CreatedAt);
+            Assert.AreEqual(1, (await db.GetTasksAsync(new DailyTaskManager.Core.Models.TaskQuery(marker))).Count);
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, name);
+        }
+    }
+
+    [TestMethod]
+    public async Task DeleteTask_ShouldOfferUndo()
+    {
+        Assert.IsNotNull(_viewModel);
+        var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
+        var marker = "UT-undo-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        try
+        {
+            await db.AddTaskAsync(new DailyTaskManager.Core.Models.DailyTask { Date = DateTime.Today, Description = marker, Hours = 2 });
+            _viewModel.SearchText = marker;
+            await _viewModel.ApplyFiltersAsync();
+            Assert.AreEqual(1, _viewModel.TotalCount);
+
+            await _viewModel.DeleteTaskCommand.ExecuteAsync(_viewModel.FilteredTasks[0]);
+            Assert.IsTrue(_viewModel.IsUndoVisible, "Undo bar is shown after a delete");
+            Assert.AreEqual(0, _viewModel.TotalCount);
+
+            await _viewModel.UndoDeleteCommand.ExecuteAsync(null);
+            Assert.IsFalse(_viewModel.IsUndoVisible);
+            Assert.AreEqual(1, _viewModel.TotalCount, "The entry is back after undo");
+        }
+        finally
+        {
+            await CleanUpTestDataAsync(marker, "ut-no-client-" + marker);
+        }
+    }
+
     private IHost CreateTestHost()
     {
         return Host.CreateDefaultBuilder()

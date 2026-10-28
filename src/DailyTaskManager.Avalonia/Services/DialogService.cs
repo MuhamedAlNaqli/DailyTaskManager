@@ -95,13 +95,14 @@ public class DialogService
     /// <summary>
     /// Shows the Add Task dialog
     /// </summary>
-    public async Task<DailyTask?> ShowAddTaskDialogAsync()
+    public async Task<DailyTask?> ShowAddTaskDialogAsync(DailyTask? template = null)
     {
         try
         {
             _logger.LogDebug("Add task dialog requested");
             
             var viewModel = App.GetService<AddTaskViewModel>();
+            if (template != null) viewModel.Prefill(template);
             var dialog = new Views.AddTaskDialog
             {
                 DataContext = viewModel

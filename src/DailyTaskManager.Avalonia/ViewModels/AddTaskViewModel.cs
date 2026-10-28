@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,7 +15,11 @@ public partial class AddTaskViewModel : ObservableObject
 {
     private readonly ILogger<AddTaskViewModel> _logger;
     private readonly IAutoCompleteService _autoCompleteService;
+    private readonly IDatabaseService _databaseService;
     private CancellationTokenSource? _searchCancellationTokenSource;
+    private int? _pendingClientId;
+    private int? _resolvedClientId;
+    private string? _skipSuggestionsFor;
 
     [ObservableProperty]
     private DateTimeOffset? _date = DateTimeOffset.Now.Date;
@@ -40,14 +45,57 @@ public partial class AddTaskViewModel : ObservableObject
     [ObservableProperty]
     private int _selectedSuggestionIndex = -1;
 
+    [ObservableProperty]
+    private ClientChoice? _selectedClient;
+
+    [ObservableProperty]
+    private string _newClientName = "";
+
     public ObservableCollection<string> Suggestions { get; } = new();
+
+    public ObservableCollection<ClientChoice> Clients { get; } = new();
 
     public event EventHandler<bool>? RequestClose;
 
-    public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService)
+    public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService, IDatabaseService databaseService)
     {
         _logger = logger;
         _autoCompleteService = autoCompleteService;
+        _databaseService = databaseService;
+        _ = LoadClientsAsync();
+    }
+
+    /// <summary>Starts the dialog from an existing entry (used by "duplicate"); the date is today</summary>
+    public void Prefill(DailyTask template)
+    {
+        _skipSuggestionsFor = template.Description;
+        Description = template.Description;
+        Hours = template.Hours;
+        Date = DateTimeOffset.Now.Date;
+        _pendingClientId = template.ClientId;
+        SelectPendingClient();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        try
+        {
+            var clients = await _databaseService.GetClientsAsync();
+            Clients.Clear();
+            Clients.Add(ClientChoice.NoClient);
+            foreach (var client in clients) Clients.Add(ClientChoice.From(client));
+            SelectPendingClient();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading clients");
+        }
+    }
+
+    private void SelectPendingClient()
+    {
+        if (Clients.Count == 0) return;
+        SelectedClient = Clients.FirstOrDefault(c => c.Id == _pendingClientId && c != ClientChoice.NoClient) ?? ClientChoice.NoClient;
     }
 
     [RelayCommand]
@@ -61,8 +109,7 @@ public partial class AddTaskViewModel : ObservableObject
             IsLoading = true;
             _logger.LogInformation("Validating new task: {Description}", Description);
 
-            // Brief validation delay for UX
-            await Task.Delay(100);
+            _resolvedClientId = await ResolveClientIdAsync();
 
             _logger.LogInformation("Task validation completed successfully");
             RequestClose?.Invoke(this, true); // Dialog result = true
@@ -82,6 +129,16 @@ public partial class AddTaskViewModel : ObservableObject
     private void Cancel()
     {
         RequestClose?.Invoke(this, false); // Dialog result = false
+    }
+
+    private async Task<int?> ResolveClientIdAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(NewClientName))
+        {
+            return (await _databaseService.GetOrCreateClientAsync(NewClientName)).Id;
+        }
+
+        return SelectedClient?.Id;
     }
 
     private bool ValidateInput()
@@ -120,12 +177,19 @@ public partial class AddTaskViewModel : ObservableObject
         {
             Date = Date?.DateTime ?? DateTime.Today,
             Description = Description.Trim(),
-            Hours = Hours
+            Hours = Hours,
+            ClientId = _resolvedClientId
         };
     }
 
     partial void OnDescriptionChanged(string value)
     {
+        if (_skipSuggestionsFor != null && value == _skipSuggestionsFor)
+        {
+            _skipSuggestionsFor = null;
+            return;
+        }
+
         _ = SearchSuggestionsWithDebounceAsync(value);
     }
 

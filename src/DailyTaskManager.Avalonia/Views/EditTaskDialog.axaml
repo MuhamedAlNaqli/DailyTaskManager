@@ -45,6 +45,31 @@
                          VerticalAlignment="Stretch"/>
             </StackPanel>
 
+            <!-- Client -->
+            <StackPanel>
+                <TextBlock Text="Client"
+                           Classes="label"
+                           Margin="0,0,0,5"/>
+                <Grid ColumnDefinitions="*,10,*">
+                    <ComboBox Name="ClientComboBox"
+                              Grid.Column="0"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Clients}"
+                              SelectedItem="{Binding SelectedClient}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ClientChoice">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Name="NewClientTextBox"
+                             Grid.Column="2"
+                             Text="{Binding NewClientName}"
+                             Watermark="Or type a new client"
+                             Classes="primary"/>
+                </Grid>
+            </StackPanel>
+
             <!-- Date and Hours -->
             <Grid ColumnDefinitions="*,10,120">
                 

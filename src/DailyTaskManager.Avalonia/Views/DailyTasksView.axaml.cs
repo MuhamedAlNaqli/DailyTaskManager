@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using DailyTaskManager.Avalonia.ViewModels;
@@ -26,6 +28,42 @@ public partial class DailyTasksView : UserControl
     {
         this.DataContextChanged += OnDataContextChanged;
         this.Loaded += OnViewLoaded;
+    }
+
+    protected override void OnAttachedToVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // Listen on the window so the shortcuts work wherever the focus is (dialogs are separate windows)
+        (TopLevel.GetTopLevel(this))?.AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Bubble | RoutingStrategies.Tunnel);
+    }
+
+    protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        (TopLevel.GetTopLevel(this))?.RemoveHandler(KeyDownEvent, OnWindowKeyDown);
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_currentViewModel == null || !IsEffectivelyVisible || !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+
+        switch (e.Key)
+        {
+            case Key.N:
+                _currentViewModel.AddNewTaskCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.F:
+                var box = this.FindControl<TextBox>("SearchBox");
+                box?.Focus();
+                box?.SelectAll();
+                e.Handled = true;
+                break;
+            case Key.Z when _currentViewModel.IsUndoVisible && TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not TextBox:
+                _currentViewModel.UndoDeleteCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
     }
 
     private void OnViewLoaded(object? sender, RoutedEventArgs e)
