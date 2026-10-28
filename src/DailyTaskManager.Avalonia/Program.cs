@@ -96,7 +96,8 @@ class Program
             {
                 // File only (this is a windowed app, nobody reads the console), and no per-SQL-command lines
                 configuration
-                    .WriteTo.File("logs/dailytaskmanager-.txt", 
+                    // The install folder (Program Files) is read-only for the user, so logs live in the user profile
+                    .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DailyTaskManager", "logs", "dailytaskmanager-.txt"), 
                         rollingInterval: RollingInterval.Day,
                         retainedFileCountLimit: 7)
                     .MinimumLevel.Information()

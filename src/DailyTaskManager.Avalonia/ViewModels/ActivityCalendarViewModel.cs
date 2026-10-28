@@ -115,6 +115,15 @@ public partial class ActivityCalendarViewModel : ObservableObject, IDisposable
 
         try
         {
+            // A day that already has an entry is edited instead of getting a second one
+            var existing = (await _databaseService.GetTasksAsync(new TaskQuery(null, day.Date, day.Date))).FirstOrDefault();
+            if (existing != null)
+            {
+                var edited = await _dialogService.ShowEditTaskDialogAsync(existing);
+                if (edited != null) await _databaseService.UpdateTaskAsync(edited);
+                return;
+            }
+
             var task = await _dialogService.ShowAddTaskDialogAsync(null, day.Date);
             if (task != null)
             {

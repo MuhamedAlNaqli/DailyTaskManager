@@ -168,6 +168,16 @@
                       Type="raw" />
     </Property>
     
+    <!-- Remove the background reminder task the app registered for the current user when the app is uninstalled -->
+    <CustomAction Id="RemoveReminderTask"
+                  Directory="TARGETDIR"
+                  ExeCommand="schtasks.exe /Delete /TN &quot;DailyTaskManager\Reminder&quot; /F"
+                  Execute="immediate"
+                  Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RemoveReminderTask" After="InstallInitialize" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+
     <!-- Previous Version Property -->
     <Property Id="PREVVERSION">
       <RegistrySearch Id="PrevVersionSearch"

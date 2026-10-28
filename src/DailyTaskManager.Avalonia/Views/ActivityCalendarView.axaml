@@ -120,7 +120,7 @@
                         <Border Width="12" Height="12" CornerRadius="3" Background="#33EF4444" VerticalAlignment="Center"/>
                         <TextBlock Text="working day without an entry" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
                     </StackPanel>
-                    <TextBlock Text="Click a day to add an entry for it." FontSize="12" Foreground="{DynamicResource AppTextFaint}"/>
+                    <TextBlock Text="Click a day to add an entry, or to edit the one it already has." FontSize="12" Foreground="{DynamicResource AppTextFaint}"/>
                 </StackPanel>
             </StackPanel>
         </Grid>
