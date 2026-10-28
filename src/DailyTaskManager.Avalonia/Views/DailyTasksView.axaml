@@ -32,7 +32,7 @@
                                Foreground="{DynamicResource MaterialBodyBrush}"/>
                     <TextBlock Text="Track and manage your daily work hours" 
                                FontSize="14" 
-                               Foreground="#FF5E81AC" 
+                               Foreground="{DynamicResource AppTextMuted}" 
                                Margin="0,4,0,0"/>
                 </StackPanel>
                 
@@ -43,8 +43,8 @@
                            VerticalAlignment="Center">
                     <Button Name="QuickAddButton"
                             Background="Transparent"
-                            BorderBrush="#FF3B82F6"
-                            Foreground="#FF3B82F6"
+                            BorderBrush="{DynamicResource AppAccent}"
+                            Foreground="{DynamicResource AppAccent}"
                             BorderThickness="1"
                             CornerRadius="6"
                             Padding="16,10"
@@ -86,7 +86,7 @@
                                                                 BorderBrush="Transparent"
                                                                 Padding="8,6"
                                                                 ToolTip.Tip="Delete template">
-                                                            <TextBlock Text="✕" FontSize="12" Foreground="#FFEF4444"/>
+                                                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="{DynamicResource AppDanger}"/>
                                                         </Button>
                                                     </Grid>
                                                 </DataTemplate>
@@ -103,14 +103,14 @@
                             </Flyout>
                         </Button.Flyout>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Kind="LightningBolt" Width="16" Height="16" VerticalAlignment="Center"/>
                             <TextBlock Text="Quick add" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
                     <Button Classes="primary" 
                             Command="{Binding AddNewTaskCommand}"
-                            Background="#FF4C566A"
+                            Background="{DynamicResource AppAccent}"
                             BorderBrush="Transparent"
                             Foreground="White"
                             CornerRadius="6"
@@ -124,16 +124,16 @@
                     
                     <DropDownButton Classes="secondary"
                                     Background="Transparent"
-                                    BorderBrush="#FF10B981"
-                                    Foreground="#FF10B981"
+                                    BorderBrush="{DynamicResource AppAccent}"
+                                    Foreground="{DynamicResource AppAccent}"
                                     BorderThickness="1"
                                     CornerRadius="6"
                                     Padding="16,10">
                         <DropDownButton.Content>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📋" FontSize="14" VerticalAlignment="Center"/>
+                                <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16" VerticalAlignment="Center"/>
                                 <TextBlock Text="Export" VerticalAlignment="Center"/>
-                                <TextBlock Text="▼" FontSize="10" VerticalAlignment="Center"/>
+                                <materialIcons:MaterialIcon Kind="ChevronDown" Width="12" Height="12" VerticalAlignment="Center"/>
                             </StackPanel>
                         </DropDownButton.Content>
                         <DropDownButton.Flyout>
@@ -141,19 +141,19 @@
                                 <MenuItem Header="Excel"
                                           Command="{Binding ExportToExcelCommand}">
                                     <MenuItem.Icon>
-                                        <TextBlock Text="📊" FontSize="14"/>
+                                        <materialIcons:MaterialIcon Kind="FileExcelOutline" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="PDF"
                                           Command="{Binding ExportToPdfCommand}">
                                     <MenuItem.Icon>
-                                        <TextBlock Text="📄" FontSize="14"/>
+                                        <materialIcons:MaterialIcon Kind="FilePdfBox" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Word"
                                           Command="{Binding ExportToWordCommand}">
                                     <MenuItem.Icon>
-                                        <TextBlock Text="📝" FontSize="14"/>
+                                        <materialIcons:MaterialIcon Kind="FileWordOutline" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
@@ -182,7 +182,7 @@
                     <StackPanel>
                         <TextBlock Text="Today" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
                         <TextBlock Text="{Binding TodayHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
-                        <TextBlock Text="Target: 7h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
+                        <TextBlock Text="Target: 7h" FontSize="11" Foreground="{DynamicResource AppAccent}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
@@ -197,7 +197,7 @@
                     <StackPanel>
                         <TextBlock Text="This Week" FontSize="12" Foreground="{DynamicResource AppTextMuted}" FontWeight="Medium"/>
                         <TextBlock Text="{Binding ThisWeekHours, StringFormat='{}{0:F1}h'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}" Margin="0,4,0,0"/>
-                        <TextBlock Text="Target: 35h" FontSize="11" Foreground="#FF10B981" Margin="0,2,0,0"/>
+                        <TextBlock Text="Target: 35h" FontSize="11" Foreground="{DynamicResource AppAccent}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 
@@ -247,7 +247,7 @@
                     
                     <!-- Filter Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
-                        <TextBlock Text="🔍" FontSize="16"/>
+                        <materialIcons:MaterialIcon Kind="Magnify" Width="18" Height="18"/>
                         <TextBlock Text="Filters" 
                                    FontSize="16" 
                                    FontWeight="SemiBold" 
@@ -264,13 +264,9 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Search Box -->
-                        <TextBox Grid.Column="0" Name="SearchBox"
+                        <TextBox Classes="filled" Grid.Column="0" Name="SearchBox"
                                  Text="{Binding SearchText}"
                                  Watermark="Search by task description (min 3 characters)..."
-                                 Background="{DynamicResource AppInputBg}"
-                                 BorderBrush="{DynamicResource AppBorderStrong}"
-                                 BorderThickness="1"
-                                 CornerRadius="8"
                                  Padding="16,6"
                                  FontSize="14"
                                  Height="34"
@@ -278,7 +274,7 @@
 
                         <!-- Date Range Picker Button -->
                         <!-- Client filter -->
-                        <ComboBox Grid.Column="1"
+                        <ComboBox Classes="filled" Grid.Column="1"
                                   Name="ClientFilterComboBox"
                                   ItemsSource="{Binding ClientFilterOptions}"
                                   SelectedItem="{Binding SelectedClientFilter}"
@@ -329,14 +325,14 @@
                                                 <Button Content="Clear All Filters"
                                                        Name="ClearAllFiltersButton"
                                                        Background="Transparent"
-                                                       BorderBrush="#FFDC2626"
-                                                       Foreground="#FFDC2626"
+                                                       BorderBrush="{DynamicResource AppDanger}"
+                                                       Foreground="{DynamicResource AppDanger}"
                                                        BorderThickness="1"
                                                        CornerRadius="6"
                                                        Padding="12,6"/>
                                                 <Button Content="Apply"
                                                        Name="ApplyDateRangeButton"
-                                                       Background="#FF3B82F6"
+                                                       Background="{DynamicResource AppAccent}"
                                                        BorderBrush="Transparent"
                                                        Foreground="White"
                                                        BorderThickness="1"
@@ -348,7 +344,7 @@
                                 </Flyout>
                             </Button.Flyout>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📅" FontSize="14" VerticalAlignment="Center"/>
+                                <materialIcons:MaterialIcon Kind="CalendarRange" Width="16" Height="16" VerticalAlignment="Center"/>
                                 <TextBlock Name="DateRangeText"
                                           Text="Select Date Range"
                                           FontSize="12"
@@ -384,7 +380,7 @@
                                                        FontSize="12"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource AppTextMuted}"/>
-                                            <ComboBox Name="AssignClientComboBox"
+                                            <ComboBox Classes="filled" Name="AssignClientComboBox"
                                                       HorizontalAlignment="Stretch"
                                                       ItemsSource="{Binding AssignOptions}"
                                                       SelectedItem="{Binding AssignTarget}">
@@ -398,7 +394,7 @@
                                                     Name="AssignClientApplyButton"
                                                     Command="{Binding AssignClientToFilteredCommand}"
                                                     HorizontalAlignment="Right"
-                                                    Background="#FF3B82F6"
+                                                    Background="{DynamicResource AppAccent}"
                                                     BorderBrush="Transparent"
                                                     Foreground="White"
                                                     CornerRadius="6"
@@ -408,7 +404,7 @@
                                 </Flyout>
                             </Button.Flyout>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="👥" FontSize="14" VerticalAlignment="Center"/>
+                                <materialIcons:MaterialIcon Kind="AccountMultiple" Width="16" Height="16" VerticalAlignment="Center"/>
                                 <TextBlock Text="Assign client"
                                            FontSize="12"
                                            Foreground="{DynamicResource AppText}"
@@ -521,7 +517,7 @@
                                                        Width="32" Height="32"
                                                        CornerRadius="6"
                                                        ToolTip.Tip="Duplicate to today">
-                                                    <TextBlock Text="📋" FontSize="14"/>
+                                                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="16" Height="16"/>
                                                 </Button>
                                                 <Button Classes="icon"
                                                        Command="{Binding $parent[ItemsControl].DataContext.EditTaskCommand}"
@@ -531,7 +527,7 @@
                                                        Width="32" Height="32"
                                                        CornerRadius="6"
                                                        ToolTip.Tip="Edit task">
-                                                    <TextBlock Text="✏️" FontSize="14"/>
+                                                    <materialIcons:MaterialIcon Kind="PencilOutline" Width="16" Height="16"/>
                                                 </Button>
                                                 <Button Classes="icon"
                                                        Command="{Binding $parent[ItemsControl].DataContext.DeleteTaskCommand}"
@@ -541,7 +537,7 @@
                                                        Width="32" Height="32"
                                                        CornerRadius="6"
                                                        ToolTip.Tip="Delete task">
-                                                    <TextBlock Text="🗑️" FontSize="12" Foreground="#FFEF4444"/>
+                                                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource AppDanger}"/>
                                                 </Button>
                                             </StackPanel>
                                         </Grid>
@@ -579,7 +575,7 @@
                                VerticalAlignment="Center"
                                Spacing="16"
                                Margin="40">
-                        <TextBlock Text="📝" FontSize="48" HorizontalAlignment="Center" Opacity="0.5"/>
+                        <materialIcons:MaterialIcon Kind="NotebookEditOutline" Width="50" Height="50" HorizontalAlignment="Center" Opacity="0.5"/>
                         <TextBlock Text="No time entries found" 
                                   FontSize="16" 
                                   FontWeight="Medium"
@@ -591,7 +587,7 @@
                                   HorizontalAlignment="Center"/>
                         <Button Classes="primary"
                                Command="{Binding AddNewTaskCommand}"
-                               Background="#FF4C566A"
+                               Background="{DynamicResource AppAccent}"
                                Foreground="White"
                                CornerRadius="6"
                                Padding="20,12"
@@ -638,7 +634,7 @@
                     <Button Name="UndoDeleteButton"
                             Content="Undo"
                             Command="{Binding UndoDeleteCommand}"
-                            Background="#FF3B82F6"
+                            Background="{DynamicResource AppAccent}"
                             BorderBrush="Transparent"
                             Foreground="White"
                             CornerRadius="6"
@@ -662,7 +658,7 @@
                                     Width="200"
                                     Height="4"
                                     Background="{DynamicResource AppBorder}"
-                                    Foreground="#FF3B82F6"/>
+                                    Foreground="{DynamicResource AppAccent}"/>
                         <TextBlock Text="Loading your time entries..." 
                                   HorizontalAlignment="Center" 
                                   FontSize="14"

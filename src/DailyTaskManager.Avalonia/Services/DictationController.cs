@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Material.Icons;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Interfaces;
 
@@ -19,6 +20,7 @@ public partial class DictationController : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ButtonText))]
+    [NotifyPropertyChangedFor(nameof(IconKind))]
     private bool _isListening;
 
     [ObservableProperty]
@@ -34,7 +36,9 @@ public partial class DictationController : ObservableObject, IDisposable
     /// <summary>False when Windows has no speech recognizer; the dialog then hides the button</summary>
     public bool IsAvailable { get; }
 
-    public string ButtonText => IsListening ? "⏹ Stop" : "🎤 Dictate";
+    public string ButtonText => IsListening ? "Stop" : "Dictate";
+
+    public MaterialIconKind IconKind => IsListening ? MaterialIconKind.Stop : MaterialIconKind.MicrophoneOutline;
 
     /// <summary>Raised on the UI thread with each recognized phrase</summary>
     public event Action<string>? TextRecognized;

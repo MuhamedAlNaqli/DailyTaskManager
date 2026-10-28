@@ -508,21 +508,61 @@ public class DateFilteringIntegrationTest
         var logged = new HashSet<DateTime> { new(2026, 10, 19), new(2026, 10, 20), new(2026, 10, 22), new(2026, 10, 23) };
 
         // Before the reminder hour today does not count: only Wed 21 and Mon 26, Tue 27 are missing (weekend skipped)
-        var morning = DailyTaskManager.Avalonia.Services.MissingDays.Find(first, today, today.AddHours(9), logged, 16);
+        var morning = DailyTaskManager.Core.Reminders.MissingDays.Find(first, today, today.AddHours(9), logged, 16);
         CollectionAssert.AreEqual(new[] { new DateTime(2026, 10, 21), new DateTime(2026, 10, 26), new DateTime(2026, 10, 27) }, morning);
 
         // After the reminder hour today is included
-        var evening = DailyTaskManager.Avalonia.Services.MissingDays.Find(first, today, today.AddHours(17), logged, 16);
+        var evening = DailyTaskManager.Core.Reminders.MissingDays.Find(first, today, today.AddHours(17), logged, 16);
         Assert.AreEqual(4, evening.Count);
         Assert.AreEqual(today, evening.Last());
 
         // Nothing is reported before the user's first entry, or for a brand-new account
-        Assert.AreEqual(0, DailyTaskManager.Avalonia.Services.MissingDays.Find(null, today, today.AddHours(17), logged, 16).Count);
-        Assert.IsFalse(DailyTaskManager.Avalonia.Services.MissingDays.Find(today, today, today.AddHours(9), new HashSet<DateTime>(), 16).Any());
+        Assert.AreEqual(0, DailyTaskManager.Core.Reminders.MissingDays.Find(null, today, today.AddHours(17), logged, 16).Count);
+        Assert.IsFalse(DailyTaskManager.Core.Reminders.MissingDays.Find(today, today, today.AddHours(9), new HashSet<DateTime>(), 16).Any());
 
         // Description
-        Assert.AreEqual("You haven't logged any hours today yet.", DailyTaskManager.Avalonia.Services.MissingDays.Describe(new List<DateTime> { today }, today));
-        StringAssert.Contains(DailyTaskManager.Avalonia.Services.MissingDays.Describe(evening, today), "No entries for 4 working days");
+        Assert.AreEqual("You haven't logged any hours today yet.", DailyTaskManager.Core.Reminders.MissingDays.Describe(new List<DateTime> { today }, today));
+        StringAssert.Contains(DailyTaskManager.Core.Reminders.MissingDays.Describe(evening, today), "No entries for 4 working days");
+    }
+
+    [TestMethod]
+    public async Task ReminderEvaluator_ShouldReportMissingDaysOnlyWhenEnabledAndPastTheHour()
+    {
+        var evaluator = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Reminders.ReminderEvaluator>();
+        var settings = _serviceProvider!.GetRequiredService<ISettingsService>();
+        var first = await _serviceProvider!.GetRequiredService<IDatabaseService>().GetFirstEntryDateAsync();
+        if (first == null) Assert.Inconclusive("The test user has no entries, so there is nothing to compare against");
+
+        var oldEnabled = await settings.GetSettingAsync<string>(DailyTaskManager.Core.Models.ReminderSettings.EnabledKey, null);
+        var oldHour = await settings.GetSettingAsync<string>(DailyTaskManager.Core.Models.ReminderSettings.HourKey, null);
+        try
+        {
+            await settings.SetSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.EnabledKey, "true");
+            await settings.SetSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.HourKey, "16");
+
+            // Far in the future nobody has entries: the last two weeks of weekdays are all missing
+            var tuesday = new DateTime(2099, 3, 3);
+            var evening = await evaluator.EvaluateAsync(tuesday.AddHours(17));
+            Assert.IsTrue(evening.IsDue);
+            Assert.AreEqual(10, evening.MissingDays.Count, "Two working weeks of lookback");
+            Assert.AreEqual(tuesday, evening.MissingDays.Last());
+            Assert.IsFalse(string.IsNullOrWhiteSpace(evening.Message));
+
+            var morning = await evaluator.EvaluateAsync(tuesday.AddHours(9));
+            Assert.AreEqual(9, morning.MissingDays.Count, "Today only counts from the reminder hour on");
+
+            await settings.SetSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.EnabledKey, "false");
+            var off = await evaluator.EvaluateAsync(tuesday.AddHours(17));
+            Assert.IsFalse(off.IsDue);
+            Assert.AreEqual(0, off.MissingDays.Count);
+        }
+        finally
+        {
+            if (oldEnabled != null) await settings.SetSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.EnabledKey, oldEnabled);
+            else await settings.RemoveSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.EnabledKey);
+            if (oldHour != null) await settings.SetSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.HourKey, oldHour);
+            else await settings.RemoveSettingAsync(DailyTaskManager.Core.Models.ReminderSettings.HourKey);
+        }
     }
 
     [TestMethod]
@@ -854,6 +894,7 @@ public class DateFilteringIntegrationTest
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
                 services.AddTransient<ActivityCalendarViewModel>();
+                services.AddSingleton<DailyTaskManager.Core.Reminders.ReminderEvaluator>();
                 services.AddSingleton<DailyTaskManager.Core.Interfaces.IBackupService, BackupService>();
                 services.AddTransient<AddTaskViewModel>();
                 services.AddSingleton<DailyTaskManager.Core.Interfaces.IAutoCompleteService, AutoCompleteService>();

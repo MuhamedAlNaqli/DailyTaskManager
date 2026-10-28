@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace DailyTaskManager.Avalonia.Services;
+namespace DailyTaskManager.Core.Reminders;
 
 /// <summary>
 /// Works out which working days have no logged hours

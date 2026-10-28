@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using DailyTaskManager.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using DailyTaskManager.Avalonia.Services;
 using DailyTaskManager.Avalonia.Views;
 using DailyTaskManager.Avalonia.ViewModels;
 
@@ -82,6 +83,7 @@ public partial class App : Application
         }
 
         var loginWindow = new LoginWindow();
+        MemoryTrimmer.Attach(loginWindow);
         var viewModel = ServiceProvider.GetRequiredService<LoginViewModel>();
         loginWindow.DataContext = viewModel;
 
@@ -96,6 +98,7 @@ public partial class App : Application
         }
 
         var mainWindow = new MainWindow();
+        MemoryTrimmer.Attach(mainWindow);
         var viewModel = ServiceProvider.GetRequiredService<MainWindowViewModel>();
         mainWindow.DataContext = viewModel;
 

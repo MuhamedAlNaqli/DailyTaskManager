@@ -202,7 +202,7 @@ public class AuthenticationService : IAuthenticationService
     private static string HashToken(string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
-    public async Task<AuthResult> RestoreSessionAsync()
+    public async Task<AuthResult> RestoreSessionAsync(bool extendExpiry = true)
     {
         try
         {
@@ -229,8 +229,11 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // Sliding expiry: using the app keeps the session alive
-            user.RememberTokenExpiresAt = DateTime.UtcNow.Add(RememberMeLifetime);
-            await context.SaveChangesAsync();
+            if (extendExpiry)
+            {
+                user.RememberTokenExpiresAt = DateTime.UtcNow.Add(RememberMeLifetime);
+                await context.SaveChangesAsync();
+            }
 
             _currentUser = user;
             var result = AuthResult.Success(user);

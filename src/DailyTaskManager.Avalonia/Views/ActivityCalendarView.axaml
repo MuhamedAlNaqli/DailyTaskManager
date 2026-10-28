@@ -18,7 +18,7 @@
                         <TextBlock Name="CalendarSummaryText"
                                    Text="{Binding SummaryText}"
                                    FontSize="14"
-                                   Foreground="#FF5E81AC"
+                                   Foreground="{DynamicResource AppTextMuted}"
                                    Margin="0,4,0,0"/>
                     </StackPanel>
 

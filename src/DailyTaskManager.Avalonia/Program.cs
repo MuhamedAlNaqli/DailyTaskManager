@@ -12,8 +12,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using DailyTaskManager.Core.Interfaces;
+using DailyTaskManager.Core.Models;
+using DailyTaskManager.Core.Reminders;
 using DailyTaskManager.Infrastructure.Data;
 using DailyTaskManager.Infrastructure.Services;
+using DailyTaskManager.Avalonia.Background;
 using DailyTaskManager.Avalonia.Services;
 using DailyTaskManager.Avalonia.ViewModels;
 
@@ -29,8 +32,24 @@ class Program
     {
         try
         {
+            // The Windows task scheduler starts this exe with --reminder-check; that run shows a notification
+            // and exits without ever creating a window
+            var reminderRun = ReminderRunner.IsReminderRun(args);
+            if (!reminderRun && !SingleInstance.TryAcquire())
+            {
+                SingleInstance.ActivateExisting();
+                return;
+            }
+
             // Set up dependency injection host
             var host = CreateHostBuilder(args).Build();
+            if (reminderRun)
+            {
+                Environment.ExitCode = ReminderRunner.Run(host.Services, args);
+                Serilog.Log.CloseAndFlush();
+                return;
+            }
+
             // Configure application with the host's services
             // Store the service provider for global access
             App.ServiceProvider = host.Services;
@@ -39,6 +58,7 @@ class Program
             DatabaseReady = Task.Run(() => InitializeDatabaseAsync(host.Services));
             // The update service is not needed to show the first window
             _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
+            _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -112,6 +132,8 @@ class Program
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
+                services.AddSingleton<IBackgroundReminderService, WindowsReminderScheduler>();
+                services.AddSingleton<ReminderEvaluator>();
                 services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
                 services.AddSingleton<IUpdateService, UpdateService>();
@@ -138,6 +160,8 @@ class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            // Software rendering keeps the graphics driver (tens of MB) out of the process; this UI is light enough
+            .With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
             .WithInterFont()
             .LogToTrace();
 
@@ -158,6 +182,26 @@ class Program
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Keeps the Windows scheduled reminder in line with the user's settings, and re-registers it after the
+    /// app moved to another folder (an update installs to a new path)
+    /// </summary>
+    private static async Task SyncBackgroundReminderAsync(IServiceProvider services)
+    {
+        try
+        {
+            await DatabaseReady;
+            var settings = services.GetRequiredService<ISettingsService>();
+            var enabled = ReminderSettings.ParseFlag(await settings.GetSettingAsync<string>(ReminderSettings.EnabledKey, null), ReminderSettings.DefaultEnabled);
+            var background = ReminderSettings.ParseFlag(await settings.GetSettingAsync<string>(ReminderSettings.BackgroundKey, null), ReminderSettings.DefaultBackground);
+            await services.GetRequiredService<IBackgroundReminderService>().SetInstalledAsync(enabled && background);
+        }
+        catch (Exception ex)
+        {
+            services.GetService<ILogger<Program>>()?.LogWarning(ex, "Could not sync the background reminder");
         }
     }
 

@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns:materialIcons="using:Material.Icons.Avalonia" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
         xmlns:i="using:Avalonia.Xaml.Interactivity"
@@ -37,7 +37,7 @@
                 <TextBlock Text="Template"
                            Classes="label"
                            Margin="0,0,0,5"/>
-                <ComboBox Name="TemplateComboBox"
+                <ComboBox Classes="filled" Name="TemplateComboBox"
                           ItemsSource="{Binding Templates}"
                           SelectedItem="{Binding SelectedTemplate}"
                           PlaceholderText="Start from a saved template (optional)"
@@ -60,12 +60,16 @@
                     <Button Name="DictateButton"
                             Grid.Column="1"
                             Command="{Binding Dictation.ToggleCommand}"
-                            Content="{Binding Dictation.ButtonText}"
                             IsVisible="{Binding Dictation.IsAvailable}"
                             Padding="10,3"
                             FontSize="12"
                             CornerRadius="6"
-                            ToolTip.Tip="Dictate the description with your microphone"/>
+                            ToolTip.Tip="Dictate the description with your microphone">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="{Binding Dictation.IconKind}" Width="16" Height="16"/>
+                            <TextBlock Text="{Binding Dictation.ButtonText}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <TextBlock Name="DictationStatusText"
                                Grid.Row="1"
                                Grid.ColumnSpan="2"
@@ -81,7 +85,7 @@
                     <TextBox Name="DescriptionTextBox"
                              Text="{Binding Description}"
                              Watermark="Enter task description (supports multiple lines)"
-                             Classes="primary"
+                             Classes="primary filled"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              MinHeight="60"
@@ -103,7 +107,7 @@
                            MaxWidth="400"
                            MaxHeight="200">
                         <Border Background="{DynamicResource AppSurface}"
-                                BorderBrush="#FFDDD6FE"
+                                BorderBrush="{DynamicResource AppAccentSoftBorder}"
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 BoxShadow="0 4 12 0 #1A000000">
@@ -147,7 +151,7 @@
                            Classes="label"
                            Margin="0,0,0,5"/>
                 <Grid ColumnDefinitions="*,10,*">
-                    <ComboBox Name="ClientComboBox"
+                    <ComboBox Classes="filled" Name="ClientComboBox"
                               Grid.Column="0"
                               HorizontalAlignment="Stretch"
                               ItemsSource="{Binding Clients}"
@@ -162,7 +166,7 @@
                              Grid.Column="2"
                              Text="{Binding NewClientName}"
                              Watermark="Or type a new client"
-                             Classes="primary"/>
+                             Classes="primary filled"/>
                 </Grid>
             </StackPanel>
 
@@ -188,7 +192,7 @@
                                    Maximum="24" 
                                    Increment="0.5" 
                                    FormatString="0.0"
-                                   Classes="primary"/>
+                                   Classes="primary filled"/>
                 </StackPanel>
             </Grid>
 
@@ -201,7 +205,7 @@
                          Text="{Binding TemplateName}"
                          IsVisible="{Binding SaveAsTemplate}"
                          Watermark="Template name (optional)"
-                         Classes="primary"/>
+                         Classes="primary filled"/>
             </StackPanel>
 
             <!-- Validation Message -->
@@ -231,7 +235,7 @@
             <Button Content="Add Task" 
                     Command="{Binding SaveCommand}"
                     IsDefault="True"
-                    Background="#FF4C566A"
+                    Background="{DynamicResource AppAccent}"
                     BorderBrush="Transparent"
                     Foreground="White"
                     CornerRadius="6"

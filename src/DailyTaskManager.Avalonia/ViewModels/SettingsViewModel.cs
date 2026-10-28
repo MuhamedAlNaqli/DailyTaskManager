@@ -24,6 +24,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IUpdateService _updateService;
     private readonly IPlatformService _platformService;
     private readonly IBackupService _backupService;
+    private readonly IBackgroundReminderService _backgroundReminder;
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -46,7 +47,16 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private decimal _reminderHour = ReminderSettings.DefaultHour;
 
+    [ObservableProperty]
+    private bool _backgroundReminderEnabled = ReminderSettings.DefaultBackground;
+
+    [ObservableProperty]
+    private string _backgroundReminderStatus = string.Empty;
+
     private bool _loadingReminder;
+
+    /// <summary>False where Windows cannot run the reminder while the app is closed</summary>
+    public bool IsBackgroundReminderSupported => _backgroundReminder.IsSupported;
 
     [ObservableProperty]
     private bool _isCheckingForUpdates = false;
@@ -58,9 +68,11 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<AppSettingItem> AppSettings { get; } = new();
 
     public SettingsViewModel(ISettingsService settingsService, IExportService exportService,
-        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService, IBackupService backupService)
+        ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService, IBackupService backupService,
+        IBackgroundReminderService backgroundReminder)
     {
         _backupService = backupService;
+        _backgroundReminder = backgroundReminder;
         _settingsService = settingsService;
         _exportService = exportService;
         _logger = logger;
@@ -344,8 +356,11 @@ public partial class SettingsViewModel : ObservableObject
             _loadingReminder = true;
             var enabled = await _settingsService.GetSettingAsync<string>(ReminderSettings.EnabledKey, null);
             var hour = await _settingsService.GetSettingAsync<string>(ReminderSettings.HourKey, null);
-            ReminderEnabled = enabled == null ? ReminderSettings.DefaultEnabled : string.Equals(enabled, "true", StringComparison.OrdinalIgnoreCase);
-            ReminderHour = int.TryParse(hour, out var h) && h >= 0 && h <= 23 ? h : ReminderSettings.DefaultHour;
+            var background = await _settingsService.GetSettingAsync<string>(ReminderSettings.BackgroundKey, null);
+            ReminderEnabled = ReminderSettings.ParseFlag(enabled, ReminderSettings.DefaultEnabled);
+            ReminderHour = ReminderSettings.ParseHour(hour);
+            BackgroundReminderEnabled = ReminderSettings.ParseFlag(background, ReminderSettings.DefaultBackground);
+            await ShowBackgroundReminderStatusAsync();
         }
         catch (Exception ex)
         {
@@ -359,7 +374,59 @@ public partial class SettingsViewModel : ObservableObject
 
     partial void OnReminderEnabledChanged(bool value)
     {
-        if (!_loadingReminder) _ = _settingsService.SetSettingAsync(ReminderSettings.EnabledKey, value ? "true" : "false");
+        if (_loadingReminder) return;
+        _ = _settingsService.SetSettingAsync(ReminderSettings.EnabledKey, value ? "true" : "false");
+        _ = ApplyBackgroundReminderAsync();
+    }
+
+    partial void OnBackgroundReminderEnabledChanged(bool value)
+    {
+        if (_loadingReminder) return;
+        _ = _settingsService.SetSettingAsync(ReminderSettings.BackgroundKey, value ? "true" : "false");
+        _ = ApplyBackgroundReminderAsync();
+    }
+
+    /// <summary>Registers or removes the Windows scheduled reminder to match the two switches</summary>
+    private async Task ApplyBackgroundReminderAsync()
+    {
+        try
+        {
+            await _backgroundReminder.SetInstalledAsync(ReminderEnabled && BackgroundReminderEnabled);
+            await ShowBackgroundReminderStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not change the background reminder");
+            BackgroundReminderStatus = "Could not change the background reminder: " + ex.Message;
+        }
+    }
+
+    private async Task ShowBackgroundReminderStatusAsync()
+    {
+        if (!_backgroundReminder.IsSupported)
+        {
+            BackgroundReminderStatus = "Background reminders are not available on this system.";
+            return;
+        }
+
+        var installed = await _backgroundReminder.IsInstalledAsync();
+        BackgroundReminderStatus = installed
+            ? "Active: Windows checks every 30 minutes, even when this app is closed."
+            : "Off: you will only be reminded while this app is open.";
+    }
+
+    [RelayCommand]
+    private async Task SendTestReminderAsync()
+    {
+        try
+        {
+            await _backgroundReminder.SendTestNotificationAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not send the test notification");
+            BackgroundReminderStatus = "Could not show the test notification: " + ex.Message;
+        }
     }
 
     partial void OnReminderHourChanged(decimal value)

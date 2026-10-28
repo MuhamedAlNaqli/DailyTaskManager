@@ -10,6 +10,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using System.Linq;
 using DailyTaskManager.Core.Models;
+using DailyTaskManager.Core.Reminders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Interfaces;
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly IDatabaseService _databaseService;
     private readonly DialogService _dialogService;
+    private readonly ReminderEvaluator _reminderEvaluator;
     private DispatcherTimer? _reminderTimer;
     private string _reminderSignature = "";
     private string _dismissedSignature = "";
@@ -43,7 +45,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "3.0.0";
+    private string _appVersion = "3.1.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -98,8 +100,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IConfiguration configuration,
         ISettingsService settingsService,
         IDatabaseService databaseService,
-        DialogService dialogService)
+        DialogService dialogService,
+        ReminderEvaluator reminderEvaluator)
     {
+        _reminderEvaluator = reminderEvaluator;
         _databaseService = databaseService;
         _dialogService = dialogService;
         _settingsService = settingsService;
@@ -356,7 +360,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "3.0.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "3.1.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();
@@ -448,41 +452,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            var enabledText = await _settingsService.GetSettingAsync<string>(ReminderSettings.EnabledKey, null);
-            var enabled = enabledText == null ? ReminderSettings.DefaultEnabled : string.Equals(enabledText, "true", StringComparison.OrdinalIgnoreCase);
-            if (!enabled)
+            var status = await _reminderEvaluator.EvaluateAsync(DateTime.Now);
+            _reminderSignature = string.Join(",", status.MissingDays.Select(d => d.ToString("yyyyMMdd")));
+
+            if (!status.IsDue || _reminderSignature == _dismissedSignature)
             {
                 IsReminderVisible = false;
                 return;
             }
 
-            var hourText = await _settingsService.GetSettingAsync<string>(ReminderSettings.HourKey, null);
-            var hour = int.TryParse(hourText, out var h) && h >= 0 && h <= 23 ? h : ReminderSettings.DefaultHour;
-
-            var first = await _databaseService.GetFirstEntryDateAsync();
-            if (first == null)
-            {
-                IsReminderVisible = false;
-                return;
-            }
-
-            var today = DateTime.Today;
-            var from = first.Value.Date > today.AddDays(-(MissingDays.LookbackDays - 1)) ? first.Value.Date : today.AddDays(-(MissingDays.LookbackDays - 1));
-            var days = await _databaseService.GetDailyHoursAsync(new Core.Models.TaskQuery(null, from, today));
-            var logged = days.Where(d => d.Hours > 0).Select(d => d.Date.Date).ToHashSet();
-
-            var missing = MissingDays.Find(first, today, DateTime.Now, logged, hour);
-            _reminderSignature = string.Join(",", missing.Select(d => d.ToString("yyyyMMdd")));
-
-            if (missing.Count == 0 || _reminderSignature == _dismissedSignature)
-            {
-                IsReminderVisible = false;
-                return;
-            }
-
-            _reminderTargetDate = missing[0];
-            ReminderText = MissingDays.Describe(missing, today);
-            ReminderActionText = $"Add {missing[0]:ddd d MMM}";
+            _reminderTargetDate = status.MissingDays[0];
+            ReminderText = status.Message;
+            ReminderActionText = $"Add {status.MissingDays[0]:ddd d MMM}";
             IsReminderVisible = true;
         }
         catch (Exception ex)

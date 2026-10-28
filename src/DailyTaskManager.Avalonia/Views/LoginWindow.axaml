@@ -20,15 +20,12 @@
             
             <!-- Header -->
             <StackPanel HorizontalAlignment="Center" Spacing="12">
-                <Border Background="#FF4C566A" 
+                <Border Background="{DynamicResource AppAccent}" 
                         Width="48" 
                         Height="48" 
                         CornerRadius="24"
                         HorizontalAlignment="Center">
-                    <TextBlock Text="📅" 
-                               FontSize="20" 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center"/>
+                    <materialIcons:MaterialIcon Kind="CalendarCheck" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 
                 <StackPanel HorizontalAlignment="Center" Spacing="4">
@@ -39,7 +36,7 @@
                                HorizontalAlignment="Center"/>
                     <TextBlock Text="Sign in to your account" 
                                FontSize="13" 
-                               Foreground="#FF5E81AC"
+                               Foreground="{DynamicResource AppTextMuted}"
                                HorizontalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>
@@ -53,10 +50,8 @@
                                FontSize="13" 
                                FontWeight="Medium" 
                                Foreground="{DynamicResource AppText}"/>
-                    <TextBox Text="{Binding Username}"
+                    <TextBox Classes="filled" Text="{Binding Username}"
                              Watermark="Enter your username"
-                             BorderThickness="1"
-                             CornerRadius="6"
                              Padding="12,10"
                              FontSize="13"
                              Name="UsernameTextBox"/>
@@ -68,11 +63,9 @@
                                FontSize="13" 
                                FontWeight="Medium" 
                                Foreground="{DynamicResource AppText}"/>
-                    <TextBox Text="{Binding Password}"
+                    <TextBox Classes="filled" Text="{Binding Password}"
                              Watermark="Enter your password"
                              PasswordChar="●"
-                             BorderThickness="1"
-                             CornerRadius="6"
                              Padding="12,10"
                              FontSize="13"
                              Name="PasswordTextBox"/>
@@ -85,7 +78,7 @@
                           FontSize="13"/>
                 
                 <!-- Message -->
-                <Border Background="#FF3B82F6" 
+                <Border Background="{DynamicResource AppAccent}" 
                         CornerRadius="6" 
                         Padding="10,6"
                         IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -97,7 +90,7 @@
                 <!-- Login Button -->
                 <Button Command="{Binding LoginCommand}"
                         Classes="primary"
-                        Background="#FF4C566A"
+                        Background="{DynamicResource AppAccent}"
                         BorderBrush="Transparent"
                         Foreground="White"
                         CornerRadius="6"
@@ -185,7 +178,7 @@
                         Classes="secondary"
                         Background="Transparent"
                         BorderBrush="Transparent"
-                        Foreground="#FF3B82F6"
+                        Foreground="{DynamicResource AppAccent}"
                         Padding="0"
                         FontSize="12">
                     <TextBlock Text="Create Account"/>

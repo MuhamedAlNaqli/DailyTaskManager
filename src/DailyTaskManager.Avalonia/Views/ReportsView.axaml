@@ -15,7 +15,7 @@
                                Foreground="{DynamicResource MaterialBodyBrush}"/>
                     <TextBlock Text="Create work orders and invoices for a month"
                                FontSize="14"
-                               Foreground="#FF5E81AC"
+                               Foreground="{DynamicResource AppTextMuted}"
                                Margin="0,4,0,0"/>
                 </StackPanel>
 
@@ -31,7 +31,7 @@
                         <Grid ColumnDefinitions="*,16,*">
                             <StackPanel Grid.Column="0" Spacing="4">
                                 <TextBlock Text="Month" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                                <ComboBox Name="MonthComboBox"
+                                <ComboBox Classes="filled" Name="MonthComboBox"
                                           ItemsSource="{Binding Months}"
                                           SelectedItem="{Binding SelectedMonth}"
                                           HorizontalAlignment="Stretch">
@@ -44,7 +44,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="Client" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                                <ComboBox Name="ReportClientComboBox"
+                                <ComboBox Classes="filled" Name="ReportClientComboBox"
                                           ItemsSource="{Binding ClientOptions}"
                                           SelectedItem="{Binding SelectedClient}"
                                           HorizontalAlignment="Stretch">
@@ -69,19 +69,19 @@
                                     Content="Export PDF"
                                     Command="{Binding ExportPdfCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    Background="#FF4C566A" Foreground="White" BorderBrush="Transparent"
+                                    Background="{DynamicResource AppAccent}" Foreground="White" BorderBrush="Transparent"
                                     CornerRadius="6" Padding="16,10"/>
                             <Button Name="ExportWordButton"
                                     Content="Export Word"
                                     Command="{Binding ExportWordCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                    Background="Transparent" Foreground="{DynamicResource AppAccent}" BorderBrush="{DynamicResource AppAccent}" BorderThickness="1"
                                     CornerRadius="6" Padding="16,10"/>
                             <Button Name="ExportExcelButton"
                                     Content="Export Excel"
                                     Command="{Binding ExportExcelCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    Background="Transparent" Foreground="#FF10B981" BorderBrush="#FF10B981" BorderThickness="1"
+                                    Background="Transparent" Foreground="{DynamicResource AppAccent}" BorderBrush="{DynamicResource AppAccent}" BorderThickness="1"
                                     CornerRadius="6" Padding="16,10"/>
                         </StackPanel>
                         <TextBlock Text="Header, company and recipient details come from Settings. The files are saved to your configured export folders."
@@ -104,7 +104,7 @@
                         <Grid ColumnDefinitions="*,16,*,16,120">
                             <StackPanel Grid.Column="0" Spacing="4">
                                 <TextBlock Text="Invoice number" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                                <TextBox Name="InvoiceNumberTextBox" Text="{Binding InvoiceNumber}" Classes="primary"/>
+                                <TextBox Name="InvoiceNumberTextBox" Text="{Binding InvoiceNumber}" Classes="primary filled"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="Issue date" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
@@ -112,7 +112,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="4" Spacing="4">
                                 <TextBlock Text="Currency" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                                <TextBox Name="CurrencyTextBox" Text="{Binding Currency}" Classes="primary"/>
+                                <TextBox Name="CurrencyTextBox" Text="{Binding Currency}" Classes="primary filled"/>
                             </StackPanel>
                         </Grid>
 
@@ -122,14 +122,14 @@
                                 <NumericUpDown Name="HourlyRateInput"
                                                Value="{Binding HourlyRate}"
                                                Minimum="0" Maximum="100000" Increment="1" FormatString="0.00"
-                                               Classes="primary"/>
+                                               Classes="primary filled"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="VAT % (0 = no VAT)" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
                                 <NumericUpDown Name="VatInput"
                                                Value="{Binding VatPercent}"
                                                Minimum="0" Maximum="100" Increment="1" FormatString="0.##"
-                                               Classes="primary"/>
+                                               Classes="primary filled"/>
                             </StackPanel>
                         </Grid>
 
@@ -139,7 +139,7 @@
                                      Text="{Binding PaymentNote}"
                                      AcceptsReturn="True" TextWrapping="Wrap"
                                      MinHeight="60" MaxHeight="120"
-                                     Classes="primary"/>
+                                     Classes="primary filled"/>
                         </StackPanel>
 
                         <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="14,12">
@@ -160,7 +160,7 @@
                                 Command="{Binding CreateInvoiceCommand}"
                                 IsEnabled="{Binding !IsBusy}"
                                 HorizontalAlignment="Left"
-                                Background="#FF4C566A" Foreground="White" BorderBrush="Transparent"
+                                Background="{DynamicResource AppAccent}" Foreground="White" BorderBrush="Transparent"
                                 CornerRadius="6" Padding="16,10"/>
                     </StackPanel>
                 </Border>

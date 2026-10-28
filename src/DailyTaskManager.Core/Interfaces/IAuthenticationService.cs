@@ -40,9 +40,10 @@ namespace DailyTaskManager.Core.Interfaces
         Task LogoutAsync();
 
         /// <summary>
-        /// Signs in using the "remember me" session saved on this machine, if it is still valid
+        /// Signs in using the "remember me" session saved on this machine, if it is still valid.
+        /// Background jobs pass <c>false</c> so that they do not keep the session alive on their own.
         /// </summary>
-        Task<AuthResult> RestoreSessionAsync();
+        Task<AuthResult> RestoreSessionAsync(bool extendExpiry = true);
 
         /// <summary>
         /// Remembers the currently signed-in user on this machine
