@@ -58,7 +58,7 @@
                                 <Button Grid.Column="1"
                                         Command="{Binding SavePdfSettingsCommand}" 
                                         Classes="primary"
-                                        Background="{DynamicResource AppAccent}"
+                                        Background="{DynamicResource AppAccentFill}"
                                         BorderBrush="Transparent"
                                         Foreground="White"
                                         CornerRadius="6"
@@ -431,7 +431,7 @@
                                 <Button Name="BackupButton"
                                         Content="Back up my data"
                                         Command="{Binding BackupDataCommand}"
-                                        Background="{DynamicResource AppAccent}" Foreground="White" BorderBrush="Transparent"
+                                        Background="{DynamicResource AppAccentFill}" Foreground="White" BorderBrush="Transparent"
                                         CornerRadius="6" Padding="16,10"/>
                                 <Button Name="RestoreButton"
                                         Content="Restore from backup"
@@ -530,7 +530,7 @@
                                 <StackPanel Spacing="12">
                                     <Button Command="{Binding CheckForUpdatesCommand}"
                                             Classes="primary"
-                                            Background="{DynamicResource AppAccent}"
+                                            Background="{DynamicResource AppAccentFill}"
                                             Foreground="White"
                                             BorderThickness="0"
                                             CornerRadius="8"

@@ -26,7 +26,7 @@
 
                 <!-- Brand -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="20,24,20,24">
-                    <Border Background="{DynamicResource AppAccent}"
+                    <Border Background="{DynamicResource AppAccentFill}"
                             CornerRadius="11"
                             Width="38" Height="38">
                         <materialIcons:MaterialIcon Kind="ClockCheckOutline"

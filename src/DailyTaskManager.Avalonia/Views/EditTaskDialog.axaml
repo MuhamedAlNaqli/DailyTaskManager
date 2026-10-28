@@ -4,8 +4,8 @@
         x:Class="DailyTaskManager.Avalonia.Views.EditTaskDialog"
         x:DataType="vm:EditTaskViewModel"
         Title="Edit Task"
-        Width="450"
-        MinWidth="400"
+        Width="540"
+        MinWidth="540"
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
@@ -14,7 +14,7 @@
         <vm:EditTaskViewModel/>
     </Design.DataContext>
 
-    <Grid Margin="20">
+    <Grid Margin="28,24,28,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -25,14 +25,14 @@
         <TextBlock Grid.Row="0" 
                    Text="Edit Daily Task"
                    Classes="title"
-                   Margin="0,0,0,20"/>
+                   Margin="0,0,0,22"/>
 
         <!-- Form Content -->
-        <StackPanel Grid.Row="1" Spacing="15">
+        <StackPanel Grid.Row="1" Spacing="18">
             
             <!-- Task Description -->
             <StackPanel>
-                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,5">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
                     <TextBlock Grid.Column="0"
                                Text="Description *"
                                Classes="label"
@@ -61,23 +61,37 @@
                 </Grid>
                 <TextBox Text="{Binding Description}" 
                          Watermark="Enter task description (supports multiple lines)"
-                         Classes="primary filled"
+                         Classes="filled"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
-                         MinHeight="80"
+                         MinHeight="88"
                          MaxHeight="200"
                          VerticalAlignment="Stretch"/>
             </StackPanel>
 
-            <!-- Client -->
-            <StackPanel>
-                <TextBlock Text="Client"
-                           Classes="label"
-                           Margin="0,0,0,5"/>
-                <Grid ColumnDefinitions="*,10,*">
-                    <ComboBox Classes="filled" Name="ClientComboBox"
-                              Grid.Column="0"
-                              HorizontalAlignment="Stretch"
+            <!-- Date and Hours: two equal columns -->
+            <Grid ColumnDefinitions="*,16,*">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Date *" Classes="label" Margin="0,0,0,6"/>
+                    <DatePicker Classes="form" SelectedDate="{Binding Date, Mode=TwoWay}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Hours *" Classes="label" Margin="0,0,0,6"/>
+                    <NumericUpDown Classes="form filled"
+                                   Value="{Binding Hours}"
+                                   Minimum="0"
+                                   Maximum="24"
+                                   Increment="0.5"
+                                   FormatString="0.0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Client: pick an existing one or type a new one, same two columns as above -->
+            <Grid ColumnDefinitions="*,16,*">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Client" Classes="label" Margin="0,0,0,6"/>
+                    <ComboBox Classes="form" Name="ClientComboBox"
                               ItemsSource="{Binding Clients}"
                               SelectedItem="{Binding SelectedClient}">
                         <ComboBox.ItemTemplate>
@@ -86,37 +100,14 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBox Name="NewClientTextBox"
-                             Grid.Column="2"
-                             Text="{Binding NewClientName}"
-                             Watermark="Or type a new client"
-                             Classes="primary filled"/>
-                </Grid>
-            </StackPanel>
-
-            <!-- Date and Hours -->
-            <Grid ColumnDefinitions="*,10,120">
-                
-                <!-- Date -->
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Date *" 
-                               Classes="label" 
-                               Margin="0,0,0,5"/>
-                    <DatePicker SelectedDate="{Binding Date, Mode=TwoWay}"
-                                Classes="primary"/>
                 </StackPanel>
 
-                <!-- Hours -->
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Hours *" 
-                               Classes="label" 
-                               Margin="0,0,0,5"/>
-                    <NumericUpDown Value="{Binding Hours}" 
-                                   Minimum="0" 
-                                   Maximum="24" 
-                                   Increment="0.5" 
-                                   FormatString="0.0"
-                                   Classes="primary filled"/>
+                    <TextBlock Text="Or add a new client" Classes="label" Margin="0,0,0,6"/>
+                    <TextBox Classes="form filled"
+                             Name="NewClientTextBox"
+                             Text="{Binding NewClientName}"
+                             Watermark="Client name"/>
                 </StackPanel>
             </Grid>
 
@@ -131,29 +122,17 @@
         <StackPanel Grid.Row="2" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right" 
-                    Spacing="10"
-                    Margin="0,25,0,0">
+                    Spacing="12"
+                    Margin="0,24,0,0">
             
-            <Button Content="Cancel" 
-                    Command="{Binding CancelCommand}"
-                    Background="{DynamicResource AppSurface}"
-                    BorderBrush="{DynamicResource AppBorderStrong}"
-                    BorderThickness="1"
-                    Foreground="{DynamicResource AppText}"
-                    CornerRadius="6"
-                    Padding="16,8"
-                    MinWidth="90"/>
+            <Button Content="Cancel"
+                    Classes="dialog secondary"
+                    Command="{Binding CancelCommand}"/>
                     
-            <Button Content="Save Changes" 
+            <Button Content="Save Changes"
+                    Classes="dialog primary"
                     Command="{Binding SaveCommand}"
-                    IsDefault="True"
-                    Background="{DynamicResource AppAccent}"
-                    BorderBrush="Transparent"
-                    Foreground="White"
-                    CornerRadius="6"
-                    Padding="16,8"
-                    FontWeight="Medium"
-                    MinWidth="110"/>
+                    IsDefault="True"/>
         </StackPanel>
     </Grid>
 </Window>

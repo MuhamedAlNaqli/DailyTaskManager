@@ -121,7 +121,8 @@ public partial class DailyTasksView : UserControl
     }
 
     /// <summary>
-    /// Replaces a text block with an editor: Enter saves (Ctrl+Enter for multi-line text), Esc cancels, leaving the field saves
+    /// Replaces a text block with an editor: Enter or Ctrl+Enter saves (plain Enter is a new line in multi-line text),
+    /// Esc cancels, leaving the field saves
     /// </summary>
     private static void BeginInlineEdit(TextBlock display, string initial, bool multiline, Func<string, System.Threading.Tasks.Task<bool>> commit)
     {
@@ -130,11 +131,15 @@ public partial class DailyTasksView : UserControl
             Text = initial,
             AcceptsReturn = multiline,
             TextWrapping = multiline ? global::Avalonia.Media.TextWrapping.Wrap : global::Avalonia.Media.TextWrapping.NoWrap,
-            MinWidth = multiline ? 240 : 56,
+            MinWidth = multiline ? 240 : 64,
+            MinHeight = 0,
+            Padding = new global::Avalonia.Thickness(6, 4),
             FontSize = display.FontSize,
             VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
         };
-        ToolTip.SetTip(box, multiline ? "Ctrl+Enter or click away to save, Esc to cancel" : "Enter to save, Esc to cancel");
+        box.Classes.Add("filled");
+        box.Classes.Add("inline-edit");
+        ToolTip.SetTip(box, multiline ? "Ctrl+Enter or click away to save, Esc to cancel" : "Enter or click away to save, Esc to cancel");
 
         var panel = display.Parent as Panel;
         var border = display.Parent as Border;
@@ -172,21 +177,27 @@ public partial class DailyTasksView : UserControl
             if (finished) return;
             finished = true;
 
-            var text = box.Text ?? "";
-            if (save && text != initial)
+            try
             {
-                var ok = await commit(text);
-                if (!ok) Restore();
-                // On success the list reloads and replaces this row
-                else Restore();
+                var text = box.Text ?? "";
+                if (save && text != initial)
+                {
+                    // The list reloads on success and replaces this row; on a rejected value the original text comes back
+                    await commit(text);
+                }
             }
-            else
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Inline edit failed");
+            }
+            finally
             {
                 Restore();
             }
         }
 
-        box.KeyDown += (_, e) =>
+        // Tunnelling: the text box turns Enter (with or without Ctrl) into a new line before a normal handler would see it
+        box.AddHandler(KeyDownEvent, (_, e) =>
         {
             if (e.Key == Key.Escape)
             {
@@ -198,13 +209,25 @@ public partial class DailyTasksView : UserControl
                 _ = Finish(true);
                 e.Handled = true;
             }
-        };
+        }, RoutingStrategies.Tunnel);
         box.LostFocus += (_, _) => _ = Finish(true);
-        box.AttachedToVisualTree += (_, _) =>
+        // The box is already in the tree and its template is not applied yet, so focus it once layout has run
+        Dispatcher.UIThread.Post(() => FocusEditor(box), DispatcherPriority.Loaded);
+    }
+
+    private static void FocusEditor(TextBox box)
+    {
+        // The editor was closed meanwhile
+        if (box.GetVisualRoot() == null) return;
+
+        if (!box.Focus())
         {
-            box.Focus();
-            box.SelectAll();
-        };
+            // Not focusable yet: try once more shortly after
+            DispatcherTimer.RunOnce(() => FocusEditor(box), TimeSpan.FromMilliseconds(80));
+            return;
+        }
+
+        box.SelectAll();
     }
 
     private void OnTemplateClicked(object? sender, RoutedEventArgs e)

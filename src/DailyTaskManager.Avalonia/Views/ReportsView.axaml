@@ -69,7 +69,7 @@
                                     Content="Export PDF"
                                     Command="{Binding ExportPdfCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    Background="{DynamicResource AppAccent}" Foreground="White" BorderBrush="Transparent"
+                                    Background="{DynamicResource AppAccentFill}" Foreground="White" BorderBrush="Transparent"
                                     CornerRadius="6" Padding="16,10"/>
                             <Button Name="ExportWordButton"
                                     Content="Export Word"
@@ -108,7 +108,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="Issue date" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                                <DatePicker SelectedDate="{Binding IssueDate, Mode=TwoWay}" Classes="primary"/>
+                                <DatePicker SelectedDate="{Binding IssueDate, Mode=TwoWay}" Classes="form"/>
                             </StackPanel>
                             <StackPanel Grid.Column="4" Spacing="4">
                                 <TextBlock Text="Currency" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
@@ -160,7 +160,7 @@
                                 Command="{Binding CreateInvoiceCommand}"
                                 IsEnabled="{Binding !IsBusy}"
                                 HorizontalAlignment="Left"
-                                Background="{DynamicResource AppAccent}" Foreground="White" BorderBrush="Transparent"
+                                Background="{DynamicResource AppAccentFill}" Foreground="White" BorderBrush="Transparent"
                                 CornerRadius="6" Padding="16,10"/>
                     </StackPanel>
                 </Border>

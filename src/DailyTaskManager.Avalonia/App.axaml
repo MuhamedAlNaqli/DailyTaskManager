@@ -46,6 +46,8 @@
                     <SolidColorBrush x:Key="AppAccentHover" Color="#FF0B5F58"/>
                     <SolidColorBrush x:Key="AppAccentSoft" Color="#FFE2F4F1"/>
                     <SolidColorBrush x:Key="AppOnAccent" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="AppAccentFill" Color="#FF0F766E"/>
+                    <SolidColorBrush x:Key="AppAccentFillHover" Color="#FF0B5F58"/>
                     <SolidColorBrush x:Key="AppBadgeBg" Color="#FFD9F3EF"/>
                     <SolidColorBrush x:Key="AppBadgeText" Color="#FF0B5D56"/>
                     <SolidColorBrush x:Key="AppAccentSoftBorder" Color="#FF99D9D1"/>
@@ -54,12 +56,19 @@
                     <SolidColorBrush x:Key="AppWarningSoft" Color="#FFFEF3DC"/>
                     <SolidColorBrush x:Key="AppWarningBorder" Color="#FFF5D08A"/>
                     <SolidColorBrush x:Key="AppOverlay" Color="#80000000"/>
+                    <SolidColorBrush x:Key="ThemeAccentBrush" Color="#FF64748B"/>
                     <SolidColorBrush x:Key="MaterialPrimaryMidBrush" Color="#FF0F766E"/>
                     <SolidColorBrush x:Key="MaterialPrimaryLightBrush" Color="#FF14A398"/>
                     <SolidColorBrush x:Key="MaterialPrimaryDarkBrush" Color="#FF0B5F58"/>
                     <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#FF0F766E"/>
                     <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#FF14A398"/>
                     <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#FF0B5F58"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryMidForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryLightForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryDarkForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueLightForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFFFF"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AppBackground" Color="#FF0C1114"/>
@@ -80,7 +89,9 @@
                     <SolidColorBrush x:Key="AppAccent" Color="#FF2DD4BF"/>
                     <SolidColorBrush x:Key="AppAccentHover" Color="#FF5EEAD4"/>
                     <SolidColorBrush x:Key="AppAccentSoft" Color="#FF10312E"/>
-                    <SolidColorBrush x:Key="AppOnAccent" Color="#FF04211F"/>
+                    <SolidColorBrush x:Key="AppOnAccent" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="AppAccentFill" Color="#FF0D8077"/>
+                    <SolidColorBrush x:Key="AppAccentFillHover" Color="#FF0F9488"/>
                     <SolidColorBrush x:Key="AppBadgeBg" Color="#FF123A36"/>
                     <SolidColorBrush x:Key="AppBadgeText" Color="#FF7EE7DA"/>
                     <SolidColorBrush x:Key="AppAccentSoftBorder" Color="#FF1F6F67"/>
@@ -89,12 +100,19 @@
                     <SolidColorBrush x:Key="AppWarningSoft" Color="#FF3A2D12"/>
                     <SolidColorBrush x:Key="AppWarningBorder" Color="#FF7A5A1A"/>
                     <SolidColorBrush x:Key="AppOverlay" Color="#B0000000"/>
-                    <SolidColorBrush x:Key="MaterialPrimaryMidBrush" Color="#FF2DD4BF"/>
+                    <SolidColorBrush x:Key="ThemeAccentBrush" Color="#FF8FA0AB"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryMidBrush" Color="#FF0D8077"/>
                     <SolidColorBrush x:Key="MaterialPrimaryLightBrush" Color="#FF5EEAD4"/>
                     <SolidColorBrush x:Key="MaterialPrimaryDarkBrush" Color="#FF14A398"/>
-                    <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#FF2DD4BF"/>
+                    <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#FF0D8077"/>
                     <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#FF5EEAD4"/>
                     <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#FF14A398"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryMidForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryLightForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="MaterialPrimaryDarkForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueLightForegroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFFFF"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

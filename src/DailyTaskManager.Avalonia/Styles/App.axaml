@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:assist="clr-namespace:Material.Styles.Assists;assembly=Material.Styles">
+        xmlns:assist="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
+        xmlns:materialIcons="using:Material.Icons.Avalonia">
 
     <!-- Typography and page background -->
     <Style Selector="Window">
@@ -25,9 +26,17 @@
     <Style Selector="Button.primary">
         <Setter Property="Padding" Value="16,9"/>
         <Setter Property="MinHeight" Value="38"/>
-        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppAccentFill}"/>
         <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- Text on a brand-coloured button is always light, in both themes -->
+    <Style Selector="Button.primary TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
+    </Style>
+    <Style Selector="Button.primary materialIcons|MaterialIcon">
+        <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
     </Style>
 
     <Style Selector="Button.secondary, DropDownButton.secondary">
@@ -183,6 +192,61 @@
         <Setter Property="Foreground" Value="{DynamicResource AppTextFaint}"/>
     </Style>
     
+    <!-- Drop-downs look like the filled text boxes and keep readable text inside popups and flyouts -->
+    <Style Selector="ComboBox">
+        <Setter Property="Theme" Value="{DynamicResource MaterialFilledComboBox}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource AppTextMuted}"/>
+    </Style>
+    <Style Selector="ComboBox TextBlock, ComboBoxItem TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+    </Style>
+    <Style Selector="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
+    </Style>
+    <Style Selector="ComboBox /template/ TextBlock#floatingWatermark, ComboBox /template/ TextBlock#PART_PlaceholderText">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
+    </Style>
+
+    <!-- Form dialogs: labels, section titles and one height for every input so the rows line up -->
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
+    </Style>
+    <Style Selector="TextBlock.title">
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextStrong}"/>
+    </Style>
+    <Style Selector="TextBlock.error">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppDanger}"/>
+    </Style>
+    <Style Selector="TextBox.form, ComboBox.form, NumericUpDown.form">
+        <Setter Property="MinHeight" Value="48"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="DatePicker.form">
+        <Setter Property="MinHeight" Value="48"/>
+        <Setter Property="Height" Value="NaN"/>
+        <Setter Property="assist:TextFieldAssist.Label" Value=""/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="DatePicker.form /template/ TextBox#DisplayTextBox">
+        <Setter Property="Theme" Value="{DynamicResource FilledTextBox}"/>
+        <Setter Property="UseFloatingWatermark" Value="False"/>
+        <Setter Property="MinHeight" Value="48"/>
+    </Style>
+    <Style Selector="Button.dialog">
+        <Setter Property="MinWidth" Value="110"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+
     <!-- ComboBox text readability -->
     <Style Selector="ComboBox /template/ TextBox">
         <Setter Property="Foreground" Value="{DynamicResource AppInputText}"/>
