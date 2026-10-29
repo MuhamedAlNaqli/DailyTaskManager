@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.HelpView"
+             x:DataType="vm:HelpViewModel">
+
+    <Design.DataContext>
+        <vm:HelpViewModel/>
+    </Design.DataContext>
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="20" MaxWidth="980" HorizontalAlignment="Left">
+
+            <StackPanel>
+                <TextBlock Text="Help"
+                           FontSize="28"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource AppTextStrong}"/>
+                <TextBlock Text="Shortcuts and features that are easy to miss"
+                           FontSize="14"
+                           Margin="0,4,0,0"
+                           Foreground="{DynamicResource AppTextMuted}"/>
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HelpSection">
+                        <Border Classes="help-card">
+                            <StackPanel Spacing="14">
+                                <StackPanel Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="20" Height="20"
+                                                                    Foreground="{DynamicResource AppAccent}"
+                                                                    VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource AppTextStrong}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Summary}"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource AppTextMuted}"/>
+                                </StackPanel>
+
+                                <ItemsControl ItemsSource="{Binding Items}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:HelpItem">
+                                            <Grid ColumnDefinitions="200,*" Classes="help-row">
+                                                <!-- Key combination -->
+                                                <ItemsControl Grid.Column="0"
+                                                              ItemsSource="{Binding Keys}"
+                                                              IsVisible="{Binding HasKeys}"
+                                                              VerticalAlignment="Top">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="x:String">
+                                                            <Border Classes="key-cap">
+                                                                <TextBlock Text="{Binding}" Classes="key-cap-text"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <!-- Items without keys use the left column for their title -->
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Title}"
+                                                           IsVisible="{Binding !HasKeys}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,12,0"
+                                                           Foreground="{DynamicResource AppTextStrong}"/>
+
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               IsVisible="{Binding HasKeys}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="14"
+                                                               Foreground="{DynamicResource AppTextStrong}"/>
+                                                    <TextBlock Text="{Binding Description}"
+                                                               FontSize="13"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource AppText}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

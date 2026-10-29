@@ -45,7 +45,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "3.2.0";
+    private string _appVersion = "3.3.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -72,6 +72,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isSettingsViewSelected = false;
+
+    [ObservableProperty]
+    private bool _isHelpViewSelected = false;
 
     [ObservableProperty]
     private bool _isAnalyticsViewSelected = false;
@@ -151,13 +154,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SetSelectedView(bool tasks = false, bool analytics = false, bool reports = false, bool settings = false, bool calendar = false)
+    private void SetSelectedView(bool tasks = false, bool analytics = false, bool reports = false, bool settings = false, bool calendar = false, bool help = false)
     {
         IsCalendarViewSelected = calendar;
         IsTasksViewSelected = tasks;
         IsAnalyticsViewSelected = analytics;
         IsReportsViewSelected = reports;
         IsSettingsViewSelected = settings;
+        IsHelpViewSelected = help;
     }
 
     [RelayCommand]
@@ -229,6 +233,23 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task NavigateToHelpAsync()
+    {
+        try
+        {
+            (CurrentView?.DataContext as IDisposable)?.Dispose();
+            CurrentView = await _navigationService.CreateViewAsync<HelpView, HelpViewModel>();
+            SetSelectedView(help: true);
+
+            _logger.LogInformation("Navigated to Help view");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error navigating to Help view");
         }
     }
 
@@ -360,7 +381,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "3.2.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "3.3.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();

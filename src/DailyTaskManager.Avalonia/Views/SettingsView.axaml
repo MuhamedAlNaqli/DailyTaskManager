@@ -523,6 +523,18 @@
                                           Foreground="{DynamicResource AppTextMuted}"/>
                             </StackPanel>
 
+                            <!-- Background update notice -->
+                            <StackPanel Spacing="4" IsVisible="{Binding IsBackgroundReminderSupported}">
+                                <CheckBox Name="BackgroundUpdateNotifyCheckBox"
+                                          Content="Tell me about new versions with a Windows notification when the app is closed"
+                                          IsChecked="{Binding BackgroundUpdateNotifyEnabled}"/>
+                                <TextBlock Text="Windows checks a few times a day and notifies you once per release. Clicking the notification opens the app, which offers the update."
+                                           Margin="32,0,0,0"
+                                           TextWrapping="Wrap"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+
                             <!-- Update Check Button -->
                             <Border Background="{DynamicResource AppSurfaceAlt}"
                                     CornerRadius="8"

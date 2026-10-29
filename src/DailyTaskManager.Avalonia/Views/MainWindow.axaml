@@ -108,6 +108,17 @@
                         </StackPanel>
                     </Button>
 
+                    <Button AutomationProperties.AutomationId="NavHelp"
+                            AutomationProperties.Name="Help"
+                            Classes="sidebar-nav quiet"
+                            Classes.active="{Binding IsHelpViewSelected}"
+                            Command="{Binding NavigateToHelpCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <materialIcons:MaterialIcon Kind="HelpCircleOutline" Width="18" Height="18"/>
+                            <TextBlock Text="Help" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button AutomationProperties.AutomationId="ThemeToggleButton"
                             AutomationProperties.Name="Theme"
                             Classes="sidebar-nav quiet"

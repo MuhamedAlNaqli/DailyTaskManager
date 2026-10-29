@@ -448,4 +448,29 @@
         <Setter Property="CornerRadius" Value="6"/>
     </Style>
 
+    <!-- Help page -->
+    <Style Selector="Border.help-card">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="24"/>
+        <Setter Property="Margin" Value="0,0,0,16"/>
+    </Style>
+    <Style Selector="Grid.help-row">
+        <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.key-cap">
+        <Setter Property="Background" Value="{DynamicResource AppSurfaceAlt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
+        <Setter Property="BorderThickness" Value="1,1,1,2"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,3"/>
+    </Style>
+    <Style Selector="TextBlock.key-cap-text">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextStrong}"/>
+    </Style>
+
 </Styles>

@@ -18,6 +18,16 @@ public class ReminderState
 
     public DateTime LastShown { get; set; }
 
+    /// <summary>Whether the background job may tell the user about new versions (mirrors the setting, so no database is needed)</summary>
+    public bool UpdateNotifications { get; set; } = true;
+
+    public DateTime LastUpdateCheck { get; set; }
+
+    /// <summary>The version the user was last told about, so each release is announced once (then again after a few days)</summary>
+    public string NotifiedVersion { get; set; } = "";
+
+    public DateTime NotifiedAt { get; set; }
+
     /// <summary>Which exe (and task definition) the scheduled task was last registered for</summary>
     public string TaskMarker { get; set; } = "";
 
@@ -41,6 +51,20 @@ public class ReminderState
 
         Count++;
         LastShown = now;
+    }
+
+    public static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
+    public static readonly TimeSpan UpdateRepeatAfter = TimeSpan.FromDays(3);
+
+    public bool UpdateCheckDue(DateTime now) => UpdateNotifications && now - LastUpdateCheck >= UpdateCheckInterval;
+
+    public bool ShouldAnnounce(string version, DateTime now) =>
+        NotifiedVersion != version || now - NotifiedAt >= UpdateRepeatAfter;
+
+    public void RecordAnnounced(string version, DateTime now)
+    {
+        NotifiedVersion = version;
+        NotifiedAt = now;
     }
 
     public static ReminderState Load()

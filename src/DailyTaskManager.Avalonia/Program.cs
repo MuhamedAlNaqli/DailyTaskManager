@@ -146,6 +146,7 @@ class Program
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<SettingsViewModel>();
+                services.AddTransient<HelpViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
                 services.AddTransient<ActivityCalendarViewModel>();
                 services.AddTransient<ReportsViewModel>();
@@ -198,7 +199,12 @@ class Program
             var settings = services.GetRequiredService<ISettingsService>();
             var enabled = ReminderSettings.ParseFlag(await settings.GetSettingAsync<string>(ReminderSettings.EnabledKey, null), ReminderSettings.DefaultEnabled);
             var background = ReminderSettings.ParseFlag(await settings.GetSettingAsync<string>(ReminderSettings.BackgroundKey, null), ReminderSettings.DefaultBackground);
-            await services.GetRequiredService<IBackgroundReminderService>().SetInstalledAsync(enabled && background);
+            var updateNotify = ReminderSettings.ParseFlag(await settings.GetSettingAsync<string>(UpdateSettings.BackgroundNotifyKey, null), UpdateSettings.DefaultBackgroundNotify);
+            var state = Background.ReminderState.Load();
+            state.UpdateNotifications = updateNotify;
+            state.Save();
+            // One scheduled task serves both the hours reminder and the update notice
+            await services.GetRequiredService<IBackgroundReminderService>().SetInstalledAsync((enabled && background) || updateNotify);
         }
         catch (Exception ex)
         {

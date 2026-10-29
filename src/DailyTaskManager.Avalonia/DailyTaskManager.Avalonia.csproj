@@ -12,9 +12,9 @@
     <AssemblyCompany>Smart Point</AssemblyCompany>
     <AssemblyCopyright>Copyright © 2024 Smart Point</AssemblyCopyright>
     <!-- Version properties - keeping static for build stability, GitVersion used in installer only -->
-    <AssemblyVersion>3.2.0.0</AssemblyVersion>
-    <FileVersion>3.2.0.0</FileVersion>
-    <ProductVersion>3.2.0.0</ProductVersion>
+    <AssemblyVersion>3.3.0.0</AssemblyVersion>
+    <FileVersion>3.3.0.0</FileVersion>
+    <ProductVersion>3.3.0.0</ProductVersion>
     
     <!-- Publishing Properties -->
     <PublishSingleFile>true</PublishSingleFile>
@@ -54,7 +54,7 @@
     <PackageReference Include="Material.Icons.Avalonia" Version="2.1.0" />
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="MessageBox.Avalonia" Version="3.2.0" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />

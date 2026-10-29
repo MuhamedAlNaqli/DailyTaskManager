@@ -48,6 +48,9 @@ public partial class SettingsViewModel : ObservableObject
     private decimal _reminderHour = ReminderSettings.DefaultHour;
 
     [ObservableProperty]
+    private bool _backgroundUpdateNotifyEnabled = UpdateSettings.DefaultBackgroundNotify;
+
+    [ObservableProperty]
     private bool _backgroundReminderEnabled = ReminderSettings.DefaultBackground;
 
     [ObservableProperty]
@@ -360,6 +363,8 @@ public partial class SettingsViewModel : ObservableObject
             ReminderEnabled = ReminderSettings.ParseFlag(enabled, ReminderSettings.DefaultEnabled);
             ReminderHour = ReminderSettings.ParseHour(hour);
             BackgroundReminderEnabled = ReminderSettings.ParseFlag(background, ReminderSettings.DefaultBackground);
+            var updateNotify = await _settingsService.GetSettingAsync<string>(UpdateSettings.BackgroundNotifyKey, null);
+            BackgroundUpdateNotifyEnabled = ReminderSettings.ParseFlag(updateNotify, UpdateSettings.DefaultBackgroundNotify);
             await ShowBackgroundReminderStatusAsync();
         }
         catch (Exception ex)
@@ -386,12 +391,22 @@ public partial class SettingsViewModel : ObservableObject
         _ = ApplyBackgroundReminderAsync();
     }
 
-    /// <summary>Registers or removes the Windows scheduled reminder to match the two switches</summary>
+    partial void OnBackgroundUpdateNotifyEnabledChanged(bool value)
+    {
+        if (_loadingReminder) return;
+        _ = _settingsService.SetSettingAsync(UpdateSettings.BackgroundNotifyKey, value ? "true" : "false");
+        _ = ApplyBackgroundReminderAsync();
+    }
+
+    /// <summary>Registers or removes the Windows scheduled task (shared by the hours reminder and the update notice) to match the switches</summary>
     private async Task ApplyBackgroundReminderAsync()
     {
         try
         {
-            await _backgroundReminder.SetInstalledAsync(ReminderEnabled && BackgroundReminderEnabled);
+            var state = Background.ReminderState.Load();
+            state.UpdateNotifications = BackgroundUpdateNotifyEnabled;
+            state.Save();
+            await _backgroundReminder.SetInstalledAsync((ReminderEnabled && BackgroundReminderEnabled) || BackgroundUpdateNotifyEnabled);
             await ShowBackgroundReminderStatusAsync();
         }
         catch (Exception ex)

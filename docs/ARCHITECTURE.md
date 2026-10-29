@@ -77,11 +77,20 @@ The reminder works while the app is closed without a resident process:
 3. `Background/ReminderState` (in `%LOCALAPPDATA%\DailyTaskManager`) limits the reminder to twice a day, at least
    two hours apart.
 
+The same job also checks the update feed (`Background/BackgroundUpdateChecker`, at most every 6 hours) and shows a
+"new version" notification once per release, unless the app is open. Whether it may do so is mirrored from the
+Settings switch into `reminder-state.json`, so the headless process needs no database for it. Clicking the notice
+opens the app, whose own updater downloads and installs. `--update-test` and `--update-check-as=3.1.0` are
+diagnostics for trying the notice.
+
 The process lives for a second or two (up to 30 s while the notification is on screen) and then exits.
 Settings: Settings -> Reminders (on/off, hour, "also remind me when the app is closed", test notification).
 The job only works for a user who chose "remember me", because the reminder needs to know whose entries to check.
 Uninstalling the app leaves the (harmless) scheduled task behind; remove it with
 `schtasks /Delete /TN "DailyTaskManager\Reminder" /F` or by switching the setting off before uninstalling.
+
+The **Help** page (`HelpViewModel`, plain data) lists shortcuts and easy-to-miss features; keep it in step when a feature
+or shortcut changes.
 
 ## Memory
 
