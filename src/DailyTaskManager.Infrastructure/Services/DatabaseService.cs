@@ -159,7 +159,7 @@ namespace DailyTaskManager.Infrastructure.Services
             var userId = GetCurrentUserId();
 
             var today = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Unspecified);
-            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            var startOfWeek = today.AddDays(-(((int)today.DayOfWeek + 6) % 7)); // weeks run Monday to Sunday, like the week view
             var thirtyDaysAgo = today.AddDays(-30);
             var tomorrow = today.AddDays(1);
             var since = startOfWeek < thirtyDaysAgo ? startOfWeek : thirtyDaysAgo;

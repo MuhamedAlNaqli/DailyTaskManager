@@ -76,7 +76,10 @@ public class UpdateService : IUpdateService, IDisposable
             {
                 UIFactory = new UIFactory(),
                 // Report the real assembly version as the installed version (see AppAssemblyAccessor)
-                Configuration = new DefaultConfiguration(new AppAssemblyAccessor())
+                Configuration = new DefaultConfiguration(new AppAssemblyAccessor()),
+                // GitHub's download redirect has no file name, so without this the installer is saved without
+                // an extension and the install step cannot start it (the app just closes)
+                TmpDownloadFileNameWithExtension = "DailyTaskManager-update.msi"
             };
 
             _logger.LogInformation("UpdateService initialized successfully (current version {Version})", GetCurrentVersion());

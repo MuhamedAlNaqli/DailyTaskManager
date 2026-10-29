@@ -158,6 +158,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             // User logged out, clear tasks
             Interlocked.Increment(ref _loadVersion);
             FilteredTasks = new ObservableCollection<DailyTask>();
+            WeekDays = new ObservableCollection<WeekDay>();
             TotalCount = 0;
         }
     }
@@ -167,6 +168,8 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
     private TaskQuery CurrentQuery => new(SearchText, DateFrom, DateTo, SelectedClientFilter?.Id);
 
+    private int _overlayRequests;
+
     /// <summary>
     /// Loads one page (plus the header statistics) from the database. Only the latest request wins,
     /// so quick typing or paging never shows stale results.
@@ -174,6 +177,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     private async Task LoadPageAsync(int page, bool showOverlay)
     {
         var version = Interlocked.Increment(ref _loadVersion);
+        var overlayCounted = false;
 
         try
         {
@@ -184,7 +188,12 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            if (showOverlay) IsLoading = true;
+            if (showOverlay)
+            {
+                _overlayRequests++;
+                overlayCounted = true;
+                IsLoading = true;
+            }
 
             var pageTask = _databaseService.GetTasksPageAsync(CurrentQuery, page, PageSize);
             var summaryTask = _databaseService.GetTaskSummaryAsync();
@@ -214,6 +223,9 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             TodayHours = summary.TodayHours;
             ThisWeekHours = summary.ThisWeekHours;
             DailyAverage30Days = summary.DailyAverage30Days;
+
+            // The week view shows the same entries from another angle, so it reloads with every full or quiet refresh
+            await RefreshWeekAsync();
         }
         catch (Exception ex)
         {
@@ -226,7 +238,12 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (showOverlay && version == _loadVersion) IsLoading = false;
+            // A superseded request must still release the overlay it raised, or a quiet reload that replaces it leaves it stuck
+            if (overlayCounted && --_overlayRequests <= 0)
+            {
+                _overlayRequests = 0;
+                IsLoading = false;
+            }
         }
     }
 

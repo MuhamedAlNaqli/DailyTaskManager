@@ -358,4 +358,94 @@
         <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
     </Style>
 
+    <!-- View switch (week / list) -->
+    <Style Selector="Button.segment">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12,7"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
+    </Style>
+    <Style Selector="Button.segment:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
+    </Style>
+    <Style Selector="Button.segment.active">
+        <Setter Property="Background" Value="{DynamicResource AppAccentFill}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
+    </Style>
+    <Style Selector="Button.segment.active TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
+    </Style>
+
+    <!-- Week view -->
+    <Style Selector="Border.day-column">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10"/>
+        <Setter Property="Margin" Value="4,0"/>
+        <Setter Property="MinHeight" Value="380"/>
+    </Style>
+    <Style Selector="Border.day-column.weekend">
+        <Setter Property="Background" Value="{DynamicResource AppSurfaceAlt}"/>
+    </Style>
+    <Style Selector="Border.day-column.today">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+    <Style Selector="TextBlock.day-name">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
+    </Style>
+    <Style Selector="TextBlock.day-date">
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextStrong}"/>
+    </Style>
+    <Style Selector="Border.day-column.today TextBlock.day-name, Border.day-column.today TextBlock.day-date">
+        <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="Border.week-entry">
+        <Setter Property="Background" Value="{DynamicResource AppBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+    <Style Selector="Button.entry-text">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextStrong}"/>
+    </Style>
+    <Style Selector="Button.add-day">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMuted}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Button.add-day:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AppHover}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="Button.icon.mini">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
 </Styles>

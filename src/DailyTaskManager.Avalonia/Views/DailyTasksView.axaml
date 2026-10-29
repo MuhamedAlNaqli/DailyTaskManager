@@ -41,6 +41,38 @@
                            Orientation="Horizontal" 
                            Spacing="12"
                            VerticalAlignment="Center">
+                    <!-- View switch: week (default) or list -->
+                    <Border Background="{DynamicResource AppSurfaceAlt}"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="3"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Name="WeekViewButton"
+                                    Classes="segment"
+                                    Classes.active="{Binding IsWeekView}"
+                                    Command="{Binding ShowWeekViewCommand}"
+                                    AutomationProperties.AutomationId="WeekViewButton"
+                                    AutomationProperties.Name="Week view">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="CalendarWeekOutline" Width="16" Height="16"/>
+                                    <TextBlock Text="Week" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Name="ListViewButton"
+                                    Classes="segment"
+                                    Classes.active="{Binding IsListView}"
+                                    Command="{Binding ShowListViewCommand}"
+                                    AutomationProperties.AutomationId="ListViewButton"
+                                    AutomationProperties.Name="List view">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="FormatListBulleted" Width="16" Height="16"/>
+                                    <TextBlock Text="List" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                     <Button Name="QuickAddButton"
                             Background="Transparent"
                             BorderBrush="{DynamicResource AppAccent}"
@@ -231,8 +263,169 @@
                 </Border>
             </Grid>
 
+            <!-- Week view: seven day columns, Monday to Sunday -->
+            <StackPanel Grid.Row="2" Grid.RowSpan="2"
+                        Name="WeekView"
+                        IsVisible="{Binding IsWeekView}"
+                        Spacing="16">
+
+                <!-- Week navigation -->
+                <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                    <Button Grid.Column="0"
+                            Name="PreviousWeekButton"
+                            Classes="secondary"
+                            Padding="10,9"
+                            Command="{Binding PreviousWeekCommand}"
+                            AutomationProperties.AutomationId="PreviousWeekButton"
+                            AutomationProperties.Name="Previous week"
+                            ToolTip.Tip="Previous week">
+                        <materialIcons:MaterialIcon Kind="ChevronLeft" Width="18" Height="18"/>
+                    </Button>
+                    <Button Grid.Column="1"
+                            Name="NextWeekButton"
+                            Classes="secondary"
+                            Padding="10,9"
+                            Margin="8,0,0,0"
+                            Command="{Binding NextWeekCommand}"
+                            AutomationProperties.AutomationId="NextWeekButton"
+                            AutomationProperties.Name="Next week"
+                            ToolTip.Tip="Next week">
+                        <materialIcons:MaterialIcon Kind="ChevronRight" Width="18" Height="18"/>
+                    </Button>
+                    <Button Grid.Column="2"
+                            Name="CurrentWeekButton"
+                            Classes="secondary"
+                            Margin="8,0,0,0"
+                            Content="This week"
+                            IsEnabled="{Binding !IsCurrentWeek}"
+                            Command="{Binding CurrentWeekCommand}"
+                            AutomationProperties.AutomationId="CurrentWeekButton"/>
+                    <TextBlock Grid.Column="3"
+                               Name="WeekRangeText"
+                               Text="{Binding WeekTitle}"
+                               Margin="18,0,0,0"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource AppTextStrong}"
+                               AutomationProperties.AutomationId="WeekRangeText"/>
+                    <Border Grid.Column="4"
+                            Background="{DynamicResource AppBadgeBg}"
+                            CornerRadius="8"
+                            Padding="12,6"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding WeekTotalHours, StringFormat='Week total: {0:0.##}h'}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppBadgeText}"/>
+                    </Border>
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding WeekDays}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="day-column"
+                                        Classes.today="{Binding IsToday}"
+                                        Classes.weekend="{Binding IsWeekend}">
+                                    <DockPanel>
+                                        <!-- Day header -->
+                                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Classes="day-name" Text="{Binding DayName}"/>
+                                                <TextBlock Classes="day-date" Text="{Binding DateText}"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1"
+                                                    Background="{DynamicResource AppBadgeBg}"
+                                                    CornerRadius="6"
+                                                    Padding="6,2"
+                                                    VerticalAlignment="Top"
+                                                    IsVisible="{Binding HasTasks}">
+                                                <TextBlock Text="{Binding HoursText}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource AppBadgeText}"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Add an entry for this day -->
+                                        <Button DockPanel.Dock="Bottom"
+                                                Classes="add-day"
+                                                Command="{Binding $parent[UserControl].DataContext.AddForDayCommand}"
+                                                CommandParameter="{Binding}"
+                                                AutomationProperties.Name="{Binding DateText, StringFormat='Add entry {0}'}"
+                                                ToolTip.Tip="Add an entry for this day">
+                                            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                                <materialIcons:MaterialIcon Kind="Plus" Width="14" Height="14"/>
+                                                <TextBlock Text="Add" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Entries -->
+                                        <ItemsControl ItemsSource="{Binding Tasks}" Margin="0,0,0,8">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Classes="week-entry">
+                                                        <StackPanel Spacing="6">
+                                                            <Button Classes="entry-text"
+                                                                    Command="{Binding $parent[UserControl].DataContext.EditTaskCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    ToolTip.Tip="{Binding Description}">
+                                                                <TextBlock Text="{Binding Description}"
+                                                                           FontSize="12"
+                                                                           TextWrapping="Wrap"
+                                                                           MaxLines="6"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Foreground="{DynamicResource AppTextStrong}"/>
+                                                            </Button>
+                                                            <TextBlock Text="{Binding Client.Name}"
+                                                                       IsVisible="{Binding Client, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                                       FontSize="11"
+                                                                       Foreground="{DynamicResource AppTextMuted}"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                                                <Border Grid.Column="0"
+                                                                        Background="{DynamicResource AppBadgeBg}"
+                                                                        CornerRadius="5"
+                                                                        Padding="6,1">
+                                                                    <TextBlock Text="{Binding Hours, StringFormat='{}{0:0.##}h'}"
+                                                                               FontSize="11"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{DynamicResource AppBadgeText}"/>
+                                                                </Border>
+                                                                <Button Grid.Column="2"
+                                                                        Classes="icon mini"
+                                                                        Command="{Binding $parent[UserControl].DataContext.DuplicateTaskCommand}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip.Tip="Duplicate to today">
+                                                                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="13" Height="13"/>
+                                                                </Button>
+                                                                <Button Grid.Column="3"
+                                                                        Classes="icon mini"
+                                                                        Command="{Binding $parent[UserControl].DataContext.DeleteTaskCommand}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip.Tip="Delete entry">
+                                                                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="{DynamicResource AppDanger}"/>
+                                                                </Button>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+            </StackPanel>
+
             <!-- Advanced Filters Section -->
             <Border Grid.Row="2" 
+                    IsVisible="{Binding IsListView}"
                     Background="{DynamicResource AppSurface}" 
                     CornerRadius="12" 
                     Padding="20" 
@@ -420,6 +613,7 @@
 
             <!-- Modern Task List -->
             <Border Grid.Row="3" 
+                    IsVisible="{Binding IsListView}"
                     Background="{DynamicResource AppSurface}" 
                     CornerRadius="12" 
                     BorderBrush="{DynamicResource AppBorder}"

@@ -43,6 +43,11 @@ talk to Core interfaces only. Views contain no business logic, only UI glue such
 | `Background` | Windows scheduled reminder (see below) |
 | `Styles`, `App.axaml` | Design system: colour tokens, typography, control styles |
 
+The Daily Tasks page has two views, switched in its header: the **week view** (default) shows seven day columns,
+Monday to Sunday, with previous/next week and "This week" navigation and an add button per day; the **list view**
+keeps the filters, paging and bulk actions. Both read the same data, so every change refreshes both
+(`DailyTasksViewModel.Week.cs`, `WeekDay`).
+
 Dependency injection is configured in `Program.CreateHostBuilder`. Startup is ordered so the window appears
 quickly: the database is initialised on a worker thread while Avalonia starts, and non-essential work (update
 check, reminder registration) runs in the background.
