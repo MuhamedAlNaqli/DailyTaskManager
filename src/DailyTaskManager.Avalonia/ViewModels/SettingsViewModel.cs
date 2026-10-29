@@ -30,8 +30,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading = false;
 
-    [ObservableProperty]
-    private PdfSettings _pdfSettings = new();
+    /// <summary>The consultant's own company, signature and stamp</summary>
+    public BusinessViewModel Business { get; }
+
+    /// <summary>Clients with their details and contracts</summary>
+    public ClientsViewModel Clients { get; }
 
     [ObservableProperty]
     private string _pdfExportPath = string.Empty;
@@ -91,8 +94,10 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(ISettingsService settingsService, IExportService exportService,
         ILogger<SettingsViewModel> logger, IConfiguration configuration, DialogService dialogService, IUpdateService updateService, IPlatformService platformService, IBackupService backupService,
-        IBackgroundReminderService backgroundReminder)
+        IBackgroundReminderService backgroundReminder, BusinessViewModel business, ClientsViewModel clients)
     {
+        Business = business;
+        Clients = clients;
         _backupService = backupService;
         _backgroundReminder = backgroundReminder;
         _settingsService = settingsService;
@@ -267,9 +272,6 @@ public partial class SettingsViewModel : ObservableObject
             // Load all settings first
             await LoadAsync();
             
-            // Then load PDF settings to avoid DbContext concurrency
-            await LoadPdfSettingsAsync();
-
             // Load export paths
             await LoadExportPathsAsync();
 
@@ -478,20 +480,6 @@ public partial class SettingsViewModel : ObservableObject
         if (!_loadingReminder) _ = _settingsService.SetSettingAsync(ReminderSettings.HourKey, ((int)Math.Clamp(value, 0, 23)).ToString());
     }
 
-    private async Task LoadPdfSettingsAsync()
-    {
-        try
-        {
-            // Load PDF settings from database
-            PdfSettings = await _settingsService.GetPdfSettingsAsync();
-            _logger.LogInformation("PDF settings loaded from database");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error loading PDF settings, using defaults");
-        }
-    }
-
     private async Task LoadExportPathsAsync()
     {
         try
@@ -601,62 +589,6 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-
-    [RelayCommand]
-    private async Task SavePdfSettingsAsync()
-    {
-        try
-        {
-            IsLoading = true;
-            
-            // Save PDF settings using the service method
-            await _settingsService.SavePdfSettingsAsync(PdfSettings);
-            await _dialogService.ShowInfoDialogAsync("Success", "PDF settings saved successfully!");
-            _logger.LogInformation("PDF settings saved successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error saving PDF settings");
-            await _dialogService.ShowErrorDialogAsync("Error", $"Error saving PDF settings: {ex.Message}");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task PreviewPdfAsync()
-    {
-        try
-        {
-            IsLoading = true;
-            
-            // Create sample tasks for preview
-            var sampleTasks = new List<DailyTask>
-            {
-                new DailyTask { Description = "Sample Task 1 - Development work", Date = DateTime.Now.AddDays(-2), Hours = 8 },
-                new DailyTask { Description = "Sample Task 2 - Testing and debugging", Date = DateTime.Now.AddDays(-1), Hours = 6 },
-                new DailyTask { Description = "Sample Task 3 - Documentation update", Date = DateTime.Now, Hours = 4 }
-            };
-
-            // Generate preview with current settings using the correct method
-            // Write the preview to a temp file so it never overwrites a real report
-            var previewPath = Path.Combine(Path.GetTempPath(), "DailyTaskManager_PdfPreview.pdf");
-            await _exportService.ExportTasksToPdfAsync(sampleTasks, PdfSettings, previewPath);
-            await _platformService.OpenFileWithDefaultAppAsync(previewPath);
-            _logger.LogInformation("PDF preview generated successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating PDF preview");
-            await _dialogService.ShowErrorDialogAsync("Error", $"Error generating PDF preview: {ex.Message}");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
 
     [RelayCommand]
     private async Task CheckForUpdatesAsync()

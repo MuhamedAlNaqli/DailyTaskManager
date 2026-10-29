@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
+             x:Class="DailyTaskManager.Avalonia.Views.BusinessSettingsView"
+             x:DataType="vm:BusinessViewModel">
+
+    <Border Background="{DynamicResource AppSurface}"
+            CornerRadius="12"
+            Padding="24"
+            BorderBrush="{DynamicResource AppBorder}"
+            BorderThickness="1">
+        <StackPanel Spacing="16">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="Domain" Width="20" Height="20" Foreground="{DynamicResource AppAccent}" VerticalAlignment="Center"/>
+                        <TextBlock Text="My business" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppTextStrong}"/>
+                    </StackPanel>
+                    <TextBlock Text="Your own company details, printed at the top of every document, and the signature and stamp placed on the work order."
+                               TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource AppTextMuted}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                    <Button Name="PreviewBusinessButton" Command="{Binding PreviewCommand}" Classes="secondary" Padding="16,8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="EyeOutline" Width="16" Height="16"/>
+                            <TextBlock Text="Preview work order"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Name="SaveBusinessButton" Command="{Binding SaveCommand}" Classes="primary" Padding="16,8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="16" Height="16"/>
+                            <TextBlock Text="Save"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                <StackPanel Spacing="6" Grid.ColumnSpan="3"><TextBlock Text="Company name" Classes="label"/><TextBox Name="BusinessCompanyNameBox" Classes="form" Text="{Binding CompanyName}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="1"><TextBlock Text="Company ID" Classes="label"/><TextBox Name="BusinessCompanyIdBox" Classes="form" Text="{Binding CompanyId}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="1" Grid.Column="2"><TextBlock Text="VAT number" Classes="label"/><TextBox Name="BusinessVatBox" Classes="form" Text="{Binding VatNumber}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="2"><TextBlock Text="Address line 1" Classes="label"/><TextBox Name="BusinessAddress1Box" Classes="form" Text="{Binding AddressLine1}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="2" Grid.Column="2"><TextBlock Text="Address line 2" Classes="label"/><TextBox Name="BusinessAddress2Box" Classes="form" Text="{Binding AddressLine2}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="3"><TextBlock Text="Phone" Classes="label"/><TextBox Name="BusinessPhoneBox" Classes="form" Text="{Binding Phone}"/></StackPanel>
+                <StackPanel Spacing="6" Grid.Row="3" Grid.Column="2"><TextBlock Text="Email" Classes="label"/><TextBox Name="BusinessEmailBox" Classes="form" Text="{Binding Email}"/></StackPanel>
+            </Grid>
+
+            <StackPanel Spacing="6" MaxWidth="360" HorizontalAlignment="Left">
+                <StackPanel Spacing="6"><TextBlock Text="Decision number (Broj rješenja)" Classes="label"/><TextBox Name="BusinessDecisionBox" Classes="form" Text="{Binding DecisionNumber}"/></StackPanel>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,16,*">
+                <!-- Signature -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Signature image" Classes="label"/>
+                    <Border Height="96" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource AppBorder}" Background="White" ClipToBounds="True">
+                        <Grid>
+                            <Image Name="SignaturePreviewImage" Source="{Binding SignaturePreview}" Stretch="Uniform" Margin="6" IsVisible="{Binding HasSignature}"/>
+                            <TextBlock Text="No signature image" IsVisible="{Binding !HasSignature}" Foreground="#6B7280"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Name="ChooseSignatureButton" Command="{Binding ChooseSignatureCommand}" Classes="secondary" Padding="12,6">
+                            <TextBlock Text="Choose image"/>
+                        </Button>
+                        <Button Name="RemoveSignatureButton" Command="{Binding RemoveSignatureCommand}" Classes="secondary" Padding="12,6" IsVisible="{Binding HasSignature}">
+                            <TextBlock Text="Remove"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Stamp -->
+                <StackPanel Grid.Column="2" Spacing="8">
+                    <TextBlock Text="Stamp image" Classes="label"/>
+                    <Border Height="96" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource AppBorder}" Background="White" ClipToBounds="True">
+                        <Grid>
+                            <Image Name="StampPreviewImage" Source="{Binding StampPreview}" Stretch="Uniform" Margin="6" IsVisible="{Binding HasStamp}"/>
+                            <TextBlock Text="No stamp image" IsVisible="{Binding !HasStamp}" Foreground="#6B7280"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Name="ChooseStampButton" Command="{Binding ChooseStampCommand}" Classes="secondary" Padding="12,6">
+                            <TextBlock Text="Choose image"/>
+                        </Button>
+                        <Button Name="RemoveStampButton" Command="{Binding RemoveStampCommand}" Classes="secondary" Padding="12,6" IsVisible="{Binding HasStamp}">
+                            <TextBlock Text="Remove"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Use PNG or JPEG files, ideally a PNG with a transparent background. Both images are placed above your signature line on the work order (Word and PDF)."
+                       TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+        </StackPanel>
+    </Border>
+</UserControl>

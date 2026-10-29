@@ -8,22 +8,25 @@ namespace DailyTaskManager.Core.Models
     /// </summary>
     public class PdfSettings : INotifyPropertyChanged
     {
-        private string _companyName = "Obrtnička djelatnost \"Smart Point\" vl. Alnaqli Muhamed";
-        private string _companyId = "430406870008";
-        private string _addressLine1 = "Nahorevska 136A";
-        private string _addressLine2 = "71000 Sarajevo";
-        private string _phone = "+38760 338 3069";
-        private string _email = "muhamed.alnaqli@gmail.com";
-        private string _clientName = "Logosoft d.o.o";
-        private string _clientId = "4200236190009";
+        private string _companyName = "";
+        private string _companyId = "";
+        private string _addressLine1 = "";
+        private string _addressLine2 = "";
+        private string _phone = "";
+        private string _email = "";
+        private string _clientName = "";
+        private string _clientId = "";
         private string _documentTitle = "RADNI NALOG";
-        private string _contractPrefix = "081-01";
-        private string _decisionNumber = "16-17-320/24";
-        private string _clientVatNumber = "200236190009";
-        private string _clientAddressLine1 = "Grbavička 4";
-        private string _clientAddressLine2 = "71000 Sarajevo";
+        private string _contractPrefix = "";
+        private string _decisionNumber = "";
+        private string _clientVatNumber = "";
+        private string _clientAddressLine1 = "";
+        private string _clientAddressLine2 = "";
         private bool _showLogoBorder = true;
         private bool _includeSignatures = true;
+        private string _signatureImagePath = "";
+        private string _stampImagePath = "";
+        private int _contractYear;
 
         public string CompanyName
         {
@@ -119,6 +122,27 @@ namespace DailyTaskManager.Core.Models
         {
             get => _includeSignatures;
             set { _includeSignatures = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Image placed above the consultant's signature line (empty = none)</summary>
+        public string SignatureImagePath
+        {
+            get => _signatureImagePath;
+            set { _signatureImagePath = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Stamp image placed next to the signature (empty = none)</summary>
+        public string StampImagePath
+        {
+            get => _stampImagePath;
+            set { _stampImagePath = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Year printed after the contract number; 0 = the current year</summary>
+        public int ContractYear
+        {
+            get => _contractYear;
+            set { _contractYear = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

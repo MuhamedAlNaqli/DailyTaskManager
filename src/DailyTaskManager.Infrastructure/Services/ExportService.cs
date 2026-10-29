@@ -467,7 +467,7 @@ public class ExportService : IExportService
         var currentMonth = _months[maxTaskDate.ToString("MMMM", CultureInfo.InvariantCulture)];
         var currentYear = maxTaskDate.ToString("yyyy");
         var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.", CultureInfo.InvariantCulture);
-        var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
+        var contractNumber = ContractNumberText(settings);
 
         string headingsFontColor = "#FF4B4B"; // Dark Red
 
@@ -595,27 +595,52 @@ public class ExportService : IExportService
                             // Signatures
                             column.Item().PaddingTop(40).Row(row =>
                             {
-                                row.RelativeItem().Text(text =>
+                                if (HasImages(settings))
                                 {
-                                    text.Span("Izvršilac").FontSize(11);
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.Span("_".PadRight(25, '_'));
-                                });
+                                    row.RelativeItem().Column(left =>
+                                    {
+                                        left.Item().Text("Izvršilac").FontSize(11);
+                                        left.Item().Height(90).Element(images => ComposeSignatureImages(images, settings));
+                                        left.Item().Text("_".PadRight(25, '_'));
+                                    });
+                                }
+                                else
+                                {
+                                    row.RelativeItem().Text(text =>
+                                    {
+                                        text.Span("Izvršilac").FontSize(11);
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.Span("_".PadRight(25, '_'));
+                                    });
+                                }
 
-                                row.RelativeItem().AlignRight().Text(text =>
+                                if (HasImages(settings))
                                 {
-                                    text.Span("Za Naručioca").FontSize(11);
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.EmptyLine();
-                                    text.Span("_".PadRight(25, '_'));
-                                });
+                                    // Same height as the consultant's column, so both signature lines stay level
+                                    row.RelativeItem().Column(right =>
+                                    {
+                                        right.Item().AlignRight().Text("Za Naručioca").FontSize(11);
+                                        right.Item().Height(90);
+                                        right.Item().AlignRight().Text("_".PadRight(25, '_'));
+                                    });
+                                }
+                                else
+                                {
+                                    row.RelativeItem().AlignRight().Text(text =>
+                                    {
+                                        text.Span("Za Naručioca").FontSize(11);
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.EmptyLine();
+                                        text.Span("_".PadRight(25, '_'));
+                                    });
+                                }
                             });
                         }
                     });
@@ -636,7 +661,7 @@ public class ExportService : IExportService
         var currentMonth = _months[maxTaskDate.ToString("MMMM", CultureInfo.InvariantCulture)];
         var currentYear = maxTaskDate.ToString("yyyy");
         var period = tasks.Any() ? $"{currentMonth} {currentYear}." : DateTime.Now.ToString("MMMM yyyy.", CultureInfo.InvariantCulture);
-        var contractNumber = $"{settings.ContractPrefix}/{DateTime.Now:yy}";
+        var contractNumber = ContractNumberText(settings);
 
         // Company info
         var companyPara = body.AppendChild(new Paragraph());
@@ -858,7 +883,7 @@ public class ExportService : IExportService
             // Row 2: Empty space
             var spaceRow1 = new TableRow();
             var spaceCell1L = new TableCell();
-            spaceCell1L.AppendChild(new Paragraph(new Run(new Text(""))));
+            spaceCell1L.AppendChild(CreateSignatureParagraph(mainPart, settings));
             spaceCell1L.AppendChild(new TableCellProperties(new TableCellBorders(
                 new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
                 new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.None) },
@@ -909,6 +934,171 @@ public class ExportService : IExportService
         }
 
         mainPart.Document.Save();
+    }
+
+    /// <summary>"078-01/26": the contract number and the year of the period</summary>
+    private static string ContractNumberText(PdfSettings settings)
+    {
+        var year = settings.ContractYear > 0 ? settings.ContractYear : DateTime.Now.Year;
+        return $"{settings.ContractPrefix}/{year % 100:00}";
+    }
+
+    private static bool HasImages(PdfSettings settings) =>
+        (!string.IsNullOrEmpty(settings.SignatureImagePath) && File.Exists(settings.SignatureImagePath))
+        || (!string.IsNullOrEmpty(settings.StampImagePath) && File.Exists(settings.StampImagePath));
+
+    // Signature and stamp are shown above the signature line, scaled to fit these boxes (points)
+    private const double SignatureMaxWidth = 130, SignatureMaxHeight = 60, StampMaxWidth = 85, StampMaxHeight = 85;
+
+    private static (double Width, double Height) FitBox(byte[] image, double maxWidth, double maxHeight)
+    {
+        var (w, h) = ImageInfo.Size(image);
+        if (w <= 0 || h <= 0) return (maxWidth, maxHeight);
+
+        var scale = Math.Min(maxWidth / w, maxHeight / h);
+        return (w * scale, h * scale);
+    }
+
+    // The stamp overlaps the right part of the signature, as a real stamp does; both sit on the signature line
+    private const double StampOverlap = 0.45;
+
+    private sealed record SignatureLayout(byte[]? Signature, byte[]? Stamp, double SignatureWidth, double SignatureHeight,
+        double StampWidth, double StampHeight, double StampX, double BlockHeight);
+
+    private static SignatureLayout LayOutSignature(PdfSettings settings)
+    {
+        var signature = !string.IsNullOrEmpty(settings.SignatureImagePath) && File.Exists(settings.SignatureImagePath)
+            ? File.ReadAllBytes(settings.SignatureImagePath) : null;
+        var stamp = !string.IsNullOrEmpty(settings.StampImagePath) && File.Exists(settings.StampImagePath)
+            ? File.ReadAllBytes(settings.StampImagePath) : null;
+
+        var (sw, sh) = signature != null ? FitBox(signature, SignatureMaxWidth, SignatureMaxHeight) : (0d, 0d);
+        var (tw, th) = stamp != null ? FitBox(stamp, StampMaxWidth, StampMaxHeight) : (0d, 0d);
+        var stampX = signature != null ? sw * (1 - StampOverlap) : 0;
+        return new SignatureLayout(signature, stamp, sw, sh, tw, th, stampX, Math.Max(sh, th));
+    }
+
+    private static void ComposeSignatureImages(IContainer container, PdfSettings settings)
+    {
+        var layout = LayOutSignature(settings);
+
+        container.Layers(layers =>
+        {
+            // Drawn in this order: the stamp first, the signature over it
+            if (layout.Stamp != null)
+            {
+                layers.Layer().PaddingLeft((float)layout.StampX).AlignBottom().AlignLeft()
+                    .Width((float)layout.StampWidth).Height((float)layout.StampHeight).Image(layout.Stamp);
+            }
+
+            if (layout.Signature != null)
+            {
+                layers.Layer().AlignBottom().AlignLeft()
+                    .Width((float)layout.SignatureWidth).Height((float)layout.SignatureHeight).Image(layout.Signature);
+            }
+
+            layers.PrimaryLayer().Height((float)layout.BlockHeight);
+        });
+    }
+
+    /// <summary>
+    /// The paragraph above the signature line. The images float over it (so they can overlap) and the paragraph is
+    /// given the height of the taller one.
+    /// </summary>
+    private static Paragraph CreateSignatureParagraph(MainDocumentPart part, PdfSettings settings)
+    {
+        var paragraph = new Paragraph();
+        if (!HasImages(settings))
+        {
+            paragraph.AppendChild(new Run(new Text("")));
+            return paragraph;
+        }
+
+        var layout = LayOutSignature(settings);
+        const double lineHeight = 14; // an empty paragraph is about one line high
+        var extra = Math.Max(0, layout.BlockHeight - lineHeight);
+        paragraph.AppendChild(new ParagraphProperties(new SpacingBetweenLines
+        {
+            Before = "0",
+            After = ((int)(extra * 20)).ToString(CultureInfo.InvariantCulture),
+            Line = "240",
+            LineRule = LineSpacingRuleValues.Auto
+        }));
+
+        var run = new Run(new Text(""));
+        if (layout.Stamp != null)
+        {
+            run.AppendChild(CreateFloatingImage(part, layout.Stamp, layout.StampX, layout.BlockHeight - layout.StampHeight,
+                layout.StampWidth, layout.StampHeight, 100, "Stamp", 251658240u));
+        }
+
+        if (layout.Signature != null)
+        {
+            run.AppendChild(CreateFloatingImage(part, layout.Signature, 0, layout.BlockHeight - layout.SignatureHeight,
+                layout.SignatureWidth, layout.SignatureHeight, 101, "Signature", 251658241u));
+        }
+
+        paragraph.AppendChild(run);
+        return paragraph;
+    }
+
+    /// <summary>A picture that floats at the given offset (points) from the paragraph's column and top</summary>
+    private static Drawing CreateFloatingImage(MainDocumentPart part, byte[] bytes, double xPoints, double yPoints,
+        double widthPoints, double heightPoints, uint id, string name, uint zOrder)
+    {
+        var widthEmu = (long)(widthPoints * 12700);
+        var heightEmu = (long)(heightPoints * 12700);
+        var graphic = BuildPictureGraphic(part, bytes, widthEmu, heightEmu, name);
+
+        var anchor = new DocumentFormat.OpenXml.Drawing.Wordprocessing.Anchor(
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.SimplePosition { X = 0L, Y = 0L },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.HorizontalPosition(
+                new DocumentFormat.OpenXml.Drawing.Wordprocessing.PositionOffset(((long)(xPoints * 12700)).ToString(CultureInfo.InvariantCulture)))
+            { RelativeFrom = DocumentFormat.OpenXml.Drawing.Wordprocessing.HorizontalRelativePositionValues.Column },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.VerticalPosition(
+                new DocumentFormat.OpenXml.Drawing.Wordprocessing.PositionOffset(((long)(yPoints * 12700)).ToString(CultureInfo.InvariantCulture)))
+            { RelativeFrom = DocumentFormat.OpenXml.Drawing.Wordprocessing.VerticalRelativePositionValues.Paragraph },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.Extent { Cx = widthEmu, Cy = heightEmu },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.WrapNone(),
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.DocProperties { Id = id, Name = name },
+            new DocumentFormat.OpenXml.Drawing.Wordprocessing.NonVisualGraphicFrameDrawingProperties(
+                new DocumentFormat.OpenXml.Drawing.GraphicFrameLocks { NoChangeAspect = true }),
+            graphic)
+        {
+            DistanceFromTop = 0U, DistanceFromBottom = 0U, DistanceFromLeft = 0U, DistanceFromRight = 0U,
+            SimplePos = false, RelativeHeight = zOrder, BehindDoc = false, Locked = false, LayoutInCell = true, AllowOverlap = true
+        };
+
+        return new Drawing(anchor);
+    }
+
+    private static DocumentFormat.OpenXml.Drawing.Graphic BuildPictureGraphic(MainDocumentPart part, byte[] bytes, long widthEmu, long heightEmu, string name)
+    {
+        var imagePart = part.AddImagePart(ImageInfo.Detect(bytes) == ImageKind.Png ? ImagePartType.Png : ImagePartType.Jpeg);
+        using (var stream = new MemoryStream(bytes))
+        {
+            imagePart.FeedData(stream);
+        }
+
+        var relationshipId = part.GetIdOfPart(imagePart);
+
+        return new DocumentFormat.OpenXml.Drawing.Graphic(
+            new DocumentFormat.OpenXml.Drawing.GraphicData(
+                new DocumentFormat.OpenXml.Drawing.Pictures.Picture(
+                    new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualPictureProperties(
+                        new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualDrawingProperties { Id = 0U, Name = name },
+                        new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualPictureDrawingProperties()),
+                    new DocumentFormat.OpenXml.Drawing.Pictures.BlipFill(
+                        new DocumentFormat.OpenXml.Drawing.Blip { Embed = relationshipId },
+                        new DocumentFormat.OpenXml.Drawing.Stretch(new DocumentFormat.OpenXml.Drawing.FillRectangle())),
+                    new DocumentFormat.OpenXml.Drawing.Pictures.ShapeProperties(
+                        new DocumentFormat.OpenXml.Drawing.Transform2D(
+                            new DocumentFormat.OpenXml.Drawing.Offset { X = 0L, Y = 0L },
+                            new DocumentFormat.OpenXml.Drawing.Extents { Cx = widthEmu, Cy = heightEmu }),
+                        new DocumentFormat.OpenXml.Drawing.PresetGeometry(new DocumentFormat.OpenXml.Drawing.AdjustValueList())
+                        { Preset = DocumentFormat.OpenXml.Drawing.ShapeTypeValues.Rectangle })))
+            { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" });
     }
 
     private static Paragraph CreateSimpleParagraph(string text)

@@ -134,6 +134,7 @@ class Program
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
+                services.AddSingleton<IBusinessService, BusinessService>();
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
@@ -151,6 +152,8 @@ class Program
                 services.AddTransient<DailyTasksViewModel>();
                 services.AddTransient<SettingsViewModel>();
                 services.AddTransient<HelpViewModel>();
+                services.AddTransient<BusinessViewModel>();
+                services.AddTransient<ClientsViewModel>();
                 services.AddTransient<AnalyticsViewModel>();
                 services.AddTransient<ActivityCalendarViewModel>();
                 services.AddTransient<ReportsViewModel>();

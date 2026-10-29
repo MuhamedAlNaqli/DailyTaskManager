@@ -60,12 +60,21 @@ public class HelpViewModel
             new HelpItem("Click a day", "Adds an entry for that day, or opens the existing entry for editing."),
         }),
 
+        new HelpSection("Clients and documents", "One setup per client", MaterialIconKind.AccountGroup, new[]
+        {
+            new HelpItem("My business", "Settings, My business holds your company details, decision number, signature image and stamp image. They are used on every document."),
+            new HelpItem("Signature and stamp", "Upload PNG or JPEG images (a PNG with a transparent background looks best). The Word file and the PDF come out with both already above your signature line, ready to print."),
+            new HelpItem("Clients", "Settings, Clients keeps each client's company name, ID, VAT number, address, currency and notes. A client that has entries is made inactive instead of deleted."),
+            new HelpItem("Contracts", "A client has one contract at a time. When it is renewed, add the new contract with its start date: the old one ends the day before, and earlier months keep their old number."),
+            new HelpItem("Client folder", "Give a client its own folder and its documents are saved there instead of the general export folders."),
+        }),
+
         new HelpSection("Reports and exports", "Hand your hours to someone else", MaterialIconKind.FileDocumentOutline, new[]
         {
             new HelpItem("Work order", "Choose a month and client in Reports, then export a PDF, Word or Excel work order."),
             new HelpItem("Invoice", "Fills the hours of the chosen month into an invoice with your rate, VAT and payment note."),
             new HelpItem("Export locations", "Settings lets you choose a separate folder for PDF, Word and Excel files."),
-            new HelpItem("Company details", "Your header and client details for the documents are kept under Settings, PDF Export Customization."),
+            new HelpItem("Company details", "Your own details come from My business, and the client's details and contract number from Settings, Clients. See Clients and documents."),
         }),
 
         new HelpSection("Reminders and updates", "Notices that work even when the app is closed", MaterialIconKind.BellOutline, new[]

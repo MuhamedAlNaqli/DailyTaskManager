@@ -19,6 +19,7 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
     private readonly IExportService _exportService;
     private readonly IAuthenticationService _authService;
     private readonly ISettingsService _settingsService;
+    private readonly IBusinessService _business;
     private readonly DialogService _dialogService;
     private readonly ILogger<DailyTasksViewModel> _logger;
 
@@ -108,9 +109,11 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         IExportService exportService,
         IAuthenticationService authService,
         ISettingsService settingsService,
+        IBusinessService business,
         DialogService dialogService,
         ILogger<DailyTasksViewModel> logger)
     {
+        _business = business;
         _databaseService = databaseService;
         _exportService = exportService;
         _authService = authService;
@@ -652,8 +655,9 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
             IsLoading = true;
 
-            var pdfSettings = await _settingsService.GetPdfSettingsAsync();
-            var filePath = await _exportService.ExportTasksToPdfAsync(await _databaseService.GetTasksAsync(CurrentQuery), pdfSettings);
+            var pdfTasks = await _databaseService.GetTasksAsync(CurrentQuery);
+            var pdfSettings = await DocumentSettingsAsync(pdfTasks);
+            var filePath = await _exportService.ExportTasksToPdfAsync(pdfTasks, pdfSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"PDF exported successfully to:\n{filePath}");
 
@@ -683,8 +687,9 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
 
             IsLoading = true;
 
-            var wordSettings = await _settingsService.GetPdfSettingsAsync();
-            var filePath = await _exportService.ExportTasksToWordAsync(await _databaseService.GetTasksAsync(CurrentQuery), wordSettings);
+            var wordTasks = await _databaseService.GetTasksAsync(CurrentQuery);
+            var wordSettings = await DocumentSettingsAsync(wordTasks);
+            var filePath = await _exportService.ExportTasksToWordAsync(wordTasks, wordSettings);
 
             await _dialogService.ShowInfoDialogAsync("Export Complete", $"Word document exported successfully to:\n{filePath}");
 
@@ -700,6 +705,11 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
             IsLoading = false;
         }
     }
+
+    /// <summary>Company, client and contract for a document of the listed entries (the client filter picks the client)</summary>
+    private Task<PdfSettings> DocumentSettingsAsync(List<DailyTask> tasks) =>
+        _business.GetDocumentSettingsAsync(CurrentQuery.ClientId > 0 ? CurrentQuery.ClientId : null,
+            tasks.Count > 0 ? tasks.Max(t => t.Date) : DateTime.Today);
 
     [RelayCommand]
     private async Task RefreshAsync()

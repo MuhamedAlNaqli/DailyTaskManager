@@ -81,7 +81,7 @@ public partial class EditTaskViewModel : ObservableObject, IDisposable
             var clients = await _databaseService.GetClientsAsync();
             Clients.Clear();
             Clients.Add(ClientChoice.NoClient);
-            foreach (var client in clients) Clients.Add(ClientChoice.From(client));
+            foreach (var client in clients.Where(c => c.IsActive || c.Id == _pendingClientId)) Clients.Add(ClientChoice.From(client));
             SelectPendingClient();
         }
         catch (Exception ex)

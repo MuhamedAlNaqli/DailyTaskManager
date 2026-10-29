@@ -22,6 +22,8 @@ namespace DailyTaskManager.Infrastructure.Data
         public DbSet<Setting> Settings { get; set; }
         public DbSet<Client> Clients { get; set; }
         public DbSet<TaskTemplate> Templates { get; set; }
+        public DbSet<BusinessProfile> BusinessProfiles { get; set; }
+        public DbSet<ClientContract> ClientContracts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,8 +69,47 @@ namespace DailyTaskManager.Infrastructure.Data
                 entity.ToTable("clients", "public");
                 entity.HasIndex(c => new { c.UserId, c.Name }).IsUnique();
                 entity.Property(c => c.Name).HasMaxLength(150).IsRequired();
+                entity.Property(c => c.LegalName).HasMaxLength(200).IsRequired();
+                entity.Property(c => c.CompanyId).HasMaxLength(50).IsRequired();
+                entity.Property(c => c.VatNumber).HasMaxLength(50).IsRequired();
+                entity.Property(c => c.AddressLine1).HasMaxLength(200).IsRequired();
+                entity.Property(c => c.AddressLine2).HasMaxLength(200).IsRequired();
+                entity.Property(c => c.Notes).HasMaxLength(1000).IsRequired();
+                entity.Property(c => c.Currency).HasMaxLength(3).IsRequired();
+                entity.Property(c => c.ExportFolder).HasMaxLength(500).IsRequired();
+                entity.Ignore(c => c.PrintedName);
                 entity.Property(c => c.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure BusinessProfile entity
+            modelBuilder.Entity<BusinessProfile>(entity =>
+            {
+                entity.ToTable("business_profiles", "public");
+                entity.HasIndex(b => b.UserId).IsUnique();
+                entity.Property(b => b.CompanyName).HasMaxLength(200).IsRequired();
+                entity.Property(b => b.CompanyId).HasMaxLength(50).IsRequired();
+                entity.Property(b => b.VatNumber).HasMaxLength(50).IsRequired();
+                entity.Property(b => b.AddressLine1).HasMaxLength(200).IsRequired();
+                entity.Property(b => b.AddressLine2).HasMaxLength(200).IsRequired();
+                entity.Property(b => b.Phone).HasMaxLength(50).IsRequired();
+                entity.Property(b => b.Email).HasMaxLength(255).IsRequired();
+                entity.Property(b => b.DecisionNumber).HasMaxLength(100).IsRequired();
+                entity.Property(b => b.SignatureImagePath).HasMaxLength(500).IsRequired();
+                entity.Property(b => b.StampImagePath).HasMaxLength(500).IsRequired();
+                entity.HasOne<User>().WithMany().HasForeignKey(b => b.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ClientContract entity
+            modelBuilder.Entity<ClientContract>(entity =>
+            {
+                entity.ToTable("client_contracts", "public");
+                entity.HasIndex(c => new { c.ClientId, c.ValidFrom });
+                entity.Property(c => c.ContractNumber).HasMaxLength(50).IsRequired();
+                entity.Property(c => c.HourlyRate).HasColumnType("numeric(10,2)");
+                entity.Property(c => c.ValidFrom).HasColumnType("date");
+                entity.Property(c => c.ValidTo).HasColumnType("date");
+                entity.HasOne<Client>().WithMany().HasForeignKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure TaskTemplate entity
@@ -203,6 +244,9 @@ namespace DailyTaskManager.Infrastructure.Data
 
             // Fix schema issues if needed
             await FixSchemaIssuesAsync();
+
+            // Move the single global document setup to the business profile, client and contract
+            await LegacyDocumentMigration.RunAsync(this);
         }
 
         /// <summary>
@@ -264,6 +308,37 @@ namespace DailyTaskManager.Infrastructure.Data
                     ""ClientId"" integer NULL REFERENCES public.clients (""Id"") ON DELETE SET NULL);
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_task_templates_UserId_Name"" ON public.task_templates (""UserId"", ""Name"");
                 CREATE INDEX IF NOT EXISTS ""IX_daily_tasks_ClientId"" ON public.daily_tasks (""ClientId"");
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""LegalName"" character varying(200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""CompanyId"" character varying(50) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""VatNumber"" character varying(50) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""AddressLine1"" character varying(200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""AddressLine2"" character varying(200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""Notes"" character varying(1000) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""Currency"" character varying(3) NOT NULL DEFAULT 'BAM';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""ExportFolder"" character varying(500) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS public.clients ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT TRUE;
+                CREATE TABLE IF NOT EXISTS public.business_profiles (
+                    ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    ""UserId"" integer NOT NULL REFERENCES public.users (""Id"") ON DELETE CASCADE,
+                    ""CompanyName"" character varying(200) NOT NULL DEFAULT '',
+                    ""CompanyId"" character varying(50) NOT NULL DEFAULT '',
+                    ""VatNumber"" character varying(50) NOT NULL DEFAULT '',
+                    ""AddressLine1"" character varying(200) NOT NULL DEFAULT '',
+                    ""AddressLine2"" character varying(200) NOT NULL DEFAULT '',
+                    ""Phone"" character varying(50) NOT NULL DEFAULT '',
+                    ""Email"" character varying(255) NOT NULL DEFAULT '',
+                    ""DecisionNumber"" character varying(100) NOT NULL DEFAULT '',
+                    ""SignatureImagePath"" character varying(500) NOT NULL DEFAULT '',
+                    ""StampImagePath"" character varying(500) NOT NULL DEFAULT '');
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_business_profiles_UserId"" ON public.business_profiles (""UserId"");
+                CREATE TABLE IF NOT EXISTS public.client_contracts (
+                    ""Id"" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    ""ClientId"" integer NOT NULL REFERENCES public.clients (""Id"") ON DELETE CASCADE,
+                    ""ContractNumber"" character varying(50) NOT NULL,
+                    ""HourlyRate"" numeric(10,2) NULL,
+                    ""ValidFrom"" date NOT NULL,
+                    ""ValidTo"" date NULL);
+                CREATE INDEX IF NOT EXISTS ""IX_client_contracts_ClientId_ValidFrom"" ON public.client_contracts (""ClientId"", ""ValidFrom"");
                 UPDATE public.daily_tasks SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;
                 UPDATE public.daily_tasks SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL;");
 

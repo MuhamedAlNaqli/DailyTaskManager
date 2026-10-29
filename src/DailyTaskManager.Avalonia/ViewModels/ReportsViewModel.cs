@@ -46,6 +46,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private readonly IDatabaseService _databaseService;
     private readonly IExportService _exportService;
     private readonly ISettingsService _settingsService;
+    private readonly IBusinessService _business;
     private readonly IPlatformService _platformService;
     private readonly IAuthenticationService _authService;
     private readonly DialogService _dialogService;
@@ -111,6 +112,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         IDatabaseService databaseService,
         IExportService exportService,
         ISettingsService settingsService,
+        IBusinessService business,
         IPlatformService platformService,
         IAuthenticationService authService,
         DialogService dialogService,
@@ -119,6 +121,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         _databaseService = databaseService;
         _exportService = exportService;
         _settingsService = settingsService;
+        _business = business;
         _platformService = platformService;
         _authService = authService;
         _dialogService = dialogService;
@@ -320,13 +323,33 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Company, client and contract of the selected client and month</summary>
+    private Task<PdfSettings> DocumentSettingsAsync() =>
+        _business.GetDocumentSettingsAsync(SelectedClient?.Id > 0 ? SelectedClient?.Id : null, SelectedMonth?.To ?? DateTime.Today);
+
+    /// <summary>The selected client's own folder when it has one, otherwise the export folder from Settings</summary>
+    private async Task<string> FolderAsync(Func<Task<string>> settingsFolder)
+    {
+        if (SelectedClient?.Id > 0)
+        {
+            var client = (await _business.GetClientsAsync()).FirstOrDefault(c => c.Id == SelectedClient.Id);
+            if (client != null && !string.IsNullOrWhiteSpace(client.ExportFolder))
+            {
+                Directory.CreateDirectory(client.ExportFolder);
+                return client.ExportFolder;
+            }
+        }
+
+        return await settingsFolder();
+    }
+
     [RelayCommand]
     private Task ExportPdfAsync() => RunExportAsync("Work order (PDF)", async () =>
     {
         var tasks = await LoadEntriesOrWarnAsync();
         if (tasks == null) throw new OperationCanceledException();
-        var settings = await _settingsService.GetPdfSettingsAsync();
-        var folder = await _settingsService.GetPdfExportPathAsync();
+        var settings = await DocumentSettingsAsync();
+        var folder = await FolderAsync(_settingsService.GetPdfExportPathAsync);
         return await _exportService.ExportTasksToPdfAsync(tasks, settings, Path.Combine(folder, $"RadniNalog_{FileSuffix()}.pdf"));
     });
 
@@ -335,8 +358,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     {
         var tasks = await LoadEntriesOrWarnAsync();
         if (tasks == null) throw new OperationCanceledException();
-        var settings = await _settingsService.GetPdfSettingsAsync();
-        var folder = await _settingsService.GetWordExportPathAsync();
+        var settings = await DocumentSettingsAsync();
+        var folder = await FolderAsync(_settingsService.GetWordExportPathAsync);
         return await _exportService.ExportTasksToWordAsync(tasks, settings, Path.Combine(folder, $"RadniNalog_{FileSuffix()}.docx"));
     });
 
@@ -345,7 +368,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     {
         var tasks = await LoadEntriesOrWarnAsync();
         if (tasks == null) throw new OperationCanceledException();
-        var folder = await _settingsService.GetExcelExportPathAsync();
+        var folder = await FolderAsync(_settingsService.GetExcelExportPathAsync);
         return await _exportService.ExportTasksToExcelAsync(tasks, Path.Combine(folder, $"Pregled utrošenih sati - MA - {FileSuffix()}.xlsx"));
     });
 
@@ -375,8 +398,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
         var created = await RunExportAsync("Invoice", async () =>
         {
-            var settings = await _settingsService.GetPdfSettingsAsync();
-            var folder = await _settingsService.GetPdfExportPathAsync();
+            var settings = await DocumentSettingsAsync();
+            var folder = await FolderAsync(_settingsService.GetPdfExportPathAsync);
             var safeNumber = string.Concat(issued.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
             var path = await _exportService.ExportInvoiceToPdfAsync(invoice, settings, Path.Combine(folder, $"Racun_{safeNumber}.pdf"));
 

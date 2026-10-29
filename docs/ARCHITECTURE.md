@@ -30,6 +30,19 @@ operation through `IDbContextFactory`), `SettingsService`, `AuthenticationServic
 ("remember me"), `ExportService` (PDF, Word, Excel, CSV, invoices), `BackupService` (JSON backup, CSV/Excel import),
 `WhisperSpeechService` (offline dictation: Whisper small model via whisper.cpp, downloaded on first use to `%LOCALAPPDATA%\DailyTaskManager\models`; the microphone is cut into phrases at pauses and each is transcribed while the user keeps talking). The schema is upgraded automatically at startup (`DailyTaskManagerDbContext`).
 
+### Business, clients and documents
+
+`IBusinessService` (`BusinessService`) owns the consultant's own company (`BusinessProfile`, with the signature and
+stamp image files kept in `%LOCALAPPDATA%\DailyTaskManager\images`), the clients (`Client`: legal details, currency,
+export folder, active flag) and their contracts (`ClientContract`: number, optional rate, valid from/to; one
+contract at a time per client, renewals are new rows). `GetDocumentSettingsAsync(clientId, periodEnd)` combines the
+three into the `PdfSettings` that `ExportService` prints, using the contract valid on the last day of the period.
+With no client chosen and exactly one active client, that client is used. A client with entries is deactivated
+instead of deleted. `LegacyDocumentMigration` moves the old global `PdfSettings` value into the profile, a client and
+a contract once, at start-up (see [MULTI_CLIENT_DESIGN.md](MULTI_CLIENT_DESIGN.md)). The Word and PDF work orders
+place the signature and stamp above the consultant's signature line (`ImageInfo` reads the image size without an
+imaging library).
+
 ## Avalonia (UI)
 
 MVVM with CommunityToolkit.Mvvm. A view (`Views/*.axaml`) binds to one view model (`ViewModels/*`); view models

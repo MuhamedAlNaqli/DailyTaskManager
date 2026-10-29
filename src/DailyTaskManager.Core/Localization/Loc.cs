@@ -201,6 +201,7 @@ namespace DailyTaskManager.Core.Localization
                 UiTranslations.Register(Add);
                 MessageTranslations.Register(Add);
                 HelpTranslations.Register(Add);
+                BusinessTranslations.Register(Add);
 
                 // The most specific pattern (most fixed text) wins
                 _patterns = patterns.OrderByDescending(p => p.LiteralLength).ToList();
