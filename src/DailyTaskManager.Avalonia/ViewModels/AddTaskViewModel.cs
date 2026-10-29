@@ -72,7 +72,7 @@ public partial class AddTaskViewModel : ObservableObject, IDisposable
 
     public event EventHandler<bool>? RequestClose;
 
-    /// <summary>Dictation for the description (hidden when Windows has no speech recognizer)</summary>
+    /// <summary>Dictation for the description (hidden when there is no microphone)</summary>
     public DictationController Dictation { get; }
 
     public AddTaskViewModel(ILogger<AddTaskViewModel> logger, IAutoCompleteService autoCompleteService, IDatabaseService databaseService,

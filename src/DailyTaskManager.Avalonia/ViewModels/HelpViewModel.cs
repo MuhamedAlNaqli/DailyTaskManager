@@ -49,7 +49,7 @@ public class HelpViewModel
         new HelpSection("Adding and editing an entry", "What the entry dialog can do", MaterialIconKind.PlaylistEdit, new[]
         {
             new HelpItem("Description suggestions", "While you type, earlier descriptions are suggested. Use the Up and Down arrows with Enter to pick one, or Esc to hide the list.", "Up", "Down", "Enter"),
-            new HelpItem("Dictate", "The Dictate button turns your voice into the description (shown when a microphone is available).", "Dictate"),
+            new HelpItem("Dictate", "The Dictate button turns your voice into the description (shown when a microphone is available). Speak in phrases: each pause adds the text spoken so far. It runs offline with the Whisper model, which downloads once (about 190 MB) the first time. Pick your language under Settings, Dictation for the best accuracy.", "Dictate"),
             new HelpItem("Clients", "Pick an existing client, or type a new name in the second field to create it with the entry."),
             new HelpItem("Templates", "Tick \"Save as a template for quick add\" to reuse an entry later. A saved template can also be picked at the top of the dialog."),
         }),

@@ -47,7 +47,7 @@ public partial class EditTaskViewModel : ObservableObject, IDisposable
 
     public event EventHandler<bool>? RequestClose;
 
-    /// <summary>Dictation for the description (hidden when Windows has no speech recognizer)</summary>
+    /// <summary>Dictation for the description (hidden when there is no microphone)</summary>
     public DictationController Dictation { get; }
 
     public EditTaskViewModel(ILogger<EditTaskViewModel> logger, IDatabaseService databaseService, ISpeechRecognitionService speechService)

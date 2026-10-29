@@ -33,7 +33,7 @@ public partial class DictationController : ObservableObject, IDisposable
         IsAvailable = speech.IsSupported;
     }
 
-    /// <summary>False when Windows has no speech recognizer; the dialog then hides the button</summary>
+    /// <summary>False when there is no microphone; the dialog then hides the button</summary>
     public bool IsAvailable { get; }
 
     public string ButtonText => IsListening ? "Stop" : "Dictate";
@@ -91,6 +91,7 @@ public partial class DictationController : ObservableObject, IDisposable
         if (_subscribed) return;
         _speech.SpeechRecognized += OnRecognized;
         _speech.RecognitionError += OnError;
+        _speech.StatusChanged += OnStatus;
         _subscribed = true;
     }
 
@@ -99,10 +100,13 @@ public partial class DictationController : ObservableObject, IDisposable
         if (!_subscribed) return;
         _speech.SpeechRecognized -= OnRecognized;
         _speech.RecognitionError -= OnError;
+        _speech.StatusChanged -= OnStatus;
         _subscribed = false;
     }
 
     private void OnRecognized(object? sender, string text) => Dispatcher.UIThread.Post(() => TextRecognized?.Invoke(text));
+
+    private void OnStatus(object? sender, string message) => Dispatcher.UIThread.Post(() => Status = message);
 
     private void OnError(object? sender, string message) => Dispatcher.UIThread.Post(() =>
     {

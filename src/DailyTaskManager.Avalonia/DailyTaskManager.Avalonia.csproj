@@ -12,9 +12,9 @@
     <AssemblyCompany>Smart Point</AssemblyCompany>
     <AssemblyCopyright>Copyright © 2024 Smart Point</AssemblyCopyright>
     <!-- Version properties - keeping static for build stability, GitVersion used in installer only -->
-    <AssemblyVersion>3.3.0.0</AssemblyVersion>
-    <FileVersion>3.3.0.0</FileVersion>
-    <ProductVersion>3.3.0.0</ProductVersion>
+    <AssemblyVersion>3.4.0.0</AssemblyVersion>
+    <FileVersion>3.4.0.0</FileVersion>
+    <ProductVersion>3.4.0.0</ProductVersion>
     
     <!-- Publishing Properties -->
     <PublishSingleFile>true</PublishSingleFile>
@@ -82,5 +82,14 @@
     </Content>
     <Content Include="Assets\Daily_Task_Manager_Icon.ico" />
   </ItemGroup>
+
+  <!-- The single-file bundle hides the Whisper native libraries from Whisper.net, which looks for them in
+       runtimes\win-x64 next to the exe. Put the 64-bit Windows ones there. -->
+  <Target Name="CopyWhisperNatives" AfterTargets="Publish">
+    <ItemGroup>
+      <WhisperNative Include="$(OutDir)runtimes\win-x64\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WhisperNative)" DestinationFolder="$(PublishDir)runtimes\win-x64" />
+  </Target>
 
 </Project>

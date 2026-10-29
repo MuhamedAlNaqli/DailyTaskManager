@@ -201,7 +201,7 @@ public class RealUserDateFilteringTest
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IPlatformService, PlatformService>();
-                services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
+                services.AddSingleton<ISpeechRecognitionService, WhisperSpeechService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
 
                 // ViewModels

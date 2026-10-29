@@ -28,7 +28,7 @@ Core has no reference to EF Core, Avalonia or Windows APIs, which keeps the rule
 Implementations of the Core contracts: `DatabaseService` (EF Core + Npgsql, one short-lived `DbContext` per
 operation through `IDbContextFactory`), `SettingsService`, `AuthenticationService` and `SessionStore`
 ("remember me"), `ExportService` (PDF, Word, Excel, CSV, invoices), `BackupService` (JSON backup, CSV/Excel import),
-`SpeechRecognitionService`. The schema is upgraded automatically at startup (`DailyTaskManagerDbContext`).
+`WhisperSpeechService` (offline dictation: Whisper small model via whisper.cpp, downloaded on first use to `%LOCALAPPDATA%\DailyTaskManager\models`; the microphone is cut into phrases at pauses and each is transcribed while the user keeps talking). The schema is upgraded automatically at startup (`DailyTaskManagerDbContext`).
 
 ## Avalonia (UI)
 

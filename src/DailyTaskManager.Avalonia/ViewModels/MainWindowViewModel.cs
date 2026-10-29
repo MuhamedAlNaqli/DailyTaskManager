@@ -45,7 +45,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "3.3.0";
+    private string _appVersion = "3.4.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -381,7 +381,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "3.3.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "3.4.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();

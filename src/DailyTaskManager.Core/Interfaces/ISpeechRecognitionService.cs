@@ -45,6 +45,11 @@ namespace DailyTaskManager.Core.Interfaces
         event EventHandler<string>? RecognitionError;
 
         /// <summary>
+        /// Progress messages for the user, e.g. while the speech model is downloaded or the last words are processed
+        /// </summary>
+        event EventHandler<string>? StatusChanged;
+
+        /// <summary>
         /// Gets available speech recognition languages
         /// </summary>
         Task<List<string>> GetAvailableLanguagesAsync();

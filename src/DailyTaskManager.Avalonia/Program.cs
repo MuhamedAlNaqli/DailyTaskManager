@@ -135,7 +135,7 @@ class Program
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<IBackgroundReminderService, WindowsReminderScheduler>();
                 services.AddSingleton<ReminderEvaluator>();
-                services.AddSingleton<ISpeechRecognitionService, SpeechRecognitionService>();
+                services.AddSingleton<ISpeechRecognitionService, WhisperSpeechService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();
                 services.AddSingleton<IUpdateService, UpdateService>();
                 

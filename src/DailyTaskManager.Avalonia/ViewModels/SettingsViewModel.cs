@@ -47,6 +47,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private decimal _reminderHour = ReminderSettings.DefaultHour;
 
+    /// <summary>Languages offered for dictation</summary>
+    public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, string>> DictationLanguages => DictationSettings.Languages;
+
+    [ObservableProperty]
+    private System.Collections.Generic.KeyValuePair<string, string>? _selectedDictationLanguage = DictationSettings.Languages[0];
+
     [ObservableProperty]
     private bool _backgroundUpdateNotifyEnabled = UpdateSettings.DefaultBackgroundNotify;
 
@@ -364,6 +370,10 @@ public partial class SettingsViewModel : ObservableObject
             ReminderHour = ReminderSettings.ParseHour(hour);
             BackgroundReminderEnabled = ReminderSettings.ParseFlag(background, ReminderSettings.DefaultBackground);
             var updateNotify = await _settingsService.GetSettingAsync<string>(UpdateSettings.BackgroundNotifyKey, null);
+            var dictationLanguage = await _settingsService.GetSettingAsync<string>(DictationSettings.LanguageKey, null);
+            SelectedDictationLanguage = DictationSettings.Languages.FirstOrDefault(l => l.Key == dictationLanguage) is { Key: not null } found
+                ? found
+                : DictationSettings.Languages[0];
             BackgroundUpdateNotifyEnabled = ReminderSettings.ParseFlag(updateNotify, UpdateSettings.DefaultBackgroundNotify);
             await ShowBackgroundReminderStatusAsync();
         }
@@ -389,6 +399,12 @@ public partial class SettingsViewModel : ObservableObject
         if (_loadingReminder) return;
         _ = _settingsService.SetSettingAsync(ReminderSettings.BackgroundKey, value ? "true" : "false");
         _ = ApplyBackgroundReminderAsync();
+    }
+
+    partial void OnSelectedDictationLanguageChanged(System.Collections.Generic.KeyValuePair<string, string>? value)
+    {
+        if (_loadingReminder || value == null) return;
+        _ = _settingsService.SetSettingAsync(DictationSettings.LanguageKey, value.Value.Key);
     }
 
     partial void OnBackgroundUpdateNotifyEnabledChanged(bool value)

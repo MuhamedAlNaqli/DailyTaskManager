@@ -27,6 +27,7 @@
     <!-- Feature Definition -->
     <Feature Id="ProductFeature" Title="Daily Task Manager Application" Level="1" Description="Core application files">
       <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="WhisperRuntime" />
       <ComponentGroupRef Id="StartMenuShortcuts" />
     </Feature>
     
@@ -37,7 +38,12 @@
     <!-- Installation Directory Structure -->
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="CompanyFolder" Name="SmartPoint">
-        <Directory Id="INSTALLFOLDER" Name="DailyTaskManager" />
+        <Directory Id="INSTALLFOLDER" Name="DailyTaskManager">
+          <!-- Whisper native libraries for dictation; Whisper.net looks for them here -->
+          <Directory Id="RuntimesFolder" Name="runtimes">
+            <Directory Id="RuntimesWin64Folder" Name="win-x64" />
+          </Directory>
+        </Directory>
       </Directory>
     </StandardDirectory>
     
@@ -96,6 +102,22 @@
       </Component>
     </ComponentGroup>
     
+    <!-- Speech engine used by dictation -->
+    <ComponentGroup Id="WhisperRuntime" Directory="RuntimesWin64Folder">
+      <Component Id="Whisper_ggml_base_whisper_dll">
+        <File Id="Whisper_ggml_base_whisper_dll_File" Name="ggml-base-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-base-whisper.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Whisper_ggml_cpu_whisper_dll">
+        <File Id="Whisper_ggml_cpu_whisper_dll_File" Name="ggml-cpu-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-cpu-whisper.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Whisper_ggml_whisper_dll">
+        <File Id="Whisper_ggml_whisper_dll_File" Name="ggml-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-whisper.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="Whisper_whisper_dll">
+        <File Id="Whisper_whisper_dll_File" Name="whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\whisper.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
     <!-- Start Menu Shortcuts -->
     <ComponentGroup Id="StartMenuShortcuts" Directory="ApplicationProgramsFolder">
       <Component Id="ApplicationStartMenuShortcut" Guid="E4F5A6B7-C8D9-0E1F-2A3B-456789CDEF01">

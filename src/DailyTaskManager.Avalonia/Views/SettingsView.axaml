@@ -504,6 +504,44 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Dictation Section -->
+                    <Border Background="{DynamicResource AppSurface}"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            Margin="0,0,0,24">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10"><materialIcons:MaterialIcon Kind="MicrophoneOutline" Width="20" Height="20" Foreground="{DynamicResource AppAccent}" VerticalAlignment="Center"/><TextBlock Text="Dictation"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          Foreground="{DynamicResource AppTextStrong}"/></StackPanel>
+                                <TextBlock Text="Speech is turned into text on this computer with the Whisper model; nothing is sent anywhere. The model (about 190 MB) is downloaded the first time you press Dictate."
+                                           TextWrapping="Wrap"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                            <StackPanel Spacing="6" MaxWidth="360" HorizontalAlignment="Left">
+                                <TextBlock Text="Language you speak" Classes="label"/>
+                                <ComboBox Name="DictationLanguageComboBox"
+                                          Classes="form"
+                                          ItemsSource="{Binding DictationLanguages}"
+                                          SelectedItem="{Binding SelectedDictationLanguage}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="x:Object">
+                                            <TextBlock Text="{Binding Value}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="Choosing the language is more accurate than detecting it, especially for short phrases."
+                                           TextWrapping="Wrap"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Updates Section -->
                     <Border Background="{DynamicResource AppSurface}"
                             CornerRadius="12"
