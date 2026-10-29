@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -22,7 +23,7 @@ public class MonthChoice
     {
         From = firstDay;
         To = firstDay.AddMonths(1).AddDays(-1);
-        Name = firstDay.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+        Name = firstDay.ToString("MMMM yyyy", Loc.Culture);
     }
 
     public DateTime From { get; }
@@ -235,7 +236,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             DaysWorked = days.Count(d => d.Hours > 0);
             SummaryText = EntryCount == 0
                 ? "No entries for this selection"
-                : $"{EntryCount} entr{(EntryCount == 1 ? "y" : "ies")}, {TotalHours:0.0}h over {DaysWorked} day{(DaysWorked == 1 ? "" : "s")}";
+                : (EntryCount == 1 ? Loc.T("1 entry") : Loc.F("{0} entries", EntryCount)) + ", " +
+                  (DaysWorked == 1 ? Loc.F("{0}h over 1 day", $"{TotalHours:0.0}") : Loc.F("{0}h over {1} days", $"{TotalHours:0.0}", DaysWorked));
         }
         catch (Exception ex)
         {
@@ -309,7 +311,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating {What}", what);
-            await _dialogService.ShowErrorDialogAsync("Report Error", $"Failed to create the {what.ToLowerInvariant()}: {ex.Message}");
+            await _dialogService.ShowErrorDialogAsync("Report Error", $"Failed to create {what}: {ex.Message}");
             return false;
         }
         finally

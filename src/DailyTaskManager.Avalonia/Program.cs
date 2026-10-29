@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.IO;
 using System.Reflection;
@@ -32,6 +33,9 @@ class Program
     {
         try
         {
+            // The language (and its culture) must be known before any text or date is formatted
+            Loc.Initialize();
+
             // The Windows task scheduler starts this exe with --reminder-check; that run shows a notification
             // and exits without ever creating a window
             var reminderRun = ReminderRunner.IsReminderRun(args);

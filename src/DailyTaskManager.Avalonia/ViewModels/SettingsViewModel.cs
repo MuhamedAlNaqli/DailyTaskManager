@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -46,6 +47,18 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private decimal _reminderHour = ReminderSettings.DefaultHour;
+
+    /// <summary>Languages of the interface (shown in their own names)</summary>
+    public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, string>> AppLanguages => Loc.Languages;
+
+    [ObservableProperty]
+    private System.Collections.Generic.KeyValuePair<string, string>? _selectedAppLanguage =
+        Loc.Languages.FirstOrDefault(l => l.Key == Loc.Language);
+
+    partial void OnSelectedAppLanguageChanged(System.Collections.Generic.KeyValuePair<string, string>? value)
+    {
+        if (value != null) Loc.SetLanguage(value.Value.Key);
+    }
 
     /// <summary>Languages offered for dictation</summary>
     public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, string>> DictationLanguages => DictationSettings.Languages;
@@ -330,22 +343,22 @@ public partial class SettingsViewModel : ObservableObject
             }
 
             var message = new System.Text.StringBuilder();
-            message.AppendLine($"{preview.SourceName}: {preview.Entries.Count} entries" +
-                               (preview.From.HasValue ? $" from {preview.From:d MMM yyyy} to {preview.To:d MMM yyyy}." : "."));
-            message.AppendLine($"{preview.NewCount} are new and {preview.DuplicateCount} already exist (they will be skipped).");
-            if (preview.Templates.Count > 0) message.AppendLine($"{preview.Templates.Count} templates are included (existing names are kept).");
-            if (preview.SkippedRows > 0) message.AppendLine($"{preview.SkippedRows} rows could not be read and will be ignored.");
+            message.AppendLine(Loc.F("{0}: {1} entries", preview.SourceName, preview.Entries.Count) +
+                               (preview.From.HasValue ? " " + Loc.F("from {0} to {1}.", $"{preview.From:d MMM yyyy}", $"{preview.To:d MMM yyyy}") : "."));
+            message.AppendLine(Loc.F("{0} are new and {1} already exist (they will be skipped).", preview.NewCount, preview.DuplicateCount));
+            if (preview.Templates.Count > 0) message.AppendLine(Loc.F("{0} templates are included (existing names are kept).", preview.Templates.Count));
+            if (preview.SkippedRows > 0) message.AppendLine(Loc.F("{0} rows could not be read and will be ignored.", preview.SkippedRows));
             message.AppendLine();
-            message.Append("Import now?");
+            message.Append(Loc.T("Import now?"));
 
             if (!await _dialogService.ShowConfirmDialogAsync(title, message.ToString())) return;
 
             IsLoading = true;
             var result = await _backupService.ImportAsync(preview);
             await _dialogService.ShowInfoDialogAsync("Import complete",
-                $"Added {result.Added} entries ({result.Duplicates} skipped as duplicates)." +
-                (result.ClientsCreated > 0 ? $"\nCreated {result.ClientsCreated} new clients." : "") +
-                (result.TemplatesAdded > 0 ? $"\nAdded {result.TemplatesAdded} templates." : ""));
+                Loc.F("Added {0} entries ({1} skipped as duplicates).", result.Added, result.Duplicates) +
+                (result.ClientsCreated > 0 ? "\n" + Loc.F("Created {0} new clients.", result.ClientsCreated) : "") +
+                (result.TemplatesAdded > 0 ? "\n" + Loc.F("Added {0} templates.", result.TemplatesAdded) : ""));
         }
         catch (Exception ex)
         {

@@ -410,9 +410,10 @@ public partial class DailyTasksViewModel : ObservableObject, IDisposable
         try
         {
             var target = AssignTarget;
-            var what = target.Id.HasValue ? $"assign client '{target.Name}' to" : "remove the client from";
-            var confirmed = await _dialogService.ShowConfirmDialogAsync(
-                "Assign client", $"Do you want to {what} all {TotalCount} entries matching the current filters?");
+            var question = target.Id.HasValue
+                ? $"Do you want to assign client '{target.Name}' to all {TotalCount} entries matching the current filters?"
+                : $"Do you want to remove the client from all {TotalCount} entries matching the current filters?";
+            var confirmed = await _dialogService.ShowConfirmDialogAsync("Assign client", question);
             if (!confirmed) return;
 
             IsLoading = true;

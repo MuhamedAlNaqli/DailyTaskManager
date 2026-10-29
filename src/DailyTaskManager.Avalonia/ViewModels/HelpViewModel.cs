@@ -82,6 +82,7 @@ public class HelpViewModel
             new HelpItem("Backup and restore", "Settings, Backup and import, saves everything to a file and restores it. Restoring never deletes anything and skips entries that already exist."),
             new HelpItem("Import", "Entries can be imported from CSV or Excel files that have Date, Description and Hours columns. The app's own exports work."),
             new HelpItem("Light and dark", "The theme button at the bottom of the sidebar switches between them; the choice is remembered."),
+            new HelpItem("Language and dictation", "Interface language, and the language you speak when dictating, are chosen separately in Settings."),
             new HelpItem("Log files", "If something goes wrong, the log is in %LOCALAPPDATA%\\DailyTaskManager\\logs. Send it along when you report a problem."),
         }),
     };

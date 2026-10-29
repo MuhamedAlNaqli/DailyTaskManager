@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -22,9 +23,9 @@ public class WeekDay
 
     public decimal TotalHours { get; }
 
-    public string DayName => Date.ToString("ddd", CultureInfo.InvariantCulture);
+    public string DayName => Date.ToString("ddd", Loc.Culture);
 
-    public string DateText => Date.ToString("d MMM", CultureInfo.InvariantCulture);
+    public string DateText => Date.ToString("d MMM", Loc.Culture);
 
     public string HoursText => HasTasks ? $"{TotalHours:0.##}h" : "";
 

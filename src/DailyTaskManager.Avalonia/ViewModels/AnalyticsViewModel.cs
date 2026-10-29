@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -272,6 +273,17 @@ public partial class AnalyticsViewModel : ObservableObject, IDisposable
             : diff >= 0 ? $"{diff:0.0}h ahead of {weekdays} working days" : $"{-diff:0.0}h behind over {weekdays} working days";
     }
 
+    private static string DayTooltip(DateTime day, decimal hours, string state, int? entries)
+    {
+        var date = day.ToString("ddd d MMM yyyy");
+        var amount = hours.ToString("0.0");
+        var stateText = Loc.T(state);
+        if (entries == null) return $"{date}: {amount}h ({stateText})";
+        return entries == 1
+            ? Loc.F("{0}: {1}h ({2}), 1 entry", date, amount, stateText)
+            : Loc.F("{0}: {1}h ({2}), {3} entries", date, amount, stateText, entries);
+    }
+
     private static List<ChartBar> BuildDailyBars(Dictionary<DateTime, DayHours> byDate, DateTime start, DateTime end, DateTime today)
     {
         var count = (int)(end - start).TotalDays + 1;
@@ -296,7 +308,7 @@ public partial class AnalyticsViewModel : ObservableObject, IDisposable
             {
                 Label = d.Day.ToString(CultureInfo.InvariantCulture),
                 SubLabel = "",
-                Tooltip = $"{d:ddd d MMM yyyy}: {hours:0.0}h ({state})" + (row != null ? $", {row.Entries} entr{(row.Entries == 1 ? "y" : "ies")}" : ""),
+                Tooltip = DayTooltip(d, hours, state, row?.Entries),
                 BarHeight = hours > 0 ? Math.Max(4, (double)(hours / max) * ChartHeight) : 3,
                 BarWidth = slot - 6,
                 SlotWidth = slot,
@@ -325,9 +337,11 @@ public partial class AnalyticsViewModel : ObservableObject, IDisposable
             totals.TryGetValue(m, out var v);
             return new ChartBar
             {
-                Label = m.ToString("MMM yy", CultureInfo.InvariantCulture),
+                Label = m.ToString("MMM yy", Loc.Culture),
                 SubLabel = v.Hours > 0 ? $"{v.Hours:0}h" : "",
-                Tooltip = $"{m:MMMM yyyy}: {v.Hours:0.0}h over {v.Days} day{(v.Days == 1 ? "" : "s")}",
+                Tooltip = v.Days == 1
+                    ? Loc.F("{0}: {1}h over 1 day", m.ToString("MMMM yyyy"), v.Hours.ToString("0.0"))
+                    : Loc.F("{0}: {1}h over {2} days", m.ToString("MMMM yyyy"), v.Hours.ToString("0.0"), v.Days),
                 BarHeight = v.Hours > 0 ? Math.Max(4, (double)(v.Hours / max) * ChartHeight) : 3,
                 BarWidth = slot - 14,
                 SlotWidth = slot,

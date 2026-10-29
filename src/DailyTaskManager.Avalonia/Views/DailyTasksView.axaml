@@ -30,7 +30,7 @@
                                FontSize="28" 
                                FontWeight="Bold" 
                                Foreground="{DynamicResource MaterialBodyBrush}"/>
-                    <TextBlock Text="Track and manage your daily work hours" 
+                    <TextBlock Text="Track and manage your daily work hours" TextWrapping="Wrap" 
                                FontSize="14" 
                                Foreground="{DynamicResource AppTextMuted}" 
                                Margin="0,4,0,0"/>

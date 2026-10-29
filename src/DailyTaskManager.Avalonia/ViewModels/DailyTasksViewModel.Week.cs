@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -40,7 +41,7 @@ public partial class DailyTasksViewModel
         get
         {
             var end = WeekStart.AddDays(6);
-            var culture = CultureInfo.InvariantCulture;
+            var culture = Loc.Culture;
             return WeekStart.Year == end.Year
                 ? $"{WeekStart.ToString("d MMM", culture)} - {end.ToString("d MMM yyyy", culture)}"
                 : $"{WeekStart.ToString("d MMM yyyy", culture)} - {end.ToString("d MMM yyyy", culture)}";

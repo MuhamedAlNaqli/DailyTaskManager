@@ -32,6 +32,8 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
     private const int ChunkMilliseconds = 50;
     private static readonly int PauseSamples = SampleRate * 8 / 10;       // 0.8 s of silence ends a phrase
     private static readonly int MinSpeechSamples = SampleRate * 3 / 10;   // shorter blips are noise
+    private static readonly int MinFlushSamples = SampleRate / 2;         // what is left at Stop must be a real phrase
+    private static readonly int StopClickSamples = SampleRate * 4 / 10;   // the click on Stop is not part of the speech
     private static readonly int PreRollSamples = SampleRate * 3 / 10;     // keep the start of the first word
     private static readonly int MaxPhraseSamples = SampleRate * 25;
     private static readonly int MinWhisperSamples = SampleRate * 11 / 10; // whisper.cpp wants over a second of audio
@@ -44,11 +46,22 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
     private static readonly HashSet<string> Hallucinations = new(StringComparer.OrdinalIgnoreCase)
     {
         "thank you", "thank you.", "thanks for watching", "thanks for watching!", "you", "bye", "bye.", "hvala", "hvala.",
-        "titlovi", "amara.org", "subtitles by the amara.org community"
+        "hvala na pažnji", "hvala na pažnji.", "hvala što ste gledali", "hvala što ste gledali.", "hvala na gledanju", "hvala na gledanju.",
+        "pretplatite se", "titlovi", "titlovi.", "amara.org", "subtitles by the amara.org community", "danke fürs zuschauen", "izlediğiniz için teşekkürler"
+    };
+
+    /// <summary>Starting words for Whisper's prompt, per language: it makes the model expect work notes in that language</summary>
+    private static readonly Dictionary<string, string> PromptLeads = new()
+    {
+        ["hr"] = "Dnevne radne aktivnosti: sastanak, testiranje, ispravka grešaka, analiza, razvoj.",
+        ["en"] = "Daily work activities: meeting, testing, bug fixing, analysis, development.",
+        ["de"] = "Tägliche Arbeitsaktivitäten: Besprechung, Testen, Fehlerbehebung, Analyse, Entwicklung.",
+        ["tr"] = "Günlük iş faaliyetleri: toplantı, test, hata düzeltme, analiz, geliştirme."
     };
 
     private readonly ILogger<WhisperSpeechService> _logger;
     private readonly ISettingsService _settings;
+    private readonly IDatabaseService? _database;
     private readonly object _gate = new();
     private readonly SemaphoreSlim _modelLock = new(1, 1);
 
@@ -62,10 +75,11 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
     private CancellationTokenSource? _cts;
     private PhraseCutter? _cutter;
 
-    public WhisperSpeechService(ILogger<WhisperSpeechService> logger, ISettingsService settings)
+    public WhisperSpeechService(ILogger<WhisperSpeechService> logger, ISettingsService settings, IDatabaseService? database = null)
     {
         _logger = logger;
         _settings = settings;
+        _database = database;
     }
 
     public static string ModelPath => Path.Combine(
@@ -202,29 +216,73 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
 
     // ---- Transcription -------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Bosnian and Serbian are close to Croatian, which Whisper knows far better (and writes in Latin script), so they
+    /// are transcribed through Croatian. "auto" lets Whisper detect the language.
+    /// </summary>
+    public static string WhisperLanguage(string language) => language switch
+    {
+        "bs" or "sr" => "hr",
+        _ => string.IsNullOrWhiteSpace(language) ? DictationSettings.AutoLanguage : language
+    };
+
+    /// <summary>
+    /// The text Whisper is primed with: a line in the spoken language plus the user's own recent entries, so names and
+    /// terms they use every day (and the language itself) are expected instead of guessed
+    /// </summary>
+    private async Task<string> BuildPromptAsync(string whisperLanguage)
+    {
+        var lead = PromptLeads.TryGetValue(whisperLanguage, out var text) ? text : "";
+        if (lead.Length == 0) return "";
+
+        try
+        {
+            if (_database != null)
+            {
+                var recent = await _database.GetTasksPageAsync(new TaskQuery(), 1, 12);
+                var lines = recent.Items
+                    .SelectMany(t => t.Description.Split('\n'))
+                    .Select(l => l.Trim().TrimStart('-', ' ').Trim())
+                    .Where(l => l.Length > 2)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(8);
+                lead += " " + string.Join(". ", lines) + ".";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Recent entries could not be read for the dictation prompt");
+        }
+
+        return lead.Length > 600 ? lead.Substring(0, 600) : lead;
+    }
+
     /// <summary>Transcribes one phrase (16 kHz mono samples). Public so the whole chain can be tested with a recording.</summary>
     public async Task<string> TranscribeAsync(float[] samples, string language, CancellationToken token = default)
     {
         var factory = await LoadFactoryAsync(token);
         var prepared = Prepare(samples);
+        var whisperLanguage = WhisperLanguage(language);
+        var prompt = await BuildPromptAsync(whisperLanguage);
 
-        // Whisper always looks at a 30 second window; shrinking it to the length of the phrase makes short phrases
-        // several times faster on a CPU (1500 context frames = 30 s)
-        var audioContext = Math.Min(1500, (int)Math.Ceiling(prepared.Length / (double)SampleRate * 50) + 100);
+        // Whisper always looks at a 30 second window; shrinking it to the length of the phrase (plus a generous margin)
+        // makes short phrases several times faster on a CPU (1500 context frames = 30 s)
+        var audioContext = Math.Min(1500, (int)Math.Ceiling(prepared.Length / (double)SampleRate * 50) + 200);
 
-        await using var processor = factory.CreateBuilder()
-            .WithLanguage(language)
+        var builder = factory.CreateBuilder()
+            .WithLanguage(whisperLanguage)
             .WithThreads(Math.Clamp(Environment.ProcessorCount / 2, 2, 8))
             .WithNoSpeechThreshold(0.6f)
-            .WithTemperature(0f)
-            .WithTemperatureInc(0f)
-            .WithAudioContextSize(audioContext)
-            .Build();
+            .WithAudioContextSize(audioContext);
+        // The default temperature fallback stays on: a failed first decode is retried instead of dropping words
+        if (prompt.Length > 0) builder = builder.WithPrompt(prompt);
+        await using var processor = builder.Build();
 
         var text = new StringBuilder();
         await foreach (var segment in processor.ProcessAsync(prepared, token))
         {
-            if (segment.NoSpeechProbability > 0.85f) continue;
+            // Only skip what Whisper is nearly sure is not speech; a quiet microphone must not lose words
+            if (segment.NoSpeechProbability > 0.95f && segment.Text.Trim().Length < 20) continue;
             text.Append(segment.Text);
         }
 
@@ -244,14 +302,17 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
         return result;
     }
 
-    private static string CleanUp(string text, int sampleCount)
+    public static string CleanUp(string text, int sampleCount)
     {
         text = Regex.Replace(text, @"\s+", " ").Trim();
         if (text.Length == 0 || NoiseOnly.IsMatch(text)) return "";
         // Sound descriptions such as "(singing in foreign language)" or "[music]" are not speech
         if (Regex.IsMatch(text, @"^[\(\[\*].*[\)\]\*]$")) return "";
-        if (sampleCount < SampleRate * 2 && Hallucinations.Contains(text)) return "";
-        return text;
+        if (sampleCount < SampleRate * 3 && Hallucinations.Contains(text)) return "";
+
+        // Whisper sometimes loops on noise: "Hvala. Hvala. Hvala." or one word over and over
+        text = Regex.Replace(text, @"\b(\w+[.,!?]?)(?:\s+\1){2,}(?=\s|$)", "$1", RegexOptions.IgnoreCase);
+        return Hallucinations.Contains(text) && sampleCount < SampleRate * 3 ? "" : text;
     }
 
     // ---- Listening -----------------------------------------------------------------------------------------
@@ -324,11 +385,14 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
             StatusChanged?.Invoke(this, "Listening... speak now");
             _logger.LogInformation("Dictation started (language {Language})", language);
 
+            var previous = "";
             await foreach (var phrase in queue.Reader.ReadAllAsync(CancellationToken.None))
             {
                 try
                 {
                     var text = await TranscribeAsync(phrase, language, CancellationToken.None);
+                    if (string.Equals(text, previous, StringComparison.OrdinalIgnoreCase)) text = ""; // an echo of the last phrase
+                    previous = text.Length > 0 ? text : previous;
                     _logger.LogInformation("Phrase of {Seconds:0.0} s transcribed to {Length} characters", phrase.Length / (double)SampleRate, text.Length);
                     if (text.Length > 0)
                     {
@@ -478,10 +542,19 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
             if (_inSpeech && (_silenceSamples >= PauseSamples || _buffer.Count >= MaxPhraseSamples)) Emit();
         }
 
-        /// <summary>Hands over what is left when dictation stops</summary>
+        /// <summary>
+        /// Hands over what is left when dictation stops. The last moments are the click on Stop, so they are dropped,
+        /// and what remains must be a real phrase, not a rustle.
+        /// </summary>
         public void Flush()
         {
-            if (_inSpeech) Emit();
+            if (!_inSpeech) return;
+
+            var drop = Math.Min(_buffer.Count, StopClickSamples);
+            _buffer.RemoveRange(_buffer.Count - drop, drop);
+            _speechSamples = Math.Max(0, _speechSamples - drop);
+            if (_speechSamples >= MinFlushSamples) Emit();
+            else Reset();
         }
 
         private void Emit()
@@ -493,6 +566,11 @@ public sealed class WhisperSpeechService : ISpeechRecognitionService, IDisposabl
                 _onPhrase(_buffer.Take(keep).ToArray());
             }
 
+            Reset();
+        }
+
+        private void Reset()
+        {
             _buffer.Clear();
             _inSpeech = false;
             _speechSamples = 0;

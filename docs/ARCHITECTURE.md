@@ -92,6 +92,17 @@ Uninstalling the app leaves the (harmless) scheduled task behind; remove it with
 The **Help** page (`HelpViewModel`, plain data) lists shortcuts and easy-to-miss features; keep it in step when a feature
 or shortcut changes.
 
+## Localization
+
+The interface exists in English, Bosnian, Croatian, Serbian (Latin), German and Turkish. Text in views and view models
+stays English; `Core/Localization/Loc` looks it up in the catalog (`UiTranslations`, `MessageTranslations`,
+`HelpTranslations`: exact sentences first, then patterns with `{0}` for the dynamic parts) and `Avalonia/Services/UiLocalizer`
+applies it whenever a text block, content, watermark, tooltip or window title is set, so no view needs changing and a
+language switch translates the open page at once. Sentences built from parts use `Loc.F(template, args)` so plurals and
+word order can follow the language. `Loc` also sets the culture (dates, month names, decimal comma) and keeps the choice
+in `%LOCALAPPDATA%\DailyTaskManager\language.txt`, which the background reminder reads too. A new text needs an entry in
+the catalog; `LocalizationTests` fail when a language lacks a translation or a placeholder differs.
+
 ## Memory
 
 The app keeps its working set small on purpose: software rendering (no GPU driver in the process), workstation

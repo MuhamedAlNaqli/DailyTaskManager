@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -45,7 +46,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string _userEmail = "";
 
     [ObservableProperty]
-    private string _appVersion = "3.4.0";
+    private string _appVersion = "3.5.0";
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -120,6 +121,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _authService.AuthenticationChanged += OnAuthenticationChanged;
         _databaseService.TasksChanged += OnTasksChanged;
         _settingsService.SettingChanged += OnSettingChanged;
+        Loc.LanguageChanged += OnLanguageChanged;
 
         // Initialize non-UI properties only
         InitializePropertiesOnly();
@@ -234,6 +236,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>Texts a page built itself (dates, summaries) are rebuilt by opening the page again</summary>
+    private void OnLanguageChanged()
+    {
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            PostReminderRefresh();
+            if (IsSettingsViewSelected) NavigateToSettingsCommand.Execute(null);
+            else if (IsHelpViewSelected) NavigateToHelpCommand.Execute(null);
+            else if (IsCalendarViewSelected) NavigateToCalendarCommand.Execute(null);
+            else if (IsAnalyticsViewSelected) NavigateToAnalyticsCommand.Execute(null);
+            else if (IsReportsViewSelected) NavigateToReportsCommand.Execute(null);
+            else if (IsTasksViewSelected) NavigateToTasksCommand.Execute(null);
+        });
     }
 
     [RelayCommand]
@@ -381,7 +398,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             // Set app version from configuration
-            AppVersion = _configuration["AppSettings:Version"] ?? "3.4.0";
+            AppVersion = _configuration["AppSettings:Version"] ?? "3.5.0";
 
             // Initialize theme state based on current application theme
             InitializeThemeState();

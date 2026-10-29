@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -38,17 +39,17 @@ public static class MissingDays
     {
         if (days.Count == 0) return "";
 
-        string Label(DateTime d) => d.ToString("ddd d MMM", CultureInfo.InvariantCulture);
+        string Label(DateTime d) => d.ToString("ddd d MMM", Loc.Culture);
 
         if (days.Count == 1)
         {
             return days[0].Date == today.Date
-                ? "You haven't logged any hours today yet."
-                : $"No entry for {Label(days[0])}.";
+                ? Loc.T("You haven't logged any hours today yet.")
+                : Loc.F("No entry for {0}.", Label(days[0]));
         }
 
         var shown = string.Join(", ", days.Take(4).Select(Label));
         var more = days.Count > 4 ? ", ..." : "";
-        return $"No entries for {days.Count} working days: {shown}{more}";
+        return Loc.F("No entries for {0} working days: {1}", days.Count, shown + more);
     }
 }

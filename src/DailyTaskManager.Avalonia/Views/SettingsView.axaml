@@ -34,6 +34,39 @@
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="24">
                     
+                    <!-- Interface language -->
+                    <Border Background="{DynamicResource AppSurface}"
+                            CornerRadius="12"
+                            Padding="24"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10"><materialIcons:MaterialIcon Kind="Translate" Width="20" Height="20" Foreground="{DynamicResource AppAccent}" VerticalAlignment="Center"/><TextBlock Text="Language"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          Foreground="{DynamicResource AppTextStrong}"/></StackPanel>
+                                <TextBlock Text="Choose the language of the application. The change applies immediately."
+                                           TextWrapping="Wrap"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                            <StackPanel Spacing="6" MaxWidth="360" HorizontalAlignment="Left">
+                                <TextBlock Text="Interface language" Classes="label"/>
+                                <ComboBox Name="AppLanguageComboBox"
+                                          Classes="form"
+                                          ItemsSource="{Binding AppLanguages}"
+                                          SelectedItem="{Binding SelectedAppLanguage}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="x:Object">
+                                            <TextBlock Text="{Binding Value}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- PDF Export Settings -->
                     <Border Background="{DynamicResource AppSurface}" 
                             CornerRadius="12" 

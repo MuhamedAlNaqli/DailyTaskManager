@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -168,7 +169,7 @@ internal static class ReminderRunner
 
     private static void ShowAndOpenIfClicked(ILogger logger, string title, string message, string exePath)
     {
-        var clicked = TrayNotifier.Show(title, message, exePath, NotificationTimeout);
+        var clicked = TrayNotifier.Show(Loc.T(title), Loc.T(message), exePath, NotificationTimeout);
         if (TrayNotifier.LastFailure != null) logger.LogWarning("Notification problem: {Problem}", TrayNotifier.LastFailure);
         else logger.LogInformation("Notification closed (clicked: {Clicked})", clicked);
         if (!clicked || string.IsNullOrEmpty(exePath)) return;

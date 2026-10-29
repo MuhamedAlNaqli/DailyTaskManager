@@ -1,3 +1,4 @@
+using DailyTaskManager.Core.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -166,14 +167,14 @@ public partial class ActivityCalendarViewModel : ObservableObject, IDisposable
 
             Days.Clear();
             foreach (var cell in cells) Days.Add(cell);
-            MonthTitle = first.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+            MonthTitle = first.ToString("MMMM yyyy", Loc.Culture);
 
             var monthCells = cells.Where(c => c.InMonth).ToList();
             var total = monthCells.Sum(c => c.Hours);
             var logged = monthCells.Count(c => c.Hours > 0);
             var missing = monthCells.Count(c => IsMissing(c.Date, c.Hours, today));
-            SummaryText = $"{total:0.0}h logged on {logged} day{(logged == 1 ? "" : "s")}" +
-                          (missing > 0 ? $" - {missing} working day{(missing == 1 ? "" : "s")} without an entry" : "");
+            SummaryText = (logged == 1 ? Loc.F("{0}h logged on 1 day", $"{total:0.0}") : Loc.F("{0}h logged on {1} days", $"{total:0.0}", logged)) +
+                          (missing > 0 ? " - " + (missing == 1 ? Loc.F("1 working day without an entry") : Loc.F("{0} working days without an entry", missing)) : "");
         }
         catch (Exception ex)
         {
@@ -198,7 +199,7 @@ public partial class ActivityCalendarViewModel : ObservableObject, IDisposable
         string tooltip;
         if (count == 0)
         {
-            tooltip = $"{date:ddd d MMM yyyy}: no entries - click to add one";
+            tooltip = Loc.F("{0}: no entries - click to add one", date.ToString("ddd d MMM yyyy"));
         }
         else
         {
@@ -206,7 +207,7 @@ public partial class ActivityCalendarViewModel : ObservableObject, IDisposable
                 .Take(3)
                 .Select(e => "- " + FirstLine(e.Description) + $" ({e.Hours:0.##}h)");
             tooltip = $"{date:ddd d MMM yyyy}: {hours:0.0}h\n" + string.Join("\n", lines) +
-                      (count > 3 ? $"\n(+{count - 3} more)" : "");
+                      (count > 3 ? "\n" + Loc.F("(+{0} more)", count - 3) : "");
         }
 
         return new CalendarDay

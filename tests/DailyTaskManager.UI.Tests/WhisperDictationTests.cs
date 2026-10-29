@@ -122,4 +122,27 @@ public class WhisperDictationTests
         StringAssert.Contains(text.ToLowerInvariant(), "tariff");
         StringAssert.Contains(text.ToLowerInvariant(), "testing");
     }
+    [TestMethod]
+    public void WhisperLanguage_ShouldRouteBosnianAndSerbianThroughCroatian()
+    {
+        Assert.AreEqual("hr", WhisperSpeechService.WhisperLanguage("bs"));
+        Assert.AreEqual("hr", WhisperSpeechService.WhisperLanguage("sr"));
+        Assert.AreEqual("hr", WhisperSpeechService.WhisperLanguage("hr"));
+        Assert.AreEqual("en", WhisperSpeechService.WhisperLanguage("en"));
+        Assert.AreEqual("auto", WhisperSpeechService.WhisperLanguage(""));
+    }
+
+    [TestMethod]
+    public void CleanUp_ShouldDropNoiseLoopsAndStopRustles()
+    {
+        const int shortClip = 16000;
+        const int longClip = 16000 * 10;
+
+        Assert.AreEqual("", WhisperSpeechService.CleanUp("(singing in foreign language)", longClip));
+        Assert.AreEqual("", WhisperSpeechService.CleanUp("[BLANK_AUDIO]", longClip));
+        Assert.AreEqual("", WhisperSpeechService.CleanUp("Hvala.", shortClip), "A lone thank-you on a short clip is a hallucination");
+        Assert.AreEqual("Hvala.", WhisperSpeechService.CleanUp("Hvala.", longClip), "On a long clip it may be real speech");
+        Assert.AreEqual("", WhisperSpeechService.CleanUp("Hvala. Hvala. Hvala. Hvala.", shortClip), "A loop collapses to the hallucination and is dropped");
+        Assert.AreEqual("Statusni sastanak sa MTEL", WhisperSpeechService.CleanUp("  Statusni   sastanak sa MTEL ", longClip));
+    }
 }
