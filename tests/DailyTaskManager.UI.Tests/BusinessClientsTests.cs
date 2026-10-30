@@ -204,6 +204,18 @@ public class BusinessClientsTests
     }
 
     [TestMethod]
+    public async Task Client_ShouldKeepAValidTagColourOnly()
+    {
+        var client = await NewClientAsync();
+
+        var blue = await _business.SaveClientAsync(new Client { Id = client.Id, Name = client.Name, Color = "#2563eb" });
+        Assert.AreEqual("#2563EB", blue.Color, "A colour is stored as #RRGGBB in capitals");
+
+        var invalid = await _business.SaveClientAsync(new Client { Id = client.Id, Name = client.Name, Color = "red; drop table" });
+        Assert.AreEqual("", invalid.Color, "Anything that is not #RRGGBB is dropped");
+    }
+
+    [TestMethod]
     public async Task Contracts_ShouldBePickedByDateAndMayNotOverlap()
     {
         var client = await NewClientAsync();

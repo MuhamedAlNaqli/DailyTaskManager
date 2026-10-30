@@ -58,10 +58,16 @@
                         </Grid>
 
                         <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="14,10">
-                            <TextBlock Name="SummaryTextBlock"
-                                       Text="{Binding SummaryText}"
-                                       Foreground="{DynamicResource AppTextStrong}"
-                                       FontWeight="Medium"/>
+                            <StackPanel Spacing="4">
+                                <TextBlock Name="SummaryTextBlock"
+                                           Text="{Binding SummaryText}"
+                                           Foreground="{DynamicResource AppTextStrong}"
+                                           FontWeight="Medium"/>
+                                <TextBlock Name="AmountSummaryTextBlock"
+                                           Text="{Binding AmountSummary}"
+                                           IsVisible="{Binding HasAmountSummary}"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
                         </Border>
 
                         <StackPanel Orientation="Horizontal" Spacing="12">
@@ -84,9 +90,40 @@
                                     Background="Transparent" Foreground="{DynamicResource AppAccent}" BorderBrush="{DynamicResource AppAccent}" BorderThickness="1"
                                     CornerRadius="6" Padding="16,10"/>
                         </StackPanel>
-                        <TextBlock Text="Header, company and recipient details come from Settings. The files are saved to your configured export folders."
+                        <TextBlock Text="Your company, the client and the contract number come from Settings (My business and Clients). Files are saved to the client's folder, or to your export folders."
                                    FontSize="12" TextWrapping="Wrap"
                                    Foreground="{DynamicResource AppTextFaint}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Documents from the client's template files -->
+                <Border IsVisible="{Binding HasTemplates}"
+                        Background="{DynamicResource AppSurface}"
+                        CornerRadius="12" Padding="20"
+                        BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Documents" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AppText}"/>
+                        <TextBlock Text="Your template files for this client, filled in with the month and client selected above."
+                                   FontSize="12" Foreground="{DynamicResource AppTextMuted}" TextWrapping="Wrap"/>
+                        <ItemsControl Name="TemplateList" ItemsSource="{Binding Templates}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TemplateChoice">
+                                    <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Format}" Foreground="{DynamicResource AppTextMuted}"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Name="GenerateDocumentsButton"
+                                Content="Generate selected documents"
+                                Command="{Binding GenerateDocumentsCommand}"
+                                IsEnabled="{Binding !IsBusy}"
+                                HorizontalAlignment="Left"
+                                Background="{DynamicResource AppAccentFill}" Foreground="White" BorderBrush="Transparent"
+                                CornerRadius="6" Padding="16,10"/>
                     </StackPanel>
                 </Border>
 
@@ -123,6 +160,8 @@
                                                Value="{Binding HourlyRate}"
                                                Minimum="0" Maximum="100000" Increment="1" FormatString="0.00"
                                                Classes="primary filled"/>
+                                <TextBlock Name="RateHintText" Text="{Binding RateHint}" IsVisible="{Binding HasRateHint}"
+                                           FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="VAT % (0 = no VAT)" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>

@@ -445,6 +445,39 @@ public class DateFilteringIntegrationTest
     }
 
     [TestMethod]
+    public async Task ReportsViewModel_ShouldTakeCurrencyAndRateFromTheClientContract()
+    {
+        var business = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IBusinessService>();
+        var client = await business.SaveClientAsync(new DailyTaskManager.Core.Models.Client { Name = "UT-rate-" + Guid.NewGuid().ToString("N")[..8], Currency = "EUR" });
+
+        try
+        {
+            await business.SaveContractAsync(new DailyTaskManager.Core.Models.ClientContract
+            {
+                ClientId = client.Id, ContractNumber = "R-1", HourlyRate = 42.5m, ValidFrom = new DateTime(DateTime.Today.Year, 1, 1)
+            });
+
+            var vm = _serviceProvider!.GetRequiredService<ReportsViewModel>();
+            await Task.Delay(2500);
+            vm.SelectedClient = vm.ClientOptions.Single(c => c.Id == client.Id);
+            await Task.Delay(2500);
+
+            Assert.AreEqual("EUR", vm.Currency, "The client's currency is used");
+            Assert.AreEqual(42.5m, vm.HourlyRate, "The rate of the contract valid in the month is used");
+            StringAssert.Contains(vm.RateHint, "R-1");
+
+            // A month before the contract has no rate to offer
+            vm.SelectedMonth = vm.Months.Single(m => m.From == new DateTime(DateTime.Today.Year - 1, DateTime.Today.Month, 1));
+            await Task.Delay(2500);
+            StringAssert.Contains(vm.RateHint, "No contract");
+        }
+        finally
+        {
+            await business.DeleteOrDeactivateClientAsync(client.Id);
+        }
+    }
+
+    [TestMethod]
     public async Task Templates_ShouldBeSavedReplacedAndDeleted()
     {
         var db = _serviceProvider!.GetRequiredService<DailyTaskManager.Core.Interfaces.IDatabaseService>();
@@ -887,6 +920,7 @@ public class DateFilteringIntegrationTest
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IBusinessService, BusinessService>();
+                services.AddSingleton<IDocumentGenerator, DocumentGenerator>();
                 services.AddSingleton<IPlatformService, PlatformService>();
                 services.AddSingleton<ISpeechRecognitionService, WhisperSpeechService>();
                 services.AddSingleton<IOAuthService, DailyTaskManager.Infrastructure.Services.OAuthService>();

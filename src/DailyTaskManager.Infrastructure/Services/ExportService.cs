@@ -950,7 +950,7 @@ public class ExportService : IExportService
     // Signature and stamp are shown above the signature line, scaled to fit these boxes (points)
     private const double SignatureMaxWidth = 130, SignatureMaxHeight = 60, StampMaxWidth = 85, StampMaxHeight = 85;
 
-    private static (double Width, double Height) FitBox(byte[] image, double maxWidth, double maxHeight)
+    internal static (double Width, double Height) FitBox(byte[] image, double maxWidth, double maxHeight)
     {
         var (w, h) = ImageInfo.Size(image);
         if (w <= 0 || h <= 0) return (maxWidth, maxHeight);
@@ -1073,7 +1073,7 @@ public class ExportService : IExportService
         return new Drawing(anchor);
     }
 
-    private static DocumentFormat.OpenXml.Drawing.Graphic BuildPictureGraphic(MainDocumentPart part, byte[] bytes, long widthEmu, long heightEmu, string name)
+    internal static DocumentFormat.OpenXml.Drawing.Graphic BuildPictureGraphic(MainDocumentPart part, byte[] bytes, long widthEmu, long heightEmu, string name)
     {
         var imagePart = part.AddImagePart(ImageInfo.Detect(bytes) == ImageKind.Png ? ImagePartType.Png : ImagePartType.Jpeg);
         using (var stream = new MemoryStream(bytes))

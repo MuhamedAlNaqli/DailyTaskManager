@@ -67,6 +67,9 @@ public class HelpViewModel
             new HelpItem("Clients", "Settings, Clients keeps each client's company name, ID, VAT number, address, currency and notes. A client that has entries is made inactive instead of deleted."),
             new HelpItem("Contracts", "A client has one contract at a time. When it is renewed, add the new contract with its start date: the old one ends the day before, and earlier months keep their old number."),
             new HelpItem("Client folder", "Give a client its own folder and its documents are saved there instead of the general export folders."),
+            new HelpItem("Rates", "A contract can have an hourly rate. Reports then use it, with the client's currency, to show the amount of the month and to fill the invoice."),
+            new HelpItem("Your own templates", "Settings, Clients, Documents: add a Word or Excel file with placeholders such as {{Client.LegalName}}, {{TotalHours}} or {{InvoiceNumber}}. A table row or sheet row with {{Task.Date}}, {{Task.Description}} and {{Task.Hours}} is repeated for every entry. Reports then offers the file under Documents."),
+            new HelpItem("Tag colour", "Give a client a colour and a dot of that colour appears next to its entries in the week and list views."),
         }),
 
         new HelpSection("Reports and exports", "Hand your hours to someone else", MaterialIconKind.FileDocumentOutline, new[]

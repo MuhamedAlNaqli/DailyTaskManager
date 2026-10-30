@@ -33,6 +33,9 @@ namespace DailyTaskManager.Core.Models
         /// <summary>Folder for this client's documents; empty = the export folders from Settings</summary>
         public string ExportFolder { get; set; } = "";
 
+        /// <summary>Tag colour as #RRGGBB shown next to the client's entries; empty = none</summary>
+        public string Color { get; set; } = "";
+
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

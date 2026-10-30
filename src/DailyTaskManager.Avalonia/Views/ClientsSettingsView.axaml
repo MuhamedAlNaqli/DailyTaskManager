@@ -3,6 +3,7 @@
              xmlns:materialIcons="using:Material.Icons.Avalonia"
              xmlns:vm="using:DailyTaskManager.Avalonia.ViewModels"
              xmlns:models="using:DailyTaskManager.Core.Models"
+             xmlns:svc="using:DailyTaskManager.Avalonia.Services"
              x:Class="DailyTaskManager.Avalonia.Views.ClientsSettingsView"
              x:DataType="vm:ClientsViewModel">
 
@@ -79,9 +80,23 @@
                             <TextBlock Text="Currency" Classes="label"/>
                             <ComboBox Name="ClientCurrencyComboBox" Classes="form" ItemsSource="{Binding Currencies}" SelectedItem="{Binding Currency}"/>
                         </StackPanel>
-                        <StackPanel Grid.Row="3" Grid.Column="2" Spacing="6" VerticalAlignment="Bottom">
-                            <CheckBox Name="ClientActiveCheckBox" Content="Active (offered for new entries)" IsChecked="{Binding IsActive}"/>
-                        </StackPanel>
+                        <Grid Grid.Row="3" Grid.Column="2" ColumnDefinitions="*,16,Auto">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Tag colour" Classes="label"/>
+                                <ComboBox Name="ClientColorComboBox" Classes="form" ItemsSource="{Binding Colors}" SelectedItem="{Binding SelectedColor}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ColorChoice">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Ellipse Width="12" Height="12" VerticalAlignment="Center"
+                                                         Fill="{Binding Hex, Converter={x:Static svc:HexColorConverter.Instance}}"/>
+                                                <TextBlock Text="{Binding Name}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                            <CheckBox Name="ClientActiveCheckBox" Grid.Column="2" Content="Active (offered for new entries)" IsChecked="{Binding IsActive}" VerticalAlignment="Bottom"/>
+                        </Grid>
                     </Grid>
 
                     <StackPanel Spacing="6">
@@ -125,19 +140,27 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <Grid ColumnDefinitions="*,12,*,12,*,12,*">
-                            <StackPanel Spacing="6"><TextBlock Text="Contract number, e.g. 078-01" Classes="label"/><TextBox Name="ContractNumberBox" Classes="form" Text="{Binding ContractNumber}"/></StackPanel>
-                            <TextBox Name="ContractRateBox" Grid.Column="2" Classes="filled" Text="{Binding ContractRate}" Watermark="Hourly rate (optional)"/>
-                            <DatePicker Name="ContractFromPicker" Grid.Column="4" Classes="form" SelectedDate="{Binding ContractFrom, Mode=TwoWay}"/>
-                            <DatePicker Name="ContractToPicker" Grid.Column="6" Classes="form" SelectedDate="{Binding ContractTo, Mode=TwoWay}"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="*,12,*,12,*,12,*">
-                            <TextBlock Grid.Column="4" Text="Valid from" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
-                            <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Valid to" FontSize="12" Foreground="{DynamicResource AppTextMuted}" VerticalAlignment="Center"/>
-                                <Button Name="ClearContractToButton" Command="{Binding ClearContractToCommand}" Classes="secondary" Padding="8,2" FontSize="12">
-                                    <TextBlock Text="Open-ended"/>
-                                </Button>
+                        <Grid ColumnDefinitions="*,12,*,12,1.4*,12,1.4*">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Contract number" Classes="label"/>
+                                <TextBox Name="ContractNumberBox" Classes="form" Text="{Binding ContractNumber}" Watermark="078-01"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <TextBlock Text="Hourly rate (optional)" Classes="label"/>
+                                <TextBox Name="ContractRateBox" Classes="form" Text="{Binding ContractRate}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="6">
+                                <TextBlock Text="Valid from" Classes="label"/>
+                                <DatePicker Name="ContractFromPicker" Classes="form" SelectedDate="{Binding ContractFrom, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="6" Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Valid to" Classes="label" VerticalAlignment="Center"/>
+                                    <Button Name="ClearContractToButton" Grid.Column="1" Command="{Binding ClearContractToCommand}" Classes="secondary" Padding="8,2" FontSize="12">
+                                        <TextBlock Text="Open-ended"/>
+                                    </Button>
+                                </Grid>
+                                <DatePicker Name="ContractToPicker" Classes="form" SelectedDate="{Binding ContractTo, Mode=TwoWay}"/>
                             </StackPanel>
                         </Grid>
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -147,6 +170,57 @@
                             <Button Name="DeleteContractButton" Command="{Binding DeleteContractCommand}" Classes="danger" Padding="14,8">
                                 <TextBlock Text="Delete contract"/>
                             </Button>
+                        </StackPanel>
+
+                        <!-- Template files -->
+                        <Rectangle Height="1" Fill="{DynamicResource AppBorder}" Margin="0,6,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Documents" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                                <TextBlock Text="Your own Word or Excel files with {{placeholders}} that are filled in for a month, for example the invoice sheet of your accountant."
+                                           TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                            <Button Name="ShowPlaceholdersButton" Grid.Column="1" Command="{Binding ShowPlaceholdersCommand}" Classes="secondary" Padding="12,6" VerticalAlignment="Top">
+                                <TextBlock Text="Show placeholders"/>
+                            </Button>
+                            <Button Name="AddTemplateButton" Grid.Column="2" Command="{Binding AddTemplateCommand}" Classes="primary" Padding="12,6" VerticalAlignment="Top">
+                                <TextBlock Text="Add template file"/>
+                            </Button>
+                        </Grid>
+
+                        <ListBox Name="TemplatesList" ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate}" MaxHeight="150" AutoScrollToSelectedItem="False">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:DocumentTemplate">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="2,4" ColumnSpacing="12">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Format}" Foreground="{DynamicResource AppTextMuted}"/>
+                                        <TextBlock Grid.Column="2" Text="Inactive" Foreground="{DynamicResource AppTextMuted}" IsVisible="{Binding !IsActive}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <StackPanel Spacing="10" IsVisible="{Binding HasSelectedTemplate}">
+                            <Grid ColumnDefinitions="*,12,*">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Template name" Classes="label"/>
+                                    <TextBox Name="TemplateNameBox" Classes="form" Text="{Binding TemplateName}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="6">
+                                    <TextBlock Text="File name of the result" Classes="label"/>
+                                    <TextBox Name="TemplatePatternBox" Classes="form" Text="{Binding TemplatePattern}"/>
+                                    <TextBlock Text="You can use {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                </StackPanel>
+                            </Grid>
+                            <CheckBox Name="TemplateActiveCheckBox" Content="Offer this template in Reports" IsChecked="{Binding TemplateActive}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Name="SaveTemplateButton" Command="{Binding SaveTemplateCommand}" Classes="primary" Padding="14,8">
+                                    <TextBlock Text="Save template"/>
+                                </Button>
+                                <Button Name="DeleteTemplateButton" Command="{Binding DeleteTemplateCommand}" Classes="danger" Padding="14,8">
+                                    <TextBlock Text="Delete template"/>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

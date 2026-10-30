@@ -43,6 +43,11 @@ a contract once, at start-up (see [MULTI_CLIENT_DESIGN.md](MULTI_CLIENT_DESIGN.m
 place the signature and stamp above the consultant's signature line (`ImageInfo` reads the image size without an
 imaging library).
 
+`IDocumentGenerator` (`DocumentGenerator`) fills the user's own Word and Excel template files (`DocumentTemplate`,
+kept in `%LOCALAPPDATA%\DailyTaskManager\templates`): `{{Placeholders}}` are replaced even when Word split them over
+several runs, a table or sheet row with `{{Task.*}}` is repeated per entry, numbers and dates stay numbers and dates in
+Excel, and unknown placeholders are reported. A contract carries the hourly rate that Reports and the invoice use.
+
 ## Avalonia (UI)
 
 MVVM with CommunityToolkit.Mvvm. A view (`Views/*.axaml`) binds to one view model (`ViewModels/*`); view models

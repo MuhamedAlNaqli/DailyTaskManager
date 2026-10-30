@@ -44,6 +44,18 @@ namespace DailyTaskManager.Core.Interfaces
         /// <summary>The contract of the client that is valid on the date, or null</summary>
         Task<ClientContract?> GetContractOnAsync(int clientId, DateTime date);
 
+        /// <summary>The template files of a client, in their display order</summary>
+        Task<List<DocumentTemplate>> GetTemplatesAsync(int clientId);
+
+        /// <summary>Copies the file into the application's data folder and adds it as a template of the client</summary>
+        Task<DocumentTemplate> AddTemplateAsync(int clientId, string sourcePath, string? name = null);
+
+        /// <summary>Changes name, file name pattern and active flag (the file itself stays)</summary>
+        Task<DocumentTemplate> UpdateTemplateAsync(DocumentTemplate template);
+
+        /// <summary>Removes the template and its stored file</summary>
+        Task DeleteTemplateAsync(int templateId);
+
         /// <summary>
         /// Everything a document needs: the company, the client and the contract valid on the period's last day.
         /// Without a client the fields of the client are left empty.

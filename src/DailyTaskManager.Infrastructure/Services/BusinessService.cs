@@ -196,6 +196,7 @@ public class BusinessService : IBusinessService
         stored.Notes = Clip(client.Notes, 1000);
         stored.Currency = NormalizeCurrency(client.Currency);
         stored.ExportFolder = Clip(client.ExportFolder, 500);
+        stored.Color = NormalizeColor(client.Color);
         stored.IsActive = client.IsActive;
         await db.SaveChangesAsync();
         return stored;
@@ -295,6 +296,95 @@ public class BusinessService : IBusinessService
         return contracts.FirstOrDefault(c => c.Covers(date));
     }
 
+    // ---- Template files ---------------------------------------------------------------------------------------
+
+    private static string TemplatesFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DailyTaskManager", "templates");
+
+    private async Task EnsureOwnClientAsync(DailyTaskManagerDbContext db, int clientId)
+    {
+        var userId = UserId;
+        if (!await db.Clients.AnyAsync(c => c.Id == clientId && c.UserId == userId))
+            throw new InvalidOperationException("Client not found.");
+    }
+
+    public async Task<List<DocumentTemplate>> GetTemplatesAsync(int clientId)
+    {
+        await using var db = _contextFactory.CreateDbContext();
+        await EnsureOwnClientAsync(db, clientId);
+        return await db.DocumentTemplates.AsNoTracking()
+            .Where(t => t.ClientId == clientId).OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
+    }
+
+    public async Task<DocumentTemplate> AddTemplateAsync(int clientId, string sourcePath, string? name = null)
+    {
+        var info = new FileInfo(sourcePath);
+        if (!info.Exists) throw new FileNotFoundException("The template file was not found", sourcePath);
+
+        var extension = info.Extension.ToLowerInvariant();
+        if (extension != ".docx" && extension != ".xlsx") throw new InvalidOperationException("A template must be a Word (.docx) or Excel (.xlsx) file.");
+        if (info.Length > 10 * 1024 * 1024) throw new InvalidOperationException("The template is larger than 10 MB.");
+
+        await using var db = _contextFactory.CreateDbContext();
+        await EnsureOwnClientAsync(db, clientId);
+
+        Directory.CreateDirectory(TemplatesFolder);
+        var target = Path.Combine(TemplatesFolder, $"client{clientId}-{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}");
+        File.Copy(sourcePath, target, overwrite: false);
+
+        var template = new DocumentTemplate
+        {
+            ClientId = clientId,
+            Name = Clip(string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(sourcePath) : name, 150),
+            TemplatePath = target,
+            SortOrder = (await db.DocumentTemplates.Where(t => t.ClientId == clientId).MaxAsync(t => (int?)t.SortOrder) ?? 0) + 1
+        };
+        db.DocumentTemplates.Add(template);
+        await db.SaveChangesAsync();
+        return template;
+    }
+
+    public async Task<DocumentTemplate> UpdateTemplateAsync(DocumentTemplate template)
+    {
+        var name = (template.Name ?? "").Trim();
+        if (name.Length == 0) throw new ArgumentException("A template needs a name.");
+
+        var userId = UserId;
+        await using var db = _contextFactory.CreateDbContext();
+        var stored = await db.DocumentTemplates.FirstOrDefaultAsync(t => t.Id == template.Id
+                         && db.Clients.Any(c => c.Id == t.ClientId && c.UserId == userId))
+                     ?? throw new InvalidOperationException("Template not found.");
+
+        stored.Name = Clip(name, 150);
+        stored.FileNamePattern = string.IsNullOrWhiteSpace(template.FileNamePattern)
+            ? DocumentTemplate.DefaultFileNamePattern : Clip(template.FileNamePattern, 200);
+        stored.IsActive = template.IsActive;
+        await db.SaveChangesAsync();
+        return stored;
+    }
+
+    public async Task DeleteTemplateAsync(int templateId)
+    {
+        var userId = UserId;
+        await using var db = _contextFactory.CreateDbContext();
+        var stored = await db.DocumentTemplates.FirstOrDefaultAsync(t => t.Id == templateId
+            && db.Clients.Any(c => c.Id == t.ClientId && c.UserId == userId));
+        if (stored == null) return;
+
+        db.DocumentTemplates.Remove(stored);
+        await db.SaveChangesAsync();
+
+        try
+        {
+            if (stored.TemplatePath.StartsWith(TemplatesFolder, StringComparison.OrdinalIgnoreCase) && File.Exists(stored.TemplatePath))
+                File.Delete(stored.TemplatePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not delete {Path}", stored.TemplatePath);
+        }
+    }
+
     // ---- Document data ----------------------------------------------------------------------------------------
 
     public async Task<PdfSettings> GetDocumentSettingsAsync(int? clientId, DateTime periodEnd, bool includeSignatures = true)
@@ -342,6 +432,12 @@ public class BusinessService : IBusinessService
     {
         var text = (value ?? "").Trim();
         return text.Length > max ? text.Substring(0, max) : text;
+    }
+
+    private static string NormalizeColor(string? color)
+    {
+        var text = (color ?? "").Trim();
+        return System.Text.RegularExpressions.Regex.IsMatch(text, "^#[0-9A-Fa-f]{6}$") ? text.ToUpperInvariant() : "";
     }
 
     private static string NormalizeCurrency(string? code)

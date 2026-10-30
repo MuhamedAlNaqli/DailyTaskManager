@@ -187,6 +187,130 @@ namespace DailyTaskManager.Core.Localization
                 "Ihre eigenen Angaben stammen aus Mein Unternehmen, die Angaben des Kunden und die Vertragsnummer aus Einstellungen, Kunden. Siehe Kunden und Dokumente.",
                 "Kendi bilgileriniz İşletmem bölümünden, müşterinin bilgileri ve sözleşme numarası Ayarlar, Müşteriler bölümünden gelir. Müşteriler ve belgeler bölümüne bakın.");
 
+            // Reports: rates and amounts
+            a("Your company, the client and the contract number come from Settings (My business and Clients). Files are saved to the client's folder, or to your export folders.",
+                "Vaša firma, klijent i broj ugovora dolaze iz Postavki (Moja firma i Klijenti). Datoteke se spremaju u folder klijenta ili u vaše foldere za izvoz.",
+                "Vaša tvrtka, klijent i broj ugovora dolaze iz Postavki (Moja tvrtka i Klijenti). Datoteke se spremaju u mapu klijenta ili u vaše mape za izvoz.",
+                "Vaša firma, klijent i broj ugovora dolaze iz Podešavanja (Moja firma i Klijenti). Datoteke se čuvaju u fascikli klijenta ili u vašim fasciklama za izvoz.",
+                "Ihr Unternehmen, der Kunde und die Vertragsnummer stammen aus den Einstellungen (Mein Unternehmen und Kunden). Die Dateien werden im Ordner des Kunden oder in Ihren Exportordnern gespeichert.",
+                "Şirketiniz, müşteri ve sözleşme numarası Ayarlar'dan (İşletmem ve Müşteriler) gelir. Dosyalar müşterinin klasörüne veya dışa aktarma klasörlerinize kaydedilir.");
+            a("Net amount for the month: {0} {1}", "Neto iznos za mjesec: {0} {1}", "Neto iznos za mjesec: {0} {1}", "Neto iznos za mesec: {0} {1}",
+                "Nettobetrag für den Monat: {0} {1}", "Ay için net tutar: {0} {1}");
+            a("Rate from contract {0}", "Cijena iz ugovora {0}", "Cijena iz ugovora {0}", "Cena iz ugovora {0}", "Satz aus Vertrag {0}", "Ücret {0} sözleşmesinden");
+            a("No contract is valid in this month", "Nijedan ugovor ne važi u ovom mjesecu", "Nijedan ugovor ne vrijedi u ovom mjesecu", "Nijedan ugovor ne važi u ovom mesecu",
+                "In diesem Monat ist kein Vertrag gültig", "Bu ayda geçerli sözleşme yok");
+
+            // Documents from template files, tag colours
+            a("Documents", "Dokumenti", "Dokumenti", "Dokumenti", "Dokumente", "Belgeler");
+            a("Your own Word or Excel files with {{placeholders}} that are filled in for a month, for example the invoice sheet of your accountant.",
+                "Vaše Word ili Excel datoteke s oznakama {{...}} koje se popunjavaju za mjesec, na primjer obrazac računa vašeg računovođe.",
+                "Vaše Word ili Excel datoteke s oznakama {{...}} koje se popunjavaju za mjesec, na primjer obrazac računa vašeg računovođe.",
+                "Vaše Word ili Excel datoteke sa oznakama {{...}} koje se popunjavaju za mesec, na primer obrazac računa vašeg računovođe.",
+                "Ihre eigenen Word- oder Excel-Dateien mit Platzhaltern {{...}}, die für einen Monat ausgefüllt werden, z. B. die Rechnungsvorlage Ihres Buchhalters.",
+                "Bir ay için doldurulan {{...}} yer tutucularına sahip kendi Word veya Excel dosyalarınız; örneğin muhasebecinizin fatura tablosu.");
+            a("Show placeholders", "Prikaži oznake", "Prikaži oznake", "Prikaži oznake", "Platzhalter anzeigen", "Yer tutucuları göster");
+            a("Add template file", "Dodaj datoteku predloška", "Dodaj datoteku predloška", "Dodaj datoteku šablona", "Vorlagendatei hinzufügen", "Şablon dosyası ekle");
+            a("Template name", "Naziv predloška", "Naziv predloška", "Naziv šablona", "Name der Vorlage", "Şablon adı");
+            a("File name of the result ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})",
+                "Naziv rezultirajuće datoteke ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})", "Naziv rezultirajuće datoteke ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})",
+                "Naziv rezultujuće datoteke ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})", "Dateiname des Ergebnisses ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})",
+                "Sonuç dosyasının adı ({Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber})");
+            a("Offer this template in Reports", "Nudi ovaj predložak u Izvještajima", "Nudi ovaj predložak u Izvješćima", "Nudi ovaj šablon u Izveštajima",
+                "Diese Vorlage in den Berichten anbieten", "Bu şablonu Raporlar'da sun");
+            a("Save template", "Sačuvaj predložak", "Spremi predložak", "Sačuvaj šablon", "Vorlage speichern", "Şablonu kaydet");
+            a("Delete template", "Obriši predložak", "Obriši predložak", "Obriši šablon", "Vorlage löschen", "Şablonu sil");
+            a("Tag colour", "Boja oznake", "Boja oznake", "Boja oznake", "Markierungsfarbe", "Etiket rengi");
+            a("No colour", "Bez boje", "Bez boje", "Bez boje", "Keine Farbe", "Renk yok");
+            a("Teal", "Tirkizna", "Tirkizna", "Tirkizna", "Petrol", "Turkuaz");
+            a("Blue", "Plava", "Plava", "Plava", "Blau", "Mavi");
+            a("Purple", "Ljubičasta", "Ljubičasta", "Ljubičasta", "Lila", "Mor");
+            a("Pink", "Roza", "Roza", "Roze", "Rosa", "Pembe");
+            a("Red", "Crvena", "Crvena", "Crvena", "Rot", "Kırmızı");
+            a("Orange", "Narandžasta", "Narančasta", "Narandžasta", "Orange", "Turuncu");
+            a("Amber", "Jantarna", "Jantarna", "Žuto-narandžasta", "Bernstein", "Kehribar");
+            a("Green", "Zelena", "Zelena", "Zelena", "Grün", "Yeşil");
+            a("Grey", "Siva", "Siva", "Siva", "Grau", "Gri");
+
+            a("Choose a Word or Excel template", "Odaberite Word ili Excel predložak", "Odaberite Word ili Excel predložak", "Izaberite Word ili Excel šablon",
+                "Word- oder Excel-Vorlage auswählen", "Bir Word veya Excel şablonu seçin");
+            a("Template added", "Predložak dodan", "Predložak dodan", "Šablon dodat", "Vorlage hinzugefügt", "Şablon eklendi");
+            a("Template", "Predložak", "Predložak", "Šablon", "Vorlage", "Şablon");
+            a("The template was added, but it contains no {{placeholders}} yet.",
+                "Predložak je dodan, ali još ne sadrži nijednu oznaku {{...}}.", "Predložak je dodan, ali još ne sadrži nijednu oznaku {{...}}.",
+                "Šablon je dodat, ali još ne sadrži nijednu oznaku {{...}}.", "Die Vorlage wurde hinzugefügt, enthält aber noch keine Platzhalter {{...}}.",
+                "Şablon eklendi ancak henüz {{...}} yer tutucusu içermiyor.");
+            a("The template was added. It uses {0} placeholders.", "Predložak je dodan. Koristi oznaka: {0}.", "Predložak je dodan. Koristi oznaka: {0}.",
+                "Šablon je dodat. Koristi oznaka: {0}.", "Die Vorlage wurde hinzugefügt. Sie verwendet {0} Platzhalter.", "Şablon eklendi. {0} yer tutucu kullanıyor.");
+            a("The template was added, but these placeholders are not known and will stay visible: {0}",
+                "Predložak je dodan, ali ove oznake nisu poznate i ostat će vidljive: {0}", "Predložak je dodan, ali ove oznake nisu poznate i ostat će vidljive: {0}",
+                "Šablon je dodat, ali ove oznake nisu poznate i ostaće vidljive: {0}", "Die Vorlage wurde hinzugefügt, aber diese Platzhalter sind unbekannt und bleiben sichtbar: {0}",
+                "Şablon eklendi ancak bu yer tutucular bilinmiyor ve görünür kalacak: {0}");
+            a("Could not add the template: {0}", "Predložak nije moguće dodati: {0}", "Predložak nije moguće dodati: {0}", "Šablon nije moguće dodati: {0}",
+                "Die Vorlage konnte nicht hinzugefügt werden: {0}", "Şablon eklenemedi: {0}");
+            a("Delete the template \"{0}\"? Documents already made from it stay where they are.",
+                "Obrisati predložak \"{0}\"? Dokumenti već napravljeni iz njega ostaju gdje jesu.", "Obrisati predložak \"{0}\"? Dokumenti već izrađeni iz njega ostaju gdje jesu.",
+                "Obrisati šablon \"{0}\"? Dokumenti već napravljeni iz njega ostaju gde jesu.", "Die Vorlage \"{0}\" löschen? Bereits erstellte Dokumente bleiben erhalten.",
+                "\"{0}\" şablonu silinsin mi? Bununla oluşturulmuş belgeler olduğu yerde kalır.");
+            a("Placeholders", "Oznake", "Oznake", "Oznake", "Platzhalter", "Yer tutucular");
+            a("Write a placeholder in your Word or Excel file like {{Client.LegalName}}. A table row (or sheet row) with {{Task.Date}}, {{Task.Description}} or {{Task.Hours}} is repeated for every entry.",
+                "Napišite oznaku u svojoj Word ili Excel datoteci, na primjer {{Client.LegalName}}. Red tabele (ili lista) s {{Task.Date}}, {{Task.Description}} ili {{Task.Hours}} ponavlja se za svaki unos.",
+                "Napišite oznaku u svojoj Word ili Excel datoteci, na primjer {{Client.LegalName}}. Redak tablice (ili lista) s {{Task.Date}}, {{Task.Description}} ili {{Task.Hours}} ponavlja se za svaki unos.",
+                "Napišite oznaku u svojoj Word ili Excel datoteci, na primer {{Client.LegalName}}. Red tabele (ili lista) sa {{Task.Date}}, {{Task.Description}} ili {{Task.Hours}} ponavlja se za svaki unos.",
+                "Schreiben Sie einen Platzhalter in Ihre Word- oder Excel-Datei, z. B. {{Client.LegalName}}. Eine Tabellenzeile (oder Tabellenblattzeile) mit {{Task.Date}}, {{Task.Description}} oder {{Task.Hours}} wird für jeden Eintrag wiederholt.",
+                "Word veya Excel dosyanıza {{Client.LegalName}} gibi bir yer tutucu yazın. {{Task.Date}}, {{Task.Description}} veya {{Task.Hours}} içeren bir tablo satırı (veya sayfa satırı) her kayıt için tekrarlanır.");
+            a("A template must be a Word (.docx) or Excel (.xlsx) file.", "Predložak mora biti Word (.docx) ili Excel (.xlsx) datoteka.", "Predložak mora biti Word (.docx) ili Excel (.xlsx) datoteka.",
+                "Šablon mora biti Word (.docx) ili Excel (.xlsx) datoteka.", "Eine Vorlage muss eine Word-Datei (.docx) oder Excel-Datei (.xlsx) sein.", "Şablon bir Word (.docx) veya Excel (.xlsx) dosyası olmalı.");
+            a("The template is larger than 10 MB.", "Predložak je veći od 10 MB.", "Predložak je veći od 10 MB.", "Šablon je veći od 10 MB.", "Die Vorlage ist größer als 10 MB.", "Şablon 10 MB'tan büyük.");
+            a("A template needs a name.", "Predložak mora imati naziv.", "Predložak mora imati naziv.", "Šablon mora imati naziv.", "Eine Vorlage braucht einen Namen.", "Şablonun bir adı olmalı.");
+            a("Template not found.", "Predložak nije pronađen.", "Predložak nije pronađen.", "Šablon nije pronađen.", "Vorlage nicht gefunden.", "Şablon bulunamadı.");
+
+            a("Your template files for this client, filled in with the month and client selected above.",
+                "Vaše datoteke predložaka za ovog klijenta, popunjene za mjesec i klijenta odabrane iznad.", "Vaše datoteke predložaka za ovog klijenta, popunjene za mjesec i klijenta odabrane iznad.",
+                "Vaše datoteke šablona za ovog klijenta, popunjene za mesec i klijenta izabrane iznad.", "Ihre Vorlagendateien für diesen Kunden, ausgefüllt mit dem oben gewählten Monat und Kunden.",
+                "Bu müşteri için şablon dosyalarınız; yukarıda seçilen ay ve müşteriyle doldurulur.");
+            a("Generate selected documents", "Napravi odabrane dokumente", "Izradi odabrane dokumente", "Napravi izabrane dokumente", "Ausgewählte Dokumente erstellen", "Seçili belgeleri oluştur");
+            a("Tick at least one document to generate.", "Označite barem jedan dokument za izradu.", "Označite barem jedan dokument za izradu.", "Označite bar jedan dokument za izradu.",
+                "Wählen Sie mindestens ein Dokument aus.", "Oluşturmak için en az bir belge işaretleyin.");
+            a("Enter an invoice number in the Invoice section; a selected document uses it.",
+                "Unesite broj računa u odjeljku Račun; odabrani dokument ga koristi.", "Unesite broj računa u odjeljku Račun; odabrani dokument ga koristi.",
+                "Unesite broj računa u odeljku Račun; izabrani dokument ga koristi.", "Geben Sie im Bereich Rechnung eine Rechnungsnummer ein; ein ausgewähltes Dokument verwendet sie.",
+                "Fatura bölümüne bir fatura numarası girin; seçili bir belge onu kullanıyor.");
+            a("Created:", "Napravljeno:", "Izrađeno:", "Napravljeno:", "Erstellt:", "Oluşturuldu:");
+            a("These placeholders have no value and were left in the files: {0}", "Ove oznake nemaju vrijednost i ostavljene su u datotekama: {0}", "Ove oznake nemaju vrijednost i ostavljene su u datotekama: {0}",
+                "Ove oznake nemaju vrednost i ostavljene su u datotekama: {0}", "Diese Platzhalter haben keinen Wert und blieben in den Dateien stehen: {0}", "Bu yer tutucuların değeri yok ve dosyalarda bırakıldı: {0}");
+            a("Open it now?", "Otvoriti sada?", "Otvoriti sada?", "Otvoriti sada?", "Jetzt öffnen?", "Şimdi açılsın mı?");
+            a("Documents created", "Dokumenti napravljeni", "Dokumenti izrađeni", "Dokumenti napravljeni", "Dokumente erstellt", "Belgeler oluşturuldu");
+            a("Failed to create the documents: {0}", "Izrada dokumenata nije uspjela: {0}", "Izrada dokumenata nije uspjela: {0}", "Pravljenje dokumenata nije uspelo: {0}",
+                "Die Dokumente konnten nicht erstellt werden: {0}", "Belgeler oluşturulamadı: {0}");
+
+            // Help page: rates, templates, colours
+            a("Rates", "Cijene", "Cijene", "Cene", "Sätze", "Ücretler");
+            a("A contract can have an hourly rate. Reports then use it, with the client's currency, to show the amount of the month and to fill the invoice.",
+                "Ugovor može imati cijenu po satu. Izvještaji je tada koriste, uz valutu klijenta, za prikaz iznosa za mjesec i za popunjavanje računa.",
+                "Ugovor može imati cijenu po satu. Izvješća je tada koriste, uz valutu klijenta, za prikaz iznosa za mjesec i za popunjavanje računa.",
+                "Ugovor može imati cenu po satu. Izveštaji je tada koriste, uz valutu klijenta, za prikaz iznosa za mesec i za popunjavanje računa.",
+                "Ein Vertrag kann einen Stundensatz haben. Die Berichte verwenden ihn dann mit der Währung des Kunden, um den Monatsbetrag anzuzeigen und die Rechnung auszufüllen.",
+                "Bir sözleşmenin saatlik ücreti olabilir. Raporlar bunu müşterinin para birimiyle birlikte ayın tutarını göstermek ve faturayı doldurmak için kullanır.");
+            a("Your own templates", "Vaši predlošci", "Vaši predlošci", "Vaši šabloni", "Ihre eigenen Vorlagen", "Kendi şablonlarınız");
+            a("Settings, Clients, Documents: add a Word or Excel file with placeholders such as {{Client.LegalName}}, {{TotalHours}} or {{InvoiceNumber}}. A table row or sheet row with {{Task.Date}}, {{Task.Description}} and {{Task.Hours}} is repeated for every entry. Reports then offers the file under Documents.",
+                "Postavke, Klijenti, Dokumenti: dodajte Word ili Excel datoteku s oznakama kao što su {{Client.LegalName}}, {{TotalHours}} ili {{InvoiceNumber}}. Red tabele ili lista s {{Task.Date}}, {{Task.Description}} i {{Task.Hours}} ponavlja se za svaki unos. Izvještaji zatim nude datoteku pod Dokumenti.",
+                "Postavke, Klijenti, Dokumenti: dodajte Word ili Excel datoteku s oznakama kao što su {{Client.LegalName}}, {{TotalHours}} ili {{InvoiceNumber}}. Redak tablice ili lista s {{Task.Date}}, {{Task.Description}} i {{Task.Hours}} ponavlja se za svaki unos. Izvješća zatim nude datoteku pod Dokumenti.",
+                "Podešavanja, Klijenti, Dokumenti: dodajte Word ili Excel datoteku sa oznakama kao što su {{Client.LegalName}}, {{TotalHours}} ili {{InvoiceNumber}}. Red tabele ili lista sa {{Task.Date}}, {{Task.Description}} i {{Task.Hours}} ponavlja se za svaki unos. Izveštaji zatim nude datoteku pod Dokumenti.",
+                "Einstellungen, Kunden, Dokumente: Fügen Sie eine Word- oder Excel-Datei mit Platzhaltern wie {{Client.LegalName}}, {{TotalHours}} oder {{InvoiceNumber}} hinzu. Eine Tabellen- oder Blattzeile mit {{Task.Date}}, {{Task.Description}} und {{Task.Hours}} wird für jeden Eintrag wiederholt. Die Berichte bieten die Datei dann unter Dokumente an.",
+                "Ayarlar, Müşteriler, Belgeler: {{Client.LegalName}}, {{TotalHours}} veya {{InvoiceNumber}} gibi yer tutucular içeren bir Word veya Excel dosyası ekleyin. {{Task.Date}}, {{Task.Description}} ve {{Task.Hours}} içeren bir tablo veya sayfa satırı her kayıt için tekrarlanır. Raporlar dosyayı daha sonra Belgeler altında sunar.");
+            a("Give a client a colour and a dot of that colour appears next to its entries in the week and list views.",
+                "Dajte klijentu boju i tačka te boje pojavljuje se pored njegovih unosa u sedmičnom prikazu i prikazu liste.",
+                "Dajte klijentu boju i točka te boje pojavljuje se pored njegovih unosa u tjednom prikazu i prikazu popisa.",
+                "Dajte klijentu boju i tačka te boje pojavljuje se pored njegovih unosa u nedeljnom prikazu i prikazu liste.",
+                "Geben Sie einem Kunden eine Farbe, und ein Punkt dieser Farbe erscheint neben seinen Einträgen in der Wochen- und Listenansicht.",
+                "Bir müşteriye renk verin; o renkte bir nokta, hafta ve liste görünümlerinde kayıtlarının yanında görünür.");
+
+            a("Contract number", "Broj ugovora", "Broj ugovora", "Broj ugovora", "Vertragsnummer", "Sözleşme numarası");
+            a("File name of the result", "Naziv rezultirajuće datoteke", "Naziv rezultirajuće datoteke", "Naziv rezultujuće datoteke", "Dateiname des Ergebnisses", "Sonuç dosyasının adı");
+            a("You can use {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}", "Možete koristiti {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}",
+                "Možete koristiti {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}", "Možete koristiti {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}",
+                "Sie können {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber} verwenden", "{Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber} kullanabilirsiniz");
+
             // Titles of the native file and folder dialogs
             a("Choose your signature image", "Odaberite sliku potpisa", "Odaberite sliku potpisa", "Izaberite sliku potpisa", "Unterschriftsbild auswählen", "İmza görselini seçin");
             a("Choose your stamp image", "Odaberite sliku pečata", "Odaberite sliku pečata", "Izaberite sliku pečata", "Stempelbild auswählen", "Kaşe görselini seçin");

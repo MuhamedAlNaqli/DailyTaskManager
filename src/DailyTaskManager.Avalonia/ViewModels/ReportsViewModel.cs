@@ -35,6 +35,25 @@ public class MonthChoice
     public override string ToString() => Name;
 }
 
+/// <summary>A template file offered for generation, with its checkbox</summary>
+public partial class TemplateChoice : ObservableObject
+{
+    public TemplateChoice(DocumentTemplate template)
+    {
+        Template = template;
+        _isSelected = true;
+    }
+
+    public DocumentTemplate Template { get; }
+
+    public string Name => Template.Name;
+
+    public string Format => Template.Format;
+
+    [ObservableProperty]
+    private bool _isSelected;
+}
+
 public partial class ReportsViewModel : ObservableObject, IDisposable
 {
     private const string RateKey = "Invoice.HourlyRate";
@@ -47,6 +66,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private readonly IExportService _exportService;
     private readonly ISettingsService _settingsService;
     private readonly IBusinessService _business;
+    private readonly IDocumentGenerator _generator;
     private readonly IPlatformService _platformService;
     private readonly IAuthenticationService _authService;
     private readonly DialogService _dialogService;
@@ -99,6 +119,26 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _paymentNote = "";
 
+    public ObservableCollection<TemplateChoice> Templates { get; } = new();
+
+    public bool HasTemplates => Templates.Count > 0;
+
+    private int? _templatesClientId;
+
+    [ObservableProperty]
+    private string _rateHint = "";
+
+    [ObservableProperty]
+    private string _amountSummary = "";
+
+    public bool HasRateHint => RateHint.Length > 0;
+
+    public bool HasAmountSummary => AmountSummary.Length > 0;
+
+    partial void OnRateHintChanged(string value) => OnPropertyChanged(nameof(HasRateHint));
+
+    partial void OnAmountSummaryChanged(string value) => OnPropertyChanged(nameof(HasAmountSummary));
+
     [ObservableProperty]
     private string _netText = "0,00";
 
@@ -113,6 +153,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         IExportService exportService,
         ISettingsService settingsService,
         IBusinessService business,
+        IDocumentGenerator generator,
         IPlatformService platformService,
         IAuthenticationService authService,
         DialogService dialogService,
@@ -122,6 +163,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         _exportService = exportService;
         _settingsService = settingsService;
         _business = business;
+        _generator = generator;
         _platformService = platformService;
         _authService = authService;
         _dialogService = dialogService;
@@ -209,9 +251,14 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         PaymentNote = PaymentNote
     };
 
+    partial void OnCurrencyChanged(string value) => UpdateAmounts();
+
     private void UpdateAmounts()
     {
         var invoice = BuildInvoice();
+        AmountSummary = HourlyRate > 0 && TotalHours > 0
+            ? Loc.F("Net amount for the month: {0} {1}", Money(invoice.NetAmount), invoice.Currency)
+            : "";
         NetText = Money(invoice.NetAmount);
         VatText = Money(invoice.VatAmount);
         GrossText = Money(invoice.GrossAmount);
@@ -241,10 +288,61 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                 ? "No entries for this selection"
                 : (EntryCount == 1 ? Loc.T("1 entry") : Loc.F("{0} entries", EntryCount)) + ", " +
                   (DaysWorked == 1 ? Loc.F("{0}h over 1 day", $"{TotalHours:0.0}") : Loc.F("{0}h over {1} days", $"{TotalHours:0.0}", DaysWorked));
+
+            await ApplyClientBillingAsync(version);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading report summary");
+        }
+    }
+
+    /// <summary>
+    /// Takes the currency of the selected client (or of the only client) and the rate of the contract valid in the
+    /// selected month. A client without a rate keeps what was typed.
+    /// </summary>
+    private async Task ApplyClientBillingAsync(int version)
+    {
+        var all = await _business.GetClientsAsync();
+        Client? client = SelectedClient?.Id > 0
+            ? all.FirstOrDefault(c => c.Id == SelectedClient.Id)
+            : all.Count(c => c.IsActive) == 1 ? all.First(c => c.IsActive) : null;
+        if (client == null)
+        {
+            if (version == _loadVersion)
+            {
+                RateHint = "";
+                Templates.Clear();
+                _templatesClientId = null;
+                OnPropertyChanged(nameof(HasTemplates));
+            }
+
+            return;
+        }
+
+        var contract = await _business.GetContractOnAsync(client.Id, SelectedMonth?.To ?? DateTime.Today);
+        if (version != _loadVersion) return;
+
+        if (_templatesClientId != client.Id)
+        {
+            var templates = (await _business.GetTemplatesAsync(client.Id)).Where(t => t.IsActive).ToList();
+            if (version != _loadVersion) return;
+
+            Templates.Clear();
+            foreach (var template in templates) Templates.Add(new TemplateChoice(template));
+            _templatesClientId = client.Id;
+            OnPropertyChanged(nameof(HasTemplates));
+        }
+
+        Currency = client.Currency;
+        if (contract?.HourlyRate is > 0)
+        {
+            HourlyRate = contract.HourlyRate.Value;
+            RateHint = Loc.F("Rate from contract {0}", contract.ContractNumber);
+        }
+        else
+        {
+            RateHint = contract == null ? Loc.T("No contract is valid in this month") : "";
         }
     }
 
@@ -371,6 +469,102 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         var folder = await FolderAsync(_settingsService.GetExcelExportPathAsync);
         return await _exportService.ExportTasksToExcelAsync(tasks, Path.Combine(folder, $"Pregled utrošenih sati - MA - {FileSuffix()}.xlsx"));
     });
+
+    [RelayCommand]
+    private async Task GenerateDocumentsAsync()
+    {
+        if (IsBusy) return;
+        var chosen = Templates.Where(t => t.IsSelected).Select(t => t.Template).ToList();
+        if (chosen.Count == 0)
+        {
+            await _dialogService.ShowInfoDialogAsync("Documents", "Tick at least one document to generate.");
+            return;
+        }
+
+        if (_templatesClientId is not int clientId) return;
+
+        try
+        {
+            IsBusy = true;
+
+            // A template that asks for the invoice number needs one
+            var needsInvoiceNumber = false;
+            foreach (var template in chosen)
+            {
+                var found = await _generator.ScanPlaceholdersAsync(template.TemplatePath);
+                if (found.Contains("InvoiceNumber", StringComparer.OrdinalIgnoreCase)) needsInvoiceNumber = true;
+            }
+
+            if (needsInvoiceNumber && string.IsNullOrWhiteSpace(InvoiceNumber))
+            {
+                await _dialogService.ShowInfoDialogAsync("Invoice", "Enter an invoice number in the Invoice section; a selected document uses it.");
+                return;
+            }
+
+            var tasks = await LoadEntriesOrWarnAsync();
+            if (tasks == null) return;
+
+            var issued = InvoiceNumber.Trim();
+            var results = new List<GeneratedDocument>();
+            foreach (var template in chosen)
+            {
+                var folder = await FolderAsync(template.Format == "xlsx" ? _settingsService.GetExcelExportPathAsync : _settingsService.GetWordExportPathAsync);
+                results.Add(await _generator.GenerateAsync(template, new DocumentRequest
+                {
+                    ClientId = clientId,
+                    PeriodFrom = SelectedMonth?.From ?? DateTime.Today,
+                    PeriodTo = SelectedMonth?.To ?? DateTime.Today,
+                    Tasks = tasks,
+                    InvoiceNumber = issued,
+                    IssueDate = (IssueDate ?? DateTimeOffset.Now).Date,
+                    HourlyRate = HourlyRate > 0 ? HourlyRate : null,
+                    Currency = Currency,
+                    VatPercent = VatPercent,
+                    Folder = folder
+                }));
+            }
+
+            var message = new System.Text.StringBuilder();
+            message.AppendLine(Loc.T("Created:"));
+            foreach (var result in results) message.AppendLine(result.Path);
+
+            var unknown = results.SelectMany(r => r.UnknownPlaceholders).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (unknown.Count > 0)
+            {
+                message.AppendLine();
+                message.AppendLine(Loc.F("These placeholders have no value and were left in the files: {0}", string.Join(", ", unknown)));
+            }
+
+            if (results.Count == 1)
+            {
+                message.AppendLine();
+                message.Append(Loc.T("Open it now?"));
+                if (await _dialogService.ShowConfirmDialogAsync("Documents created", message.ToString()))
+                    await _platformService.OpenFileWithDefaultAppAsync(results[0].Path);
+            }
+            else
+            {
+                await _dialogService.ShowInfoDialogAsync("Documents created", message.ToString());
+            }
+
+            // Move on to the next number when the suggested one was used
+            if (needsInvoiceNumber && issued == ComposeInvoiceNumber(_nextInvoiceNumber))
+            {
+                _nextInvoiceNumber++;
+                await _settingsService.SetSettingAsync(NextNumberKey, _nextInvoiceNumber.ToString(CultureInfo.InvariantCulture));
+                InvoiceNumber = ComposeInvoiceNumber(_nextInvoiceNumber);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating documents");
+            await _dialogService.ShowErrorDialogAsync("Report Error", $"Failed to create the documents: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     [RelayCommand]
     private async Task CreateInvoiceAsync()

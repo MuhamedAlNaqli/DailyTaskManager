@@ -39,7 +39,7 @@ class Program
             // The Windows task scheduler starts this exe with --reminder-check; that run shows a notification
             // and exits without ever creating a window
             var reminderRun = ReminderRunner.IsReminderRun(args);
-            if (!reminderRun && !SingleInstance.TryAcquire())
+            if (!reminderRun && !AllowSecondInstance() && !SingleInstance.TryAcquire())
             {
                 SingleInstance.ActivateExisting();
                 return;
@@ -76,6 +76,16 @@ class Program
 
     /// <summary>Completes when the database schema is ready; faults when initialization failed</summary>
     public static Task DatabaseReady { get; private set; } = Task.CompletedTask;
+
+        /// <summary>Debug builds only: lets a development build run next to an installed copy (set DTM_ALLOW_MULTIPLE=1)</summary>
+        private static bool AllowSecondInstance()
+        {
+#if DEBUG
+            return Environment.GetEnvironmentVariable("DTM_ALLOW_MULTIPLE") == "1";
+#else
+            return false;
+#endif
+        }
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
@@ -135,6 +145,7 @@ class Program
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IBusinessService, BusinessService>();
+                services.AddSingleton<IDocumentGenerator, DocumentGenerator>();
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
                 services.AddSingleton<IPlatformService, PlatformService>();

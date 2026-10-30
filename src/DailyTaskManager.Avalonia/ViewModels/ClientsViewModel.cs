@@ -36,12 +36,25 @@ public class ContractRow
     public string Rate { get; }
 }
 
+/// <summary>A tag colour a client can have</summary>
+public record ColorChoice(string Name, string Hex)
+{
+    public static readonly IReadOnlyList<ColorChoice> All = new[]
+    {
+        new ColorChoice("No colour", ""), new ColorChoice("Teal", "#0F766E"), new ColorChoice("Blue", "#2563EB"),
+        new ColorChoice("Purple", "#7C3AED"), new ColorChoice("Pink", "#DB2777"), new ColorChoice("Red", "#DC2626"),
+        new ColorChoice("Orange", "#EA580C"), new ColorChoice("Amber", "#CA8A04"), new ColorChoice("Green", "#16A34A"),
+        new ColorChoice("Grey", "#6B7280")
+    };
+}
+
 /// <summary>"Clients" in Settings: legal details, contracts and export folder of each client</summary>
 public partial class ClientsViewModel : ObservableObject
 {
     public static readonly string[] CurrencyCodes = { "BAM", "EUR", "USD", "GBP", "CHF", "RSD", "TRY" };
 
     private readonly IBusinessService _business;
+    private readonly IDocumentGenerator _generator;
     private readonly IExportService _exportService;
     private readonly IPlatformService _platformService;
     private readonly DialogService _dialogService;
@@ -71,6 +84,10 @@ public partial class ClientsViewModel : ObservableObject
     [ObservableProperty] private string _exportFolder = "";
     [ObservableProperty] private bool _isActive = true;
 
+    public IReadOnlyList<ColorChoice> Colors => ColorChoice.All;
+
+    [ObservableProperty] private ColorChoice? _selectedColor = ColorChoice.All[0];
+
     [ObservableProperty] private ContractRow? _selectedContract;
     [ObservableProperty] private string _contractNumber = "";
     [ObservableProperty] private string _contractRate = "";
@@ -78,6 +95,19 @@ public partial class ClientsViewModel : ObservableObject
     [ObservableProperty] private DateTimeOffset? _contractTo;
 
     [ObservableProperty] private bool _isBusy;
+
+    // Template files of the selected client
+    public ObservableCollection<DocumentTemplate> Templates { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
+    private DocumentTemplate? _selectedTemplate;
+
+    [ObservableProperty] private string _templateName = "";
+    [ObservableProperty] private string _templatePattern = DocumentTemplate.DefaultFileNamePattern;
+    [ObservableProperty] private bool _templateActive = true;
+
+    public bool HasSelectedTemplate => SelectedTemplate != null;
 
     public IReadOnlyList<string> Currencies => CurrencyCodes;
 
@@ -89,10 +119,11 @@ public partial class ClientsViewModel : ObservableObject
 
     public string EditorTitle => IsNewClient ? "New client" : SelectedClient?.Name ?? "";
 
-    public ClientsViewModel(IBusinessService business, IExportService exportService, IPlatformService platformService,
+    public ClientsViewModel(IBusinessService business, IDocumentGenerator generator, IExportService exportService, IPlatformService platformService,
         DialogService dialogService, ILogger<ClientsViewModel> logger)
     {
         _business = business;
+        _generator = generator;
         _exportService = exportService;
         _platformService = platformService;
         _dialogService = dialogService;
@@ -125,6 +156,7 @@ public partial class ClientsViewModel : ObservableObject
         IsNewClient = false;
         LoadEditor(value);
         _ = LoadContractsAsync(value.Id);
+        _ = LoadTemplatesAsync(value.Id);
     }
 
     private void LoadEditor(Client? client)
@@ -140,11 +172,14 @@ public partial class ClientsViewModel : ObservableObject
         Currency = client?.Currency ?? "BAM";
         ExportFolder = client?.ExportFolder ?? "";
         IsActive = client?.IsActive ?? true;
+        SelectedColor = ColorChoice.All.FirstOrDefault(c => string.Equals(c.Hex, client?.Color ?? "", StringComparison.OrdinalIgnoreCase)) ?? ColorChoice.All[0];
         _loadingEditor = false;
 
         if (client == null)
         {
             Contracts.Clear();
+            Templates.Clear();
+            SelectedTemplate = null;
             ClearContractEditor();
         }
     }
@@ -214,7 +249,8 @@ public partial class ClientsViewModel : ObservableObject
                 Notes = Notes,
                 Currency = Currency,
                 ExportFolder = ExportFolder,
-                IsActive = IsActive
+                IsActive = IsActive,
+                Color = SelectedColor?.Hex ?? ""
             });
 
             IsNewClient = false;
@@ -313,6 +349,116 @@ public partial class ClientsViewModel : ObservableObject
         var path = Path.Combine(Path.GetTempPath(), "DailyTaskManager_Preview.pdf");
         await exportService.ExportTasksToPdfAsync(sample, settings, path);
         await platformService.OpenFileWithDefaultAppAsync(path);
+    }
+
+    // ---- Template commands ------------------------------------------------------------------------------------
+
+    private static readonly Dictionary<string, List<string>> TemplateFiles = new()
+    {
+        ["Word and Excel files"] = new List<string> { "*.docx", "*.xlsx" }
+    };
+
+    private async Task LoadTemplatesAsync(int clientId, int? select = null)
+    {
+        try
+        {
+            var templates = await _business.GetTemplatesAsync(clientId);
+            Templates.Clear();
+            foreach (var template in templates) Templates.Add(template);
+            SelectedTemplate = Templates.FirstOrDefault(t => t.Id == select) ?? Templates.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not load templates");
+        }
+    }
+
+    partial void OnSelectedTemplateChanged(DocumentTemplate? value)
+    {
+        TemplateName = value?.Name ?? "";
+        TemplatePattern = value?.FileNamePattern ?? DocumentTemplate.DefaultFileNamePattern;
+        TemplateActive = value?.IsActive ?? true;
+    }
+
+    [RelayCommand]
+    private async Task AddTemplateAsync()
+    {
+        var client = SelectedClient;
+        if (client == null) return;
+
+        try
+        {
+            var path = await _platformService.ShowOpenFileDialogAsync(Loc.T("Choose a Word or Excel template"), TemplateFiles);
+            if (string.IsNullOrEmpty(path)) return;
+
+            IsBusy = true;
+            var added = await _business.AddTemplateAsync(client.Id, path);
+            await LoadTemplatesAsync(client.Id, added.Id);
+
+            var found = await _generator.ScanPlaceholdersAsync(added.TemplatePath);
+            var unknown = found.Where(f => !_generator.KnownPlaceholders.Contains(f, StringComparer.OrdinalIgnoreCase)).ToList();
+            await _dialogService.ShowInfoDialogAsync("Template added", unknown.Count == 0
+                ? (found.Count == 0 ? "The template was added, but it contains no {{placeholders}} yet." : Loc.F("The template was added. It uses {0} placeholders.", found.Count))
+                : Loc.F("The template was added, but these placeholders are not known and will stay visible: {0}", string.Join(", ", unknown)));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException)
+        {
+            await _dialogService.ShowErrorDialogAsync("Template", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding the template");
+            await _dialogService.ShowErrorDialogAsync("Error", $"Could not add the template: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveTemplateAsync()
+    {
+        var client = SelectedClient;
+        var template = SelectedTemplate;
+        if (client == null || template == null) return;
+
+        try
+        {
+            await _business.UpdateTemplateAsync(new DocumentTemplate
+            {
+                Id = template.Id, Name = TemplateName, FileNamePattern = TemplatePattern, IsActive = TemplateActive
+            });
+            await LoadTemplatesAsync(client.Id, template.Id);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            await _dialogService.ShowErrorDialogAsync("Template", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteTemplateAsync()
+    {
+        var client = SelectedClient;
+        var template = SelectedTemplate;
+        if (client == null || template == null) return;
+
+        var confirmed = await _dialogService.ShowConfirmDialogAsync("Delete template", $"Delete the template \"{template.Name}\"? Documents already made from it stay where they are.");
+        if (!confirmed) return;
+
+        await _business.DeleteTemplateAsync(template.Id);
+        await LoadTemplatesAsync(client.Id);
+    }
+
+    [RelayCommand]
+    private async Task ShowPlaceholdersAsync()
+    {
+        var lines = new System.Text.StringBuilder();
+        lines.AppendLine(Loc.T("Write a placeholder in your Word or Excel file like {{Client.LegalName}}. A table row (or sheet row) with {{Task.Date}}, {{Task.Description}} or {{Task.Hours}} is repeated for every entry."));
+        lines.AppendLine();
+        lines.Append(string.Join("   ", _generator.KnownPlaceholders.Select(p => "{{" + p + "}}")));
+        await _dialogService.ShowInfoDialogAsync("Placeholders", lines.ToString());
     }
 
     // ---- Contract commands ------------------------------------------------------------------------------------

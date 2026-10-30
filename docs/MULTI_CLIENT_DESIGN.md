@@ -1,6 +1,6 @@
 # Design: multiple clients and documents (consultant edition)
 
-Status: **phase 1 implemented** (business profile, clients, contracts, signature and stamp, migration); phases 2 to 4 are still to do. See section 8.
+Status: **phases 1 to 4 implemented** (see section 8 and the notes after it for where the implementation differs from the plan).
 
 ## 1. Why
 
@@ -192,9 +192,9 @@ Tests: a database with the current schema and realistic data is migrated and the
 | Phase | Result | Release |
 | --- | --- | --- |
 | 1 (done) | Business profile (with signature and stamp images) and extended clients with contracts, client management UI, migration. Documents still use the built-in layouts, now fed by the client and the contract, with signature and stamp placed. Per-client export folder and file names. | 4.0.0 |
-| 2 | Currencies, rates, amounts in Reports and in the documents. | 4.1.0 |
-| 3 | Placeholder templates for Word and Excel (accountant's invoice sheet included), invoice number prompt. | 4.2.0 |
-| 4 | PDF from templates, per-client colours and tags, polish, Help section. | 4.3.0 |
+| 2 (done) | Currencies, rates, amounts in Reports and in the documents. | 4.1.0 |
+| 3 (done) | Placeholder templates for Word and Excel (accountant's invoice sheet included), invoice number prompt. | 4.2.0 |
+| 4 (done) | PDF from templates, per-client colours and tags, polish, Help section. | 4.3.0 |
 
 Each phase ends with the usual full build, tests and real-UI verification. Phase 1 is the largest because it moves
 the data model; phases 2 to 4 build on it without schema surprises.
@@ -209,6 +209,21 @@ the data model; phases 2 to 4 build on it without schema surprises.
 - A rate typed as `30,5` or `30.5` is read as 30.50 in every interface language.
 - The per-client export folder applies to the work orders and the invoice of that client; the hours overview (Excel)
   follows the same rule.
+
+### Notes from the phase 2 to 4 implementation
+
+- **Rates (phase 2):** the contract valid in the selected month supplies the hourly rate, and the client supplies the
+  currency; Reports shows the net amount of the month and fills the invoice with both. A client without a rate keeps
+  the last typed rate. The work order and the hours overview still print hours only, so nothing a client sees changes.
+- **Templates (phase 3):** only the user's own `.docx` and `.xlsx` files are templates (`document_templates`). The
+  three built-in documents stay as fixed buttons in Reports, so the planned "standard documents" rows and the
+  `Kind`/`Source` columns were not needed. Placeholders: `{{Month}}`, `{{Client.LegalName}}`, `{{Contract.Number}}`,
+  `{{TotalHours}}`, `{{Amount}}`, `{{InvoiceNumber}}`, `{{Signature}}`, `{{Stamp}}` and the repeating
+  `{{Task.Date}}`, `{{Task.Description}}`, `{{Task.Hours}}`, `{{Task.Index}}`. A placeholder without a value stays in
+  the file and is listed in a message. The invoice number comes from the Invoice section of Reports.
+- **PDF (phase 4):** the built-in PDF layout is kept. Converting a filled Word template to PDF needs Word or a bundled
+  converter and stays a later option; until then a template result is a Word or Excel file.
+- **Tag colour (phase 4):** a client can have one of ten colours, shown as a dot next to its entries.
 
 ## 9. Direction for the next product step (not designed here)
 
