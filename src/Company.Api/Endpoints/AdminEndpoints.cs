@@ -41,6 +41,7 @@ public static class AdminEndpoints
             if (request.IsActive.HasValue) employee.IsActive = request.IsActive.Value;
             if (request.IsFinalApprover.HasValue) employee.IsFinalApprover = request.IsFinalApprover.Value;
             if (request.IsAdmin.HasValue) employee.IsAdmin = request.IsAdmin.Value;
+            if (request.IsFinance.HasValue) employee.IsFinance = request.IsFinance.Value;
             if (request.ActiveFrom.HasValue) employee.ActiveFrom = request.ActiveFrom;
             if (request.ActiveTo.HasValue) employee.ActiveTo = request.ActiveTo;
             if (request.SupervisorCode != null) employee.SupervisorCode = Clear(request.SupervisorCode);
@@ -200,11 +201,11 @@ public static class AdminEndpoints
     private static string? Clear(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string Describe(Employee e) =>
-        $"name={e.Name}, active={e.IsActive}, supervisor={e.SupervisorCode}, final={e.IsFinalApprover}, designated={e.DesignatedApproverCode}, admin={e.IsAdmin}";
+        $"name={e.Name}, active={e.IsActive}, supervisor={e.SupervisorCode}, final={e.IsFinalApprover}, designated={e.DesignatedApproverCode}, admin={e.IsAdmin}, finance={e.IsFinance}";
 
     private static EmployeeDto ToDto(Employee e) => new(
         e.Code, e.Name, e.IsActive, e.SupervisorCode, e.IsFinalApprover, e.DesignatedApproverCode, e.IsAdmin, e.ActiveFrom, e.ActiveTo,
-        e.Accounts.Select(a => a.Account).OrderBy(a => a).ToList());
+        e.Accounts.Select(a => a.Account).OrderBy(a => a).ToList(), e.IsFinance);
 
     private static ImportPreviewDto ToDto(EmployeeImportPreview preview) => new(
         preview.Rows.Select(r => new ImportRowDto(

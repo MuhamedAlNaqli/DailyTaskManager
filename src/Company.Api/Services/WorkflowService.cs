@@ -122,7 +122,7 @@ public sealed class WorkflowService
 
     // ---- Helpers ---------------------------------------------------------------------------------------------------
 
-    private async Task<MonthSheet> FindForReviewAsync(string viewerCode, string ownerCode, int year, int month)
+    internal async Task<MonthSheet> FindForReviewAsync(string viewerCode, string ownerCode, int year, int month)
     {
         var sheet = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
             .FirstOrDefaultAsync(s => s.EmployeeCode == ownerCode && s.Year == year && s.Month == month);

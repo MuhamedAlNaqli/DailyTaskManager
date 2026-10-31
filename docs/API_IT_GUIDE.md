@@ -2,7 +2,7 @@
 
 This guide is for whoever runs the server of the employee timesheet API (`src/Company.Api`). It covers what is needed,
 how to configure sign-in, and how to test it before any employee uses it. Status: the sign-in, employee administration,
-holidays and audit are implemented; month entry, submission, approval and reminders work; the printed sheet comes in the next step.
+holidays and audit are implemented; month entry, submission, approval, reminders and the printed sheet work; database migrations are still to come.
 
 ## 1. What is needed
 
@@ -74,7 +74,7 @@ With `Both`, a request with a bearer token is validated as Entra and every other
 2. The administrator signs in (the desktop app or `curl` as above) and imports the employee list (a preview shows
    errors and warnings first), then links accounts: by an attribute if the company has one, by a name-matching
    preview, or from a small CSV.
-3. The administrator sets "reports to" for everyone, flags the lawyer as final approver, and gives the person at the top of
+3. The administrator sets "reports to" for everyone, flags the lawyer as final approver, flags the people of finance (they receive the approved timesheets of everybody as an Excel or PDF sheet), and gives the person at the top of
    the chart a designated approver. The server refuses a chart where someone would be their own supervisor.
 4. The administrator enters the state holidays of the year; religious holidays are marked per employee.
 
@@ -98,6 +98,6 @@ is refused except for the local computer.
 
 ## 8. Not yet implemented
 
-The printed sheet is built in the next step (month entries, validation, submission, approval and reminders already work);
+Everything of the timesheet works (entries, validation, submission, approval, reminders, printed sheet);
 see `docs/EMPLOYEE_TIMESHEET_FEASIBILITY.md` section 10. Database migrations will replace the
 automatic table creation before the first production install.

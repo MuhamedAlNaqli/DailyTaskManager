@@ -29,6 +29,7 @@ builder.Services.AddScoped<ChartService>();
 builder.Services.AddScoped<TimesheetService>();
 builder.Services.AddScoped<WorkflowService>();
 builder.Services.AddScoped<ReminderService>();
+builder.Services.AddScoped<PrintService>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 
 var app = builder.Build();

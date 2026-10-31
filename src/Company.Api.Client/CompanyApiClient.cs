@@ -18,6 +18,9 @@ public sealed class ApiException : Exception
     public string Code { get; }
 }
 
+/// <summary>A file the server produced (the printed sheet)</summary>
+public sealed record DownloadedFile(string FileName, byte[] Bytes);
+
 /// <summary>
 /// The company API for the desktop app. It carries no state: sign-in is whatever the <see cref="HttpClient"/> does (for
 /// Windows sign-in, the default credentials of the user).
@@ -114,11 +117,35 @@ public sealed class CompanyApiClient
     /// <summary>What is due for the signed-in person today (submit, fix a returned sheet, approve)</summary>
     public Task<RemindersDto> GetRemindersAsync(CancellationToken ct = default) => GetAsync<RemindersDto>("/api/reminders", ct);
 
+    // ---- Printed sheet -----------------------------------------------------------------------------------------------------
+
+    /// <summary>The caller's own month in the layout of the current sheet; format is "xlsx" or "pdf"</summary>
+    public Task<DownloadedFile> GetPrintAsync(int year, int month, string format, CancellationToken ct = default) =>
+        DownloadAsync($"{Sheet(year, month)}/print/{format}", ct);
+
+    public Task<DownloadedFile> GetReviewPrintAsync(string code, int year, int month, string format, CancellationToken ct = default) =>
+        DownloadAsync($"{Review(code, year, month)}/print/{format}", ct);
+
+    /// <summary>For finance and the administrator: every approved timesheet of the month on one printed sheet</summary>
+    public Task<DownloadedFile> GetApprovedExportAsync(int year, int month, string format, CancellationToken ct = default) =>
+        DownloadAsync($"/api/export/{year}/{month}/{format}", ct);
+
     // ---- Plumbing --------------------------------------------------------------------------------------------------------
 
     private Task<T> GetAsync<T>(string url, CancellationToken ct) => SendAsync<T>(HttpMethod.Get, url, null, ct);
 
-    private async Task<T> SendAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct)
+    private Task<DownloadedFile> DownloadAsync(string url, CancellationToken ct) =>
+        SendCoreAsync(HttpMethod.Get, url, null, async response =>
+        {
+            var name = response.Content.Headers.ContentDisposition?.FileNameStar ?? response.Content.Headers.ContentDisposition?.FileName ?? "sihtarica";
+            return new DownloadedFile(name.Trim('"'), await response.Content.ReadAsByteArrayAsync(ct));
+        }, ct);
+
+    private Task<T> SendAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct) =>
+        SendCoreAsync(method, url, body, async response =>
+            await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct) ?? throw new ApiException(response.StatusCode, "empty", "The server sent an empty answer."), ct);
+
+    private async Task<T> SendCoreAsync<T>(HttpMethod method, string url, object? body, Func<HttpResponseMessage, Task<T>> read, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, url);
         if (body != null) request.Content = JsonContent.Create(body, body.GetType());
@@ -139,11 +166,7 @@ public sealed class CompanyApiClient
 
         using (response)
         {
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct);
-                return result ?? throw new ApiException(response.StatusCode, "empty", "The server sent an empty answer.");
-            }
+            if (response.IsSuccessStatusCode) return await read(response);
 
             throw await ToExceptionAsync(response, ct);
         }

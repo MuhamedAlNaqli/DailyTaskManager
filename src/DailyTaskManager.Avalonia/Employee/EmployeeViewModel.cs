@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Company.Api.Client;
 using Company.Api.Contracts;
 using DailyTaskManager.Avalonia.Services;
+using DailyTaskManager.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Timesheet.Domain;
 
@@ -163,6 +164,7 @@ public partial class EmployeeViewModel : ObservableObject
 {
     private readonly CompanyApiClient _client;
     private readonly DialogService _dialogService;
+    private readonly IPlatformService _platform;
     private readonly ILogger<EmployeeViewModel> _logger;
     private SheetDto? _sheet;
 
@@ -187,6 +189,9 @@ public partial class EmployeeViewModel : ObservableObject
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private bool _fundOk;
     [ObservableProperty] private string _infoText = "";
+
+    /// <summary>Finance and the administrator may print the approved timesheets of everybody</summary>
+    [ObservableProperty] private bool _isFinance;
 
     // Submission and approval
     [ObservableProperty] private bool _canSubmit;
@@ -259,10 +264,11 @@ public partial class EmployeeViewModel : ObservableObject
 
     partial void OnErrorTextChanged(string value) => OnPropertyChanged(nameof(HasError));
 
-    public EmployeeViewModel(CompanyApiClient client, DialogService dialogService, ILogger<EmployeeViewModel> logger)
+    public EmployeeViewModel(CompanyApiClient client, DialogService dialogService, IPlatformService platform, ILogger<EmployeeViewModel> logger)
     {
         _client = client;
         _dialogService = dialogService;
+        _platform = platform;
         _logger = logger;
         MonthTitle = EmployeeFormat.Month(Year, Month);
     }
@@ -278,6 +284,7 @@ public partial class EmployeeViewModel : ObservableObject
             {
                 var me = await _client.GetMeAsync();
                 WhoText = $"{me.Name} · {me.Code}";
+                IsFinance = me.IsFinance || me.IsAdmin;
             }
 
             return await LoadCurrentAsync();
@@ -543,6 +550,55 @@ public partial class EmployeeViewModel : ObservableObject
     {
         var types = _sheet!.Days.ToDictionary(d => d.Date, d => Enum.Parse<DayType>(d.Type));
         return date => types.TryGetValue(date, out var type) ? type : (WorkCalendar.IsWeekend(date) ? DayType.Weekend : DayType.Working);
+    }
+
+    // ---- Printed sheet ---------------------------------------------------------------------------------------------
+
+    /// <summary>Prints the month on screen (the own sheet, or the one opened for approval) in the layout of the current Excel sheet</summary>
+    [RelayCommand]
+    private Task PrintAsync(string? format) => SaveFileAsync(format, f => _reviewCode == null
+        ? _client.GetPrintAsync(Year, Month, f)
+        : _client.GetReviewPrintAsync(_reviewCode, Year, Month, f));
+
+    /// <summary>The approved timesheets of everybody for the month on screen, for the calculation of salaries</summary>
+    [RelayCommand]
+    private Task ExportApprovedAsync(string? format) => SaveFileAsync(format, f => _client.GetApprovedExportAsync(Year, Month, f));
+
+    private async Task SaveFileAsync(string? format, Func<string, Task<DownloadedFile>> download)
+    {
+        if (IsBusy) return;
+        format = string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase) ? "pdf" : "xlsx";
+
+        try
+        {
+            IsBusy = true;
+            ErrorText = "";
+            InfoText = "";
+            var file = await download(format);
+
+            var types = format == "pdf"
+                ? new Dictionary<string, List<string>> { ["PDF"] = new() { "pdf" } }
+                : new Dictionary<string, List<string>> { ["Excel"] = new() { "xlsx" } };
+            var path = await _platform.ShowSaveFileDialogAsync("Sačuvaj šihtaricu", file.FileName, types);
+            if (path == null) return;
+
+            await System.IO.File.WriteAllBytesAsync(path, file.Bytes);
+            InfoText = $"Sačuvano: {path}";
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(ex, "The printed sheet was refused ({Code})", ex.Code);
+            ErrorText = ex.Code == "no-approved-sheets" ? "Za ovaj mjesec još nijedna šihtarica nije odobrena." : ex.Message;
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "The printed sheet could not be saved");
+            ErrorText = "Datoteka nije sačuvana: " + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     // ---- Submission ------------------------------------------------------------------------------------------------

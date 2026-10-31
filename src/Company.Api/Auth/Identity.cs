@@ -22,6 +22,8 @@ public static class Roles
     public const string Approver = "Approver";
 
     public const string FinalApprover = "FinalApprover";
+
+    public const string Finance = "Finance";
 }
 
 public static class Identities
@@ -31,6 +33,7 @@ public static class Identities
 
     public const string RegisteredPolicy = "Registered";
     public const string AdminPolicy = "Admin";
+    public const string FinancePolicy = "Finance";
 
     /// <summary>
     /// The names a caller is known by: the Windows name (DOMAIN\user), the user principal name, an Entra name or the
@@ -76,6 +79,7 @@ public sealed class EmployeeClaimsTransformation : IClaimsTransformation
                 identity.AddClaim(new Claim(Identities.EmployeeCodeClaim, employee.Code));
                 if (employee.IsAdmin) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Admin));
                 if (employee.IsFinalApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.FinalApprover));
+                if (employee.IsFinance) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Finance));
                 if (await _db.Employees.AnyAsync(e => e.SupervisorCode == employee.Code || e.DesignatedApproverCode == employee.Code))
                     identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Approver));
             }
@@ -97,6 +101,7 @@ public static class AuthorizationSetup
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
             options.AddPolicy(Identities.RegisteredPolicy, p => p.RequireAuthenticatedUser().RequireClaim(Identities.EmployeeCodeClaim));
             options.AddPolicy(Identities.AdminPolicy, p => p.RequireAuthenticatedUser().RequireClaim(Identities.EmployeeCodeClaim).RequireRole(Roles.Admin));
+            options.AddPolicy(Identities.FinancePolicy, p => p.RequireAuthenticatedUser().RequireClaim(Identities.EmployeeCodeClaim).RequireRole(Roles.Admin, Roles.Finance));
         });
     }
 }

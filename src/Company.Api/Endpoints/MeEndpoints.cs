@@ -45,7 +45,8 @@ public static class MeEndpoints
                 employee.IsFinalApprover,
                 employee.SupervisorCode,
                 outcome.Chain?.Approvers ?? Array.Empty<string>(),
-                mode.ToString()));
+                mode.ToString(),
+                employee.IsFinance));
         });
 
         registered.MapGet("/timecodes", () => Results.Ok(TimeCodes.All.Select(c => new TimeCodeDto(

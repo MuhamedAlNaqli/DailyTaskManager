@@ -23,6 +23,9 @@ public class Employee
 
     public bool IsAdmin { get; set; }
 
+    /// <summary>Finance: receives the approved timesheets of everyone for the calculation (reads only)</summary>
+    public bool IsFinance { get; set; }
+
     public DateOnly? ActiveFrom { get; set; }
 
     public DateOnly? ActiveTo { get; set; }

@@ -1,6 +1,6 @@
 # Employee timesheets (šihtarica): feasibility and proposed design
 
-Status: **assessment for review; steps 1 to 5 (the domain library, the API skeleton, the employee mode with timesheet entry, submission with the approval workflow, and the reminders) are implemented**, see sections 12 to 16.
+Status: **assessment for review; steps 1 to 6 (the domain library, the API skeleton, the employee mode with timesheet entry, submission with the approval workflow, the reminders, and the printed sheet) are implemented in code**, see sections 12 to 17. What remains of step 6 is the pilot and the go-live, which need the company (section 17).
 
 Source: the analysis in `E:\Internal Projects\Timesheet` (`docs/timesheet-analysis`, 37 questions and answers,
 the sample sheet, the filling instruction, the employee list). The architecture file (S5) there is empty, and the
@@ -417,3 +417,47 @@ The reminder state file and the mode file were restored afterwards.
 **Not in this step:** email reminders (optional, section 4), a refresh of the banner while the window stays open (it
 refreshes on loading a month and on "Osvježi"), a screen for the administrator, and the printed sheet (step 6). The
 notification text is Bosnian only.
+
+## 17. Step 6 result: the printed sheet, and what the pilot needs
+
+**The printed sheet** is the current Excel sheet reproduced from the data, as an Excel file (opens and prints in the old
+layout) and as a PDF. It follows the sample of September 2026: landscape A4, the legend of the 22 codes in three colour
+groups, a header with weekday initials and day numbers, then a block of nine rows per employee (1010, 1024, 2010, 2020 to
+2025) with the code and the name merged over the block. Row colours come from the legend group (green, blue, orange, pink),
+weekend and holiday columns are dark red in every row. As on the current sheet, a whole-day absence is written into the
+regular-work row as its code (for example 1022), regular days as hours, overtime in its own row as decimal hours. Rows for
+2011 and 2012 appear only for employees who have such hours. A second sheet (page) is the overtime register of the sample:
+employee, date, start and end, total hours, short description. Four employees go on a page, so a block is never split.
+
+| Who | Endpoint | What |
+| --- | --- | --- |
+| The owner | `GET /api/timesheet/{y}/{m}/print/{xlsx or pdf}` | Their own month in any status; the status is printed on it ("nije odobreno" until approved) |
+| An approver of the chain | `GET /api/approvals/{code}/{y}/{m}/print/{xlsx or pdf}` | The sheet they decide on |
+| Finance, administrator | `GET /api/export/{y}/{m}/{xlsx or pdf}` | Every **approved** timesheet of the month on one sheet; 404 until something is approved; each export is written to the audit log |
+
+Finance is a new flag on the employee (`isFinance`, set by the administrator like the other roles). Finance sees only the
+approved sheets and approves nothing, which keeps the decision that finance receives approved data only.
+
+**Desktop app.** "Ispis Excel" and "Ispis PDF" on the own sheet and on a sheet opened for approval, and for finance
+and the administrator "Odobrene (Excel)" and "Odobrene (PDF)" for the month on screen; each asks where to save the file.
+
+**Verified:** 8 API tests (layout of the Excel file cell by cell: legend colours, the nine rows, absence code in the 1010
+row, weekend column red, overtime hours on the Saturday, the register; the PDF; page breaks between whole blocks; access
+rules; finance), and in the real app a save through the native dialog of both formats for the own sheet and the finance export,
+with approved sheets of several employees, rendered and compared with the sample. Two things the check found: the PDF library's built-in font has
+no č, so the PDF uses Arial (every Windows server has it; the file is about 1 MB because the font is embedded), and the
+toolbar now wraps when finance has more buttons.
+
+**Assumptions to confirm with the company:** state-holiday columns are dark red like weekends (the sample has no holiday
+column); there are no totals, as on the current sheet; there is no logo (the sample carries the company logo, which is not
+reproduced here); the nine-row block is kept, with the rows for 2011 and 2012 added only when used (the analysis says "9 to 10
+rows").
+
+### What the pilot and the go-live need (not code)
+
+1. **A server:** a Windows machine in the company network, .NET 8 runtime, PostgreSQL, an HTTPS certificate, a service account and its service principal name (`docs/API_IT_GUIDE.md`). Without them only the test sign-in and a development database can be shown.
+2. **Real sign-in check:** `curl --negotiate -u : https://host/api/auth/diagnostics` for two or three users, and the `Get-ADUser` output (to decide how accounts are linked to employees).
+3. **Database migrations** instead of the automatic table creation, before the first production install. This is the one open item in the code.
+4. **First data:** the employee list (import with preview), the links of accounts, "reports to" for everyone, the lawyer as final approver, the finance flag, the state holidays of the year, `Reminders:StartFrom` set to the first month in the app.
+5. **Parallel run:** one month on paper or in Excel and in the app side by side, compare the printed sheet of the app with the Excel sheet row by row, and let finance calculate from the exported sheet.
+6. **Open questions of section 10** that change behaviour: the approval-chain defaults, deputies, half-hour granularity, the rule for overtime on other absence days.

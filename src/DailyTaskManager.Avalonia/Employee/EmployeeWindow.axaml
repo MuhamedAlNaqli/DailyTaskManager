@@ -88,6 +88,12 @@
             <Button Name="EmpReturnButton" Command="{Binding ReturnCommand}" IsEnabled="{Binding CanAct}" Classes="secondary" Padding="14,9">
                 <TextBlock Text="Vrati na ispravku…"/>
             </Button>
+            <Button Name="EmpReviewExcelButton" Command="{Binding PrintCommand}" CommandParameter="xlsx" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Ispis Excel"/>
+            </Button>
+            <Button Name="EmpReviewPdfButton" Command="{Binding PrintCommand}" CommandParameter="pdf" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Ispis PDF"/>
+            </Button>
             <Button Name="EmpCloseReviewButton" Command="{Binding CloseReviewCommand}" Classes="secondary" Padding="14,9">
                 <TextBlock Text="Zatvori"/>
             </Button>
@@ -96,7 +102,7 @@
         </StackPanel>
 
         <!-- Toolbar -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowMineToolbar}">
+        <WrapPanel Grid.Row="3" Orientation="Horizontal" ItemSpacing="10" LineSpacing="8" IsVisible="{Binding ShowMineToolbar}">
             <Button Name="EmpFillButton" Command="{Binding FillStandardDaysCommand}" IsEnabled="{Binding IsEditable}" Classes="primary" Padding="14,9">
                 <TextBlock Text="Popuni standardne dane"/>
             </Button>
@@ -109,12 +115,25 @@
             <Button Name="EmpSubmitButton" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" Classes="primary" Padding="14,9">
                 <TextBlock Text="Predaj na odobravanje"/>
             </Button>
+            <Button Name="EmpExcelButton" Command="{Binding PrintCommand}" CommandParameter="xlsx" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Ispis Excel"/>
+            </Button>
+            <Button Name="EmpPdfButton" Command="{Binding PrintCommand}" CommandParameter="pdf" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Ispis PDF"/>
+            </Button>
+            <Button Name="EmpApprovedExcelButton" Command="{Binding ExportApprovedCommand}" CommandParameter="xlsx" IsVisible="{Binding IsFinance}" Classes="secondary" Padding="14,9"
+                    ToolTip.Tip="Sve odobrene šihtarice ovog mjeseca (za finansije)">
+                <TextBlock Text="Odobrene (Excel)"/>
+            </Button>
+            <Button Name="EmpApprovedPdfButton" Command="{Binding ExportApprovedCommand}" CommandParameter="pdf" IsVisible="{Binding IsFinance}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Odobrene (PDF)"/>
+            </Button>
             <Button Name="EmpRefreshButton" Command="{Binding LoadCommand}" Classes="secondary" Padding="14,9">
                 <TextBlock Text="Osvježi"/>
             </Button>
             <TextBlock Text="Šihtarica je zaključana i ne može se mijenjati." IsVisible="{Binding !IsEditable}" VerticalAlignment="Center"
                        Foreground="{DynamicResource AppTextMuted}"/>
-        </StackPanel>
+        </WrapPanel>
 
         <!-- Body -->
         <Grid Grid.Row="4" ColumnDefinitions="*,16,380" IsVisible="{Binding IsConnected}">

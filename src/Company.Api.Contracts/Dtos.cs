@@ -10,7 +10,8 @@ public sealed record MeDto(
     bool IsFinalApprover,
     string? SupervisorCode,
     IReadOnlyList<string> ApprovalChain,
-    string AuthenticationMode);
+    string AuthenticationMode,
+    bool IsFinance = false);
 
 public sealed record EmployeeDto(
     string Code,
@@ -22,7 +23,8 @@ public sealed record EmployeeDto(
     bool IsAdmin,
     DateOnly? ActiveFrom,
     DateOnly? ActiveTo,
-    IReadOnlyList<string> Accounts);
+    IReadOnlyList<string> Accounts,
+    bool IsFinance = false);
 
 /// <summary>Changes to one employee made by the administrator. Null leaves a value as it is; an empty string clears a code.</summary>
 public sealed record UpdateEmployeeRequest(
@@ -33,7 +35,8 @@ public sealed record UpdateEmployeeRequest(
     string? DesignatedApproverCode,
     bool? IsAdmin,
     DateOnly? ActiveFrom,
-    DateOnly? ActiveTo);
+    DateOnly? ActiveTo,
+    bool? IsFinance = null);
 
 public sealed record CsvRequest(string Csv);
 
