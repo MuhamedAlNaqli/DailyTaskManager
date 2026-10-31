@@ -126,6 +126,10 @@ public sealed class CompanyApiClient
     public Task<DownloadedFile> GetReviewPrintAsync(string code, int year, int month, string format, CancellationToken ct = default) =>
         DownloadAsync($"{Review(code, year, month)}/print/{format}", ct);
 
+    /// <summary>The month of everybody the caller supervises on one printed sheet</summary>
+    public Task<DownloadedFile> GetTeamPrintAsync(int year, int month, string format, CancellationToken ct = default) =>
+        DownloadAsync($"/api/team/{year}/{month}/print/{format}", ct);
+
     /// <summary>For finance and the administrator: every approved timesheet of the month on one printed sheet</summary>
     public Task<DownloadedFile> GetApprovedExportAsync(int year, int month, string format, CancellationToken ct = default) =>
         DownloadAsync($"/api/export/{year}/{month}/{format}", ct);

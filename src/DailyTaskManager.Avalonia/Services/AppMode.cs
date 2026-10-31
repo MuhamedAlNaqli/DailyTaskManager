@@ -47,9 +47,15 @@ public static class AppMode
 
     public static bool IsEmployee => Current == Mode.Employee;
 
-    public static void Set(Mode mode)
+    /// <param name="persist">
+    /// True: the next start opens this mode directly (the user chose "remember me", or the last window was the consultant's).
+    /// False: only for this session; the next start shows the sign-in screen.
+    /// </param>
+    public static void Set(Mode mode, bool persist = true)
     {
         _current = mode;
+        if (!persist) return;
+
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(PreferencesPath)!);

@@ -70,6 +70,7 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Username} logged in successfully", Username);
+                AppMode.Set(Mode.Consultant);
                 await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
@@ -154,6 +155,7 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Email} logged in successfully via Google OAuth", oauthResult.Email);
+                AppMode.Set(Mode.Consultant);
                 await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
@@ -189,7 +191,8 @@ public partial class LoginViewModel : ObservableObject
         {
             if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && App.Current is App app)
             {
-                AppMode.Set(Mode.Employee);
+                // The next start goes straight to the employee window only when the user asked to be remembered
+                AppMode.Set(Mode.Employee, persist: RememberMe);
                 var current = desktop.MainWindow;
                 var window = app.CreateEmployeeWindow();
                 desktop.MainWindow = window;

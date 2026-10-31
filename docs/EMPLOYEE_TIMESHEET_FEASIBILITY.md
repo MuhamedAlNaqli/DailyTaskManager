@@ -491,3 +491,29 @@ again; nothing was in production yet.
 - **Screen for stored revisions:** the API returns each submitted revision; the app does not show them yet.
 - **Email reminders:** optional.
 - **Real Kerberos and Entra sign-in:** only testable with the company's domain or tenant; NTLM Windows sign-in was verified.
+
+### Trying it on one PC
+
+`tools/lab/lab.ps1` starts the API with a temporary database, sample people and timesheets, and the desktop app in employee mode
+signed in with your own Windows account: `-Role employee`, `-Role approver` or `-Role finance` chooses who you are, `-Stop`
+removes everything. The script itself acts as the other people through a second copy of the API that accepts a header.
+
+## 18. Changes after the first trial of the employee window
+
+| Remark | What was done |
+| --- | --- |
+| No minimise, resize or close | The window was 860 points high and centred, so on a screen with a working area of 816 points (a laptop, or a scaled display) its title bar was above the top edge. It is now 760 high, and on opening it is fitted to the working area of the screen and centred in it. |
+| Calendar instead of the list | A toggle (list or calendar) next to "Osvježi"; the choice is remembered. The calendar has the weeks Monday to Sunday, weekends and holidays tinted, the entries and overtime of each day, a badge for findings, today outlined; a click on a day opens it. |
+| Finance part | Removed from the app. The API still has it (`/api/export`, the finance flag) but nothing shows it. |
+| Supervisor's summary | "Ispis" has "Šihtarica tima" (Excel, PDF): the month of everybody who reports to the person (and of those for whom they are the designated approver), whatever the status; the status is printed under each name; an employee who has not opened the month appears as an empty draft. Available under "Za odobravanje" as well, for the month chosen there. API: `GET /api/team/{y}/{m}/print/{xlsx or pdf}`. |
+| No supervisor | A person with nobody above them has a chain of themselves alone: they submit, and approve their own timesheet (button "Odobri" in their own screen). Everybody else still cannot approve their own. The "no supervisor assigned" error is gone. |
+| Start screen | The sign-in screen is always shown, unless "remember me" was ticked. Employee sign-in is remembered only with that box ticked; a consultant sign-in always resets the mode. |
+| Consultant button | Removed from the employee window. |
+| Sign-out | "Odjava" in the employee window returns to the sign-in screen (and the next start shows it too). |
+| Icons, fewer buttons, export dropdown | Every button has an icon. Toolbar: "Novi unos", "Popuni standardne dane", "Predaj na odobravanje" on the left; "Ispis" (a dropdown like the consultant's export), refresh and the two view buttons on the right. |
+| One form for all codes | "Odsustvo" and "Prekovremeni rad" buttons are gone. "Novi unos" (and a click on a day, or the pencil of a row) opens one dialog; the code decides the form: hours for a day, or a range of days with a preview for an absence code, or date, start, end, description and the live split into codes for an overtime code. |
+
+Checked in the real app: sign-in screen to the employee window (title bar and its buttons on a screen of 1536 x 816 points), the
+calendar, the three forms, a person with nobody above them filling, submitting and approving their own month, the print menu with
+the team entries, sign-out back to the sign-in screen. API: 3 new tests (own approval, a person with a supervisor still cannot,
+the team sheet), domain: 1 new test and 2 changed rules.

@@ -218,4 +218,32 @@ public class PrintTests
             Assert.AreEqual("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
         }
     }
+
+    [TestMethod]
+    public async Task ASupervisorPrintsTheMonthOfEverybodyWhoReportsToThem()
+    {
+        var (factory, amra, benjamin, emir, damir) = await StartAsync();
+        using (factory)
+        {
+            await factory.UpdateAsync("Z-004", new(null, null, "Z-002", null, null, null, null, null));
+            await FillAsync(amra);
+            await amra.PostAsync(Url + "/submit", null);
+
+            var response = await benjamin.GetAsync("/api/team/2026/9/print/xlsx");
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual("Sihtarice_tima_2026-09.xlsx", response.Content.Headers.ContentDisposition!.FileName!.Trim('"'));
+
+            using var workbook = Open(await response.Content.ReadAsByteArrayAsync());
+            var sheet = workbook.Worksheet("Šihtarica");
+            var names = sheet.CellsUsed().Select(c => c.GetString()).ToList();
+            Assert.IsTrue(names.Any(n => n.StartsWith("Amra Adžamija") && n.Contains("Predano na odobravanje")), "Amra, with her status");
+            Assert.IsTrue(names.Any(n => n.StartsWith("Damir Dizdarević") && n.Contains("U pripremi")), "Damir has not opened the month: an empty draft");
+            Assert.IsFalse(names.Any(n => n.StartsWith("Benjamin")), "the supervisor is not in his own team sheet");
+            Assert.IsFalse(names.Any(n => n.StartsWith("Emir")), "nor the people above him");
+
+            Assert.AreEqual("%PDF", System.Text.Encoding.ASCII.GetString(await (await benjamin.GetAsync("/api/team/2026/9/print/pdf")).Content.ReadAsByteArrayAsync(), 0, 4));
+
+            Assert.AreEqual(HttpStatusCode.NotFound, (await amra.GetAsync("/api/team/2026/9/print/xlsx")).StatusCode, "nobody reports to Amra");
+        }
+    }
 }

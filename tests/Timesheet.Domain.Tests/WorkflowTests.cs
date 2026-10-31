@@ -44,14 +44,14 @@ public class ApprovalChainTests
     public void TopOfTheChart_ShouldUseTheDesignatedApprover_OrFailClearly()
     {
         CollectionAssert.AreEqual(new[] { "Z-030" }, ApprovalChainBuilder.Build("Z-040", Lookup).Chain!.Approvers.ToArray());
-        Assert.AreEqual(ChainProblem.NoApprover, ApprovalChainBuilder.Build("Z-050", Lookup).Problem, "nobody approves their own timesheet");
+        CollectionAssert.AreEqual(new[] { "Z-050" }, ApprovalChainBuilder.Build("Z-050", Lookup).Chain!.Approvers.ToArray(), "nobody above: the person approves their own timesheet");
     }
 
     [TestMethod]
     public void DesignatedApprover_MayNotBeTheEmployee()
     {
         var chart = new Dictionary<string, Person> { ["Z-1"] = new Person("Z-1", null, DesignatedApproverCode: "Z-1") };
-        Assert.AreEqual(ChainProblem.NoApprover, ApprovalChainBuilder.Build("Z-1", c => chart.GetValueOrDefault(c)).Problem);
+        CollectionAssert.AreEqual(new[] { "Z-1" }, ApprovalChainBuilder.Build("Z-1", c => chart.GetValueOrDefault(c)).Chain!.Approvers.ToArray());
     }
 
     [TestMethod]
@@ -121,13 +121,27 @@ public class WorkflowTests
     }
 
     [TestMethod]
+    public void ThePersonAtTheTop_SubmitsAndApprovesTheirOwnTimesheet()
+    {
+        var own = new ApprovalChain(new[] { "Z-001" });
+        var submitted = TimesheetWorkflow.Submit(new TimesheetState("Z-001"), "Z-001", own, false);
+        Assert.IsTrue(submitted.Ok);
+        Assert.AreEqual("Z-001", submitted.State.CurrentApprover);
+
+        var approved = TimesheetWorkflow.Approve(submitted.State, "Z-001");
+        Assert.IsTrue(approved.Ok);
+        Assert.AreEqual(TimesheetStatus.Approved, approved.State.Status);
+        Assert.AreEqual(WorkflowError.NotTheCurrentApprover, TimesheetWorkflow.Approve(submitted.State, "Z-099").Error, "nobody else is the approver");
+    }
+
+    [TestMethod]
     public void Submit_ShouldBeRefusedWhenItIsNotAllowed()
     {
         var draft = new TimesheetState("Z-001");
         Assert.AreEqual(WorkflowError.NotTheOwner, TimesheetWorkflow.Submit(draft, "Z-010", Chain, false).Error);
         Assert.AreEqual(WorkflowError.BlockingIssues, TimesheetWorkflow.Submit(draft, "Z-001", Chain, true).Error);
         Assert.AreEqual(WorkflowError.EmptyChain, TimesheetWorkflow.Submit(draft, "Z-001", new ApprovalChain(Array.Empty<string>()), false).Error);
-        Assert.AreEqual(WorkflowError.SelfApproval, TimesheetWorkflow.Submit(draft, "Z-001", new ApprovalChain(new[] { "Z-001" }), false).Error);
+        Assert.AreEqual(WorkflowError.SelfApproval, TimesheetWorkflow.Submit(draft, "Z-001", new ApprovalChain(new[] { "Z-010", "Z-001" }), false).Error, "a person inside a longer chain cannot approve themselves");
         Assert.AreEqual(WorkflowError.NotAllowedInThisStatus, TimesheetWorkflow.Submit(Submitted(), "Z-001", Chain, false).Error, "already submitted");
     }
 

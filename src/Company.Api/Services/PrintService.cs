@@ -45,6 +45,30 @@ public sealed class PrintService
         return await RenderAsync(new[] { sheet }, year, month, format, single: true);
     }
 
+    /// <summary>
+    /// The month of everybody the caller supervises (their direct reports, and the people they are the designated approver
+    /// for), on one sheet, whatever the status: the status is printed under each name.
+    /// </summary>
+    public async Task<PrintedFile> TeamAsync(string supervisorCode, int year, int month, string format)
+    {
+        CheckFormat(format);
+        var team = await _db.Employees.AsNoTracking()
+            .Where(e => e.IsActive && e.Code != supervisorCode && (e.SupervisorCode == supervisorCode || (e.SupervisorCode == null && e.DesignatedApproverCode == supervisorCode)))
+            .OrderBy(e => e.Code).Select(e => e.Code).ToListAsync();
+        if (team.Count == 0) throw new SheetException(404, "no-team", "Nobody reports to you.");
+
+        var stored = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
+            .Where(s => s.Year == year && s.Month == month && team.Contains(s.EmployeeCode)).ToListAsync();
+
+        // A month nobody has opened yet is an empty draft; it is printed but not saved
+        var sheets = team.Select(code => stored.FirstOrDefault(s => s.EmployeeCode == code)
+                                         ?? new MonthSheet { EmployeeCode = code, Year = year, Month = month }).ToList();
+
+        _audit.Record("TeamSheetPrinted", "MonthSheet", $"{year}-{month:00}", $"{supervisorCode}: {team.Count} employees, {format}");
+        await _db.SaveChangesAsync();
+        return await RenderAsync(sheets, year, month, format, single: false, team: true);
+    }
+
     /// <summary>Every approved timesheet of the month, for finance</summary>
     public async Task<PrintedFile> ApprovedAsync(int year, int month, string format)
     {
@@ -58,20 +82,24 @@ public sealed class PrintService
         return await RenderAsync(sheets, year, month, format, single: false);
     }
 
-    private async Task<PrintedFile> RenderAsync(IReadOnlyList<MonthSheet> sheets, int year, int month, string format, bool single)
+    private async Task<PrintedFile> RenderAsync(IReadOnlyList<MonthSheet> sheets, int year, int month, string format, bool single, bool team = false)
     {
         var codes = sheets.Select(s => s.EmployeeCode).Distinct().ToList();
         var names = await _db.Employees.AsNoTracking().Where(e => codes.Contains(e.Code)).ToDictionaryAsync(e => e.Code, e => e.Name);
 
         var employees = new List<PrintedEmployee>();
         foreach (var sheet in sheets)
-            employees.Add(new PrintedEmployee(sheet.EmployeeCode, names.GetValueOrDefault(sheet.EmployeeCode, sheet.EmployeeCode), await _sheets.BuildAsync(sheet)));
+        {
+            var built = await _sheets.BuildAsync(sheet);
+            employees.Add(new PrintedEmployee(sheet.EmployeeCode, names.GetValueOrDefault(sheet.EmployeeCode, sheet.EmployeeCode), built,
+                team ? LegacySheet.StatusText(built.Status) : null));
+        }
 
-        var statusLine = single
+        var statusLine = team ? "Šihtarice zaposlenika koje nadgledate" : single
             ? "Status: " + LegacySheet.StatusText(employees[0].Sheet.Status) + (employees[0].Sheet.Status == "Approved" ? "" : " (nije odobreno)")
             : "Odobrene šihtarice";
         var isExcel = format.Equals("xlsx", StringComparison.OrdinalIgnoreCase);
-        var stem = single ? $"Sihtarica_{employees[0].Code}_{year}-{month:00}" : $"Sihtarice_{year}-{month:00}";
+        var stem = single ? $"Sihtarica_{employees[0].Code}_{year}-{month:00}" : team ? $"Sihtarice_tima_{year}-{month:00}" : $"Sihtarice_{year}-{month:00}";
 
         return isExcel
             ? new PrintedFile(LegacySheet.ToExcel(year, month, employees, statusLine), ExcelType, stem + ".xlsx")

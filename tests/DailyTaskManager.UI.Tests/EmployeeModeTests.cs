@@ -57,26 +57,35 @@ public class EmployeeModeTests
         Assert.AreEqual("1010 Redovan rad: 8 h", EmployeeFormat.Entry(new EntryDto(1010, 480)));
     }
 
-    // ---- Dialogs -------------------------------------------------------------------------------------------------------
+    // ---- The entry dialog: one form that changes with the code ----------------------------------------------------------------
 
-    [TestMethod]
-    public void DayDialog_ShouldOfferNoOvertimeCodes_AndAskForHoursOnlyWhenNeeded()
+    private static EntryViewModel NewEntry(Func<AbsenceRangeRequest, Task<AbsencePreviewDto>>? preview = null, DateOnly? date = null, EntryDto? entry = null, OvertimeDto? overtime = null)
     {
-        var vm = new DayEntryViewModel(new DateOnly(2026, 9, 1), Array.Empty<EntryDto>());
-        Assert.IsFalse(vm.Codes.Any(c => c.Code.IsOvertime), "overtime is entered as an interval");
-        Assert.AreEqual(1010, vm.SelectedCode!.Code.Code);
-        Assert.IsTrue(vm.NeedsHours);
-
-        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == 1022);
-        Assert.IsFalse(vm.NeedsHours);
-        vm.SaveCommand.Execute(null);
-        Assert.AreEqual(new SetEntryRequest(1022, 0), vm.Result);
+        Func<DateOnly, DayType> days = d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? DayType.Weekend : DayType.Working;
+        return new EntryViewModel(2026, 9, days, preview ?? (_ => throw new InvalidOperationException("must not be called")), date ?? new DateOnly(2026, 9, 7), entry, overtime);
     }
 
     [TestMethod]
-    public void DayDialog_ShouldRejectBadHoursAndKeepTheDialogOpen()
+    public void TheFormShouldChangeWithTheCode()
     {
-        var vm = new DayEntryViewModel(new DateOnly(2026, 9, 1), Array.Empty<EntryDto>());
+        var vm = NewEntry();
+        Assert.IsTrue(vm.Codes.Any(c => c.Code.IsOvertime), "overtime is a code like any other");
+        Assert.AreEqual(1010, vm.SelectedCode!.Code.Code);
+        Assert.IsTrue(vm.IsHours && !vm.IsAbsence && !vm.IsOvertime);
+
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.AnnualLeaveA);
+        Assert.IsTrue(vm.IsAbsence && !vm.IsHours && !vm.IsOvertime);
+        Assert.AreEqual("Od", vm.DateLabel);
+
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.WeekendOvertime);
+        Assert.IsTrue(vm.IsOvertime && !vm.IsHours && !vm.IsAbsence);
+        Assert.AreEqual("Datum", vm.DateLabel);
+    }
+
+    [TestMethod]
+    public void AnHoursEntry_ShouldRejectBadHoursAndKeepTheDialogOpen()
+    {
+        var vm = NewEntry();
         var closed = false;
         vm.RequestClose += () => closed = true;
 
@@ -89,27 +98,69 @@ public class EmployeeModeTests
         vm.HoursText = "7,5";
         vm.SaveCommand.Execute(null);
         Assert.IsTrue(closed);
-        Assert.AreEqual(new SetEntryRequest(1010, 450), vm.Result);
+        Assert.AreEqual(new SetEntryRequest(1010, 450), vm.Result!.Day);
+        Assert.AreEqual(new DateOnly(2026, 9, 7), vm.Result.DayDate);
     }
 
     [TestMethod]
-    public void DayDialog_ShouldStartFromTheCurrentEntry()
+    public void EditingAnEntry_ShouldStartFromItAndKeepItsDate()
     {
-        var vm = new DayEntryViewModel(new DateOnly(2026, 9, 1), new[] { new EntryDto(1010, 360) });
+        var vm = NewEntry(entry: new EntryDto(1010, 360));
         Assert.AreEqual(1010, vm.SelectedCode!.Code.Code);
         Assert.AreEqual("6", vm.HoursText);
+        Assert.IsFalse(vm.CanChangeDate);
+        Assert.IsTrue(NewEntry().CanChangeDate);
     }
 
     [TestMethod]
-    public void OvertimeDialog_ShouldPreviewTheTotalAndTheSplitWhileTyping()
+    public void AnAbsenceCode_ShouldShowTheDaysBeforeItCanBeSaved()
     {
-        Func<DateOnly, DayType> workingDays = d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? DayType.Weekend : DayType.Working;
-        var vm = new OvertimeViewModel(2026, 9, workingDays, null)
+        var calls = 0;
+        var vm = NewEntry(request =>
         {
-            Date = new DateTimeOffset(new DateTime(2026, 9, 7)),
-            StartText = "20:00",
-            EndText = "22:30"
-        };
+            calls++;
+            return Task.FromResult(new AbsencePreviewDto(request.Code, new[] { new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 8) },
+                new[] { new SkippedDayDto(new DateOnly(2026, 9, 12), "Weekend") }));
+        });
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.AnnualLeaveA);
+        vm.To = new DateTimeOffset(new DateTime(2026, 9, 13));
+        Assert.IsFalse(vm.SaveCommand.CanExecute(null), "nothing can be saved before the days were shown");
+
+        vm.ShowPreviewCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+        Assert.AreEqual(1, calls);
+        StringAssert.Contains(vm.PreviewText, "2 dana");
+        StringAssert.Contains(vm.PreviewText, "vikend");
+        Assert.IsTrue(vm.SaveCommand.CanExecute(null));
+
+        vm.To = new DateTimeOffset(new DateTime(2026, 9, 18));
+        Assert.IsFalse(vm.SaveCommand.CanExecute(null), "changing the range asks for a new preview");
+
+        vm.ShowPreviewCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+        vm.SaveCommand.Execute(null);
+        Assert.AreEqual(1022, vm.Result!.Absence!.Code);
+        Assert.AreEqual(new DateOnly(2026, 9, 18), vm.Result.Absence.To);
+        Assert.AreEqual(new DateOnly(2026, 9, 7), vm.Result.Absence.From);
+    }
+
+    [TestMethod]
+    public void AnAbsenceThatEndsBeforeItStarts_ShouldBeRefused()
+    {
+        var vm = NewEntry();
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.AnnualLeaveA);
+        vm.Date = new DateTimeOffset(new DateTime(2026, 9, 10));
+        vm.To = new DateTimeOffset(new DateTime(2026, 9, 5));
+        vm.ShowPreviewCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+        StringAssert.Contains(vm.Error, "Kraj");
+        Assert.IsFalse(vm.SaveCommand.CanExecute(null));
+    }
+
+    [TestMethod]
+    public void AnOvertimeCode_ShouldPreviewTheTotalAndTheSplitWhileTyping()
+    {
+        var vm = NewEntry(date: new DateOnly(2026, 9, 7));
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.Overtime);
+        vm.StartText = "20:00";
+        vm.EndText = "22:30";
 
         StringAssert.Contains(vm.SummaryText, "2,5 h");
         StringAssert.Contains(vm.SummaryText, "2020");
@@ -122,10 +173,12 @@ public class EmployeeModeTests
     }
 
     [TestMethod]
-    public void OvertimeDialog_ShouldNeedADescriptionAndDifferentTimes()
+    public void AnOvertimeEntry_ShouldNeedADescriptionAndDifferentTimes()
     {
-        Func<DateOnly, DayType> days = _ => DayType.Working;
-        var vm = new OvertimeViewModel(2026, 9, days, null) { Date = new DateTimeOffset(new DateTime(2026, 9, 7)), StartText = "18:00", EndText = "20:00" };
+        var vm = NewEntry(date: new DateOnly(2026, 9, 7));
+        vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.Overtime);
+        vm.StartText = "18:00";
+        vm.EndText = "20:00";
 
         vm.SaveCommand.Execute(null);
         Assert.IsNull(vm.Result);
@@ -139,51 +192,34 @@ public class EmployeeModeTests
 
         vm.StartText = "18:00";
         vm.SaveCommand.Execute(null);
-        Assert.AreEqual(new OvertimeRequest(new DateOnly(2026, 9, 7), new TimeOnly(18, 0), new TimeOnly(20, 0), "Ispravka greške"), vm.Result);
+        Assert.AreEqual(new OvertimeRequest(new DateOnly(2026, 9, 7), new TimeOnly(18, 0), new TimeOnly(20, 0), "Ispravka greške"), vm.Result!.Overtime);
+        Assert.IsNull(vm.Result.OvertimeId);
     }
 
     [TestMethod]
-    public async Task AbsenceDialog_ShouldPreviewBeforeItCanBeSaved()
+    public void EditingOvertime_ShouldStayOvertimeAndKeepItsId()
     {
-        var calls = 0;
-        var vm = new AbsenceViewModel(2026, 9, request =>
-        {
-            calls++;
-            return Task.FromResult(new AbsencePreviewDto(request.Code, new[] { new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 2) },
-                new[] { new SkippedDayDto(new DateOnly(2026, 9, 5), "Weekend") }));
-        });
+        var record = new OvertimeDto(7, new DateOnly(2026, 9, 5), new TimeOnly(8, 30), new TimeOnly(11, 0), "Provisioning", 150,
+            new[] { new AllocationDto(new DateOnly(2026, 9, 5), 2023, 150) }, false);
+        var vm = NewEntry(overtime: record);
 
-        vm.From = new DateTimeOffset(new DateTime(2026, 9, 1));
-        vm.To = new DateTimeOffset(new DateTime(2026, 9, 6));
-        Assert.IsFalse(vm.SaveCommand.CanExecute(null), "nothing can be saved before the days were shown");
+        Assert.IsTrue(vm.IsOvertime);
+        Assert.IsTrue(vm.Codes.All(c => c.Code.IsOvertime), "an overtime record cannot become an hours entry");
+        Assert.AreEqual(2023, vm.SelectedCode!.Code.Code);
+        Assert.AreEqual("08:30", vm.StartText);
 
-        await vm.ShowPreviewCommand.ExecuteAsync(null);
-        Assert.AreEqual(1, calls);
-        StringAssert.Contains(vm.PreviewText, "2 dana");
-        StringAssert.Contains(vm.PreviewText, "vikend");
-        Assert.IsTrue(vm.SaveCommand.CanExecute(null));
-
-        vm.To = new DateTimeOffset(new DateTime(2026, 9, 10));
-        Assert.IsFalse(vm.SaveCommand.CanExecute(null), "changing the range asks for a new preview");
-
-        await vm.ShowPreviewCommand.ExecuteAsync(null);
         vm.SaveCommand.Execute(null);
-        Assert.AreEqual(1022, vm.Result!.Code);
-        Assert.AreEqual(new DateOnly(2026, 9, 10), vm.Result.To);
+        Assert.AreEqual(7, vm.Result!.OvertimeId);
     }
 
     [TestMethod]
-    public async Task AbsenceDialog_ShouldRefuseARangeThatEndsBeforeItStarts()
+    public void ADateOutsideTheMonth_ShouldBeRefused()
     {
-        var vm = new AbsenceViewModel(2026, 9, _ => throw new InvalidOperationException("must not be called"))
-        {
-            From = new DateTimeOffset(new DateTime(2026, 9, 10)),
-            To = new DateTimeOffset(new DateTime(2026, 9, 5))
-        };
-
-        await vm.ShowPreviewCommand.ExecuteAsync(null);
-        StringAssert.Contains(vm.Error, "Kraj");
-        Assert.IsFalse(vm.SaveCommand.CanExecute(null));
+        var vm = NewEntry();
+        vm.Date = new DateTimeOffset(new DateTime(2026, 10, 2));
+        vm.SaveCommand.Execute(null);
+        Assert.IsNull(vm.Result);
+        StringAssert.Contains(vm.Error, "mjesecu");
     }
 
     [TestMethod]

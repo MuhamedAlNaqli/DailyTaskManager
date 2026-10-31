@@ -9,7 +9,8 @@ using Timesheet.Domain;
 namespace Company.Api.Printing;
 
 /// <summary>One employee's month as it goes on the printed sheet</summary>
-public sealed record PrintedEmployee(string Code, string Name, SheetDto Sheet);
+/// <summary>A note (for example the status) is printed under the name; the sheet of one employee needs none</summary>
+public sealed record PrintedEmployee(string Code, string Name, SheetDto Sheet, string? Note = null);
 
 /// <summary>One row of an employee's block: a code and a value for each day of the month (null leaves the cell empty)</summary>
 public sealed record PrintedRow(TimeCode Code, decimal?[] Days);
@@ -222,7 +223,7 @@ public static class LegacySheet
             code.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             code.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             var name = sheet.Range(first, 2, row - 1, 2);
-            name.Merge().Value = employee.Name;
+            name.Merge().Value = employee.Note == null ? employee.Name : employee.Name + Environment.NewLine + employee.Note;
             name.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
             name.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             name.Style.Alignment.WrapText = true;
@@ -419,7 +420,11 @@ public static class LegacySheet
             }
 
             table.Cell().Row(3).Column(1).RowSpan((uint)rows.Count).Border(0.3f).AlignMiddle().AlignCenter().Text(employee.Code);
-            table.Cell().Row(3).Column(2).RowSpan((uint)rows.Count).Border(0.3f).AlignMiddle().AlignCenter().Text(employee.Name);
+            table.Cell().Row(3).Column(2).RowSpan((uint)rows.Count).Border(0.3f).AlignMiddle().AlignCenter().Column(name =>
+            {
+                name.Item().AlignCenter().Text(employee.Name);
+                if (employee.Note != null) name.Item().AlignCenter().Text(employee.Note).FontSize(5.5f).Italic();
+            });
         });
     }
 }

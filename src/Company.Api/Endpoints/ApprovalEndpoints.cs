@@ -24,6 +24,9 @@ public static class ApprovalEndpoints
         own.MapGet("/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
             File(() => service.OwnAsync(Identities.EmployeeCode(user)!, year, month, format)));
 
+        app.MapGet("/api/team/{year:int}/{month:int}/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
+            File(() => service.TeamAsync(Identities.EmployeeCode(user)!, year, month, format))).RequireAuthorization(Identities.RegisteredPolicy);
+
         app.MapGet("/api/export/{year:int}/{month:int}/{format}", (int year, int month, string format, PrintService service) =>
             File(() => service.ApprovedAsync(year, month, format))).RequireAuthorization(Identities.FinancePolicy);
 

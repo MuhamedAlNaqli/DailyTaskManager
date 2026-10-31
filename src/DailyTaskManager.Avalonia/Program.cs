@@ -60,6 +60,7 @@ class Program
             // Warm up the database (EF model, connection, schema check) on a worker thread while Avalonia
             // initializes the platform and fonts; the app waits for it before it needs data (see App).
             // Employee mode works against the company API and never touches the local database (an employee's PC has none)
+            _employeeStart = AppMode.IsEmployee;
             DatabaseReady = AppMode.IsEmployee ? Task.CompletedTask : Task.Run(() => InitializeDatabaseAsync(host.Services));
             // The update service is not needed to show the first window
             _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
@@ -217,6 +218,22 @@ class Program
             throw;
         }
     }
+
+    private static bool _consultantPrepared;
+
+    /// <summary>
+    /// Employee mode starts without the local database. After signing out of it the consultant sign-in needs it, so it is
+    /// prepared then (once), without making the sign-in screen wait.
+    /// </summary>
+    public static void PrepareConsultant(IServiceProvider services)
+    {
+        if (_consultantPrepared || !_employeeStart) return;
+        _consultantPrepared = true;
+        DatabaseReady = Task.Run(() => InitializeDatabaseAsync(services));
+        _ = Task.Run(() => SyncBackgroundReminderAsync(services));
+    }
+
+    private static bool _employeeStart;
 
     /// <summary>
     /// Employee mode needs the scheduled task too: it asks the company server what is due and shows it, even when the app is closed.

@@ -11,6 +11,7 @@ using Company.Api.Client;
 using Company.Api.Contracts;
 using DailyTaskManager.Avalonia.Services;
 using DailyTaskManager.Core.Interfaces;
+using DailyTaskManager.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Timesheet.Domain;
 
@@ -33,6 +34,11 @@ public sealed class EmployeeDayRow
             _ => Brushes.Transparent
         };
         IsWorkingDay = day.Type == "Working";
+        CalendarEntriesText = string.Join("\n", day.Entries.Select(e => TimeCodes.Get(e.Code).Unit == CodeUnit.Hours
+            ? (e.Code == Timesheet.Domain.Codes.RegularWork ? EmployeeFormat.Hours(e.Minutes) : $"{e.Code} · {EmployeeFormat.Hours(e.Minutes)}")
+            : $"{e.Code} {TimeCodes.Get(e.Code).NameBs}"));
+        var overtimeMinutes = day.OvertimeAllocations.Sum(a => a.Minutes);
+        CalendarOvertimeText = overtimeMinutes == 0 ? "" : "Prek. " + EmployeeFormat.Hours(overtimeMinutes);
         EntriesText = string.Join("\n", day.Entries.Select(EmployeeFormat.Entry));
         OvertimeText = string.Join("\n", day.OvertimeAllocations.Select(a => $"{a.Code} {TimeCodes.Get(a.Code).NameBs}: {EmployeeFormat.Hours(a.Minutes)}"));
         var mine = issues.Where(i => i.Date == day.Date).ToList();
@@ -43,6 +49,20 @@ public sealed class EmployeeDayRow
 
     public DayDto Day { get; }
     public DateOnly Date { get; }
+
+    // The cell of the calendar view
+    public string DayNumber => Date.Day.ToString();
+    public IBrush CellBackground => Day.Type switch
+    {
+        "Weekend" => Brush.Parse("#FDEDED"),
+        "Holiday" => Brush.Parse("#FFF1E0"),
+        _ => Brushes.White
+    };
+    public IBrush CellBorder => Date == DateOnly.FromDateTime(DateTime.Today) ? Brush.Parse("#0F766E") : Brush.Parse("#E5E7EB");
+    public global::Avalonia.Thickness CellBorderThickness => new(Date == DateOnly.FromDateTime(DateTime.Today) ? 2 : 1);
+    public string HolidayText => Day.HolidayName ?? "";
+    public string CalendarEntriesText { get; private set; } = "";
+    public string CalendarOvertimeText { get; private set; } = "";
     public string DateText { get; }
     public string WeekdayText { get; }
     public string TypeText { get; }
@@ -55,6 +75,16 @@ public sealed class EmployeeDayRow
     public bool HasBlocking { get; }
     public string IssueTooltip { get; }
     public bool HasEntries => Day.Entries.Count > 0;
+}
+
+/// <summary>One square of the calendar: a day of the month, or an empty square before the first</summary>
+public sealed class CalendarCell
+{
+    public CalendarCell(EmployeeDayRow? row) => Row = row;
+
+    public EmployeeDayRow? Row { get; }
+
+    public bool HasDay => Row != null;
 }
 
 public sealed class EmployeeOvertimeRow
@@ -190,8 +220,27 @@ public partial class EmployeeViewModel : ObservableObject
     [ObservableProperty] private bool _fundOk;
     [ObservableProperty] private string _infoText = "";
 
-    /// <summary>Finance and the administrator may print the approved timesheets of everybody</summary>
-    [ObservableProperty] private bool _isFinance;
+    /// <summary>The person has people reporting to them: the sheet of their team can be printed</summary>
+    [ObservableProperty] private bool _isApprover;
+
+    /// <summary>The month as a calendar instead of a list; remembered for the next time</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsListView))]
+    private bool _isCalendarView = EmployeePreferences.LoadCalendarView();
+
+    public bool IsListView => !IsCalendarView;
+
+    public ObservableCollection<CalendarCell> CalendarCells { get; } = new();
+
+    public IReadOnlyList<string> WeekdayHeaders { get; } = new[] { "Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned" };
+
+    partial void OnIsCalendarViewChanged(bool value) => EmployeePreferences.SaveCalendarView(value);
+
+    [RelayCommand]
+    private void ShowListView() => IsCalendarView = false;
+
+    [RelayCommand]
+    private void ShowCalendarView() => IsCalendarView = true;
 
     // Submission and approval
     [ObservableProperty] private bool _canSubmit;
@@ -223,6 +272,13 @@ public partial class EmployeeViewModel : ObservableObject
 
     public bool ShowMineToolbar => IsConnected && !InApprovals;
 
+    public bool ShowMonthNav => IsConnected && !IsReviewing;
+
+    /// <summary>A person with nobody above them decides on their own timesheet from their own screen</summary>
+    public bool CanApproveOwn => CanAct && !IsReviewing && !InApprovals;
+
+    public bool ShowApprovalsToolbar => IsConnected && InApprovals && !IsReviewing;
+
     public bool ShowReviewToolbar => IsConnected && IsReviewing;
 
     public bool ShowApprovalsHint => IsConnected && InApprovals && !IsReviewing;
@@ -247,8 +303,13 @@ public partial class EmployeeViewModel : ObservableObject
 
     partial void OnPendingCountChanged(int value) => OnPropertyChanged(nameof(ApprovalsTabText));
 
+    partial void OnCanActChanged(bool value) => OnPropertyChanged(nameof(CanApproveOwn));
+
     private void RaiseModeChanged()
     {
+        OnPropertyChanged(nameof(ShowMonthNav));
+        OnPropertyChanged(nameof(CanApproveOwn));
+        OnPropertyChanged(nameof(ShowApprovalsToolbar));
         OnPropertyChanged(nameof(ShowMineToolbar));
         OnPropertyChanged(nameof(ShowReviewToolbar));
         OnPropertyChanged(nameof(ShowApprovalsHint));
@@ -284,7 +345,7 @@ public partial class EmployeeViewModel : ObservableObject
             {
                 var me = await _client.GetMeAsync();
                 WhoText = $"{me.Name} · {me.Code}";
-                IsFinance = me.IsFinance || me.IsAdmin;
+                IsApprover = me.IsApprover;
             }
 
             return await LoadCurrentAsync();
@@ -358,6 +419,7 @@ public partial class EmployeeViewModel : ObservableObject
     {
         _sheet = null;
         Days.Clear();
+        CalendarCells.Clear();
         Overtime.Clear();
         Issues.Clear();
         TotalLines.Clear();
@@ -387,6 +449,7 @@ public partial class EmployeeViewModel : ObservableObject
 
         Days.Clear();
         foreach (var day in sheet.Days) Days.Add(new EmployeeDayRow(day, sheet.Issues));
+        BuildCalendar();
 
         Overtime.Clear();
         foreach (var record in sheet.Overtime) Overtime.Add(new EmployeeOvertimeRow(record));
@@ -410,6 +473,17 @@ public partial class EmployeeViewModel : ObservableObject
         OnPropertyChanged(nameof(HasIssues));
         OnPropertyChanged(nameof(NoIssues));
         OnPropertyChanged(nameof(NoOvertime));
+    }
+
+    /// <summary>Monday first: empty squares up to the weekday of the first, then the days</summary>
+    private void BuildCalendar()
+    {
+        CalendarCells.Clear();
+        if (Days.Count == 0) return;
+
+        var offset = ((int)Days[0].Date.DayOfWeek + 6) % 7;
+        for (var i = 0; i < offset; i++) CalendarCells.Add(new CalendarCell(null));
+        foreach (var day in Days) CalendarCells.Add(new CalendarCell(day));
     }
 
     private void ShowWorkflow(SheetDto sheet)
@@ -469,6 +543,14 @@ public partial class EmployeeViewModel : ObservableObject
         var next = new DateTime(Year, Month, 1).AddMonths(delta);
         Year = next.Year;
         Month = next.Month;
+
+        // In the list of timesheets for approval the month only chooses the month of the team sheet
+        if (InApprovals)
+        {
+            MonthTitle = EmployeeFormat.Month(Year, Month);
+            return Task.CompletedTask;
+        }
+
         return LoadAsync();
     }
 
@@ -483,14 +565,36 @@ public partial class EmployeeViewModel : ObservableObject
         if (confirmed) await RunAsync(() => _client.FillStandardDaysAsync(Year, Month));
     }
 
+    /// <summary>A new entry: the form changes with the code (hours, absence over several days, or overtime)</summary>
     [RelayCommand]
-    private async Task EditDayAsync(EmployeeDayRow? row)
-    {
-        if (row == null || !IsEditable) return;
+    private Task AddEntryAsync() => OpenEntryAsync(null, null, null);
 
-        var viewModel = new DayEntryViewModel(row.Date, row.Day.Entries);
-        var request = await EmployeeDialogs.ShowAsync<DayEntryDialog, SetEntryRequest?>(new DayEntryDialog { DataContext = viewModel }, viewModel);
-        if (request != null) await RunAsync(() => _client.SetEntryAsync(Year, Month, row.Date, request));
+    /// <summary>A day of the list or of the calendar: its entry, or a new entry for that day when it is empty</summary>
+    [RelayCommand]
+    private Task EditDayAsync(EmployeeDayRow? row)
+    {
+        if (row == null || !IsEditable) return Task.CompletedTask;
+
+        var entry = row.Day.Entries.FirstOrDefault(e => TimeCodes.Get(e.Code).IsBaseEntry) ?? row.Day.Entries.FirstOrDefault();
+        return OpenEntryAsync(row.Date, entry, null);
+    }
+
+    private async Task OpenEntryAsync(DateOnly? date, EntryDto? entry, OvertimeDto? overtime)
+    {
+        if (!IsEditable || _sheet == null) return;
+
+        var viewModel = new EntryViewModel(Year, Month, DayTypeResolver(), request => _client.PreviewAbsenceAsync(Year, Month, request), date, entry, overtime);
+        var result = await EmployeeDialogs.ShowAsync<EntryDialog, EntryResult?>(new EntryDialog { DataContext = viewModel }, viewModel);
+        if (result == null) return;
+
+        if (result.Overtime != null)
+            await RunAsync(() => result.OvertimeId is { } id
+                ? _client.UpdateOvertimeAsync(Year, Month, id, result.Overtime)
+                : _client.AddOvertimeAsync(Year, Month, result.Overtime));
+        else if (result.Absence != null)
+            await RunAsync(() => _client.ApplyAbsenceAsync(Year, Month, result.Absence));
+        else
+            await RunAsync(() => _client.SetEntryAsync(Year, Month, result.DayDate!.Value, result.Day!));
     }
 
     [RelayCommand]
@@ -507,34 +611,7 @@ public partial class EmployeeViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task AddAbsenceAsync()
-    {
-        if (!IsEditable) return;
-
-        var viewModel = new AbsenceViewModel(Year, Month, request => _client.PreviewAbsenceAsync(Year, Month, request));
-        var request = await EmployeeDialogs.ShowAsync<AbsenceDialog, AbsenceRangeRequest?>(new AbsenceDialog { DataContext = viewModel }, viewModel);
-        if (request != null) await RunAsync(() => _client.ApplyAbsenceAsync(Year, Month, request));
-    }
-
-    [RelayCommand]
-    private async Task AddOvertimeAsync()
-    {
-        if (!IsEditable || _sheet == null) return;
-
-        var viewModel = new OvertimeViewModel(Year, Month, DayTypeResolver(), null);
-        var request = await EmployeeDialogs.ShowAsync<OvertimeDialog, OvertimeRequest?>(new OvertimeDialog { DataContext = viewModel }, viewModel);
-        if (request != null) await RunAsync(() => _client.AddOvertimeAsync(Year, Month, request));
-    }
-
-    [RelayCommand]
-    private async Task EditOvertimeAsync(EmployeeOvertimeRow? row)
-    {
-        if (row == null || !IsEditable || _sheet == null) return;
-
-        var viewModel = new OvertimeViewModel(Year, Month, DayTypeResolver(), row.Record);
-        var request = await EmployeeDialogs.ShowAsync<OvertimeDialog, OvertimeRequest?>(new OvertimeDialog { DataContext = viewModel }, viewModel);
-        if (request != null) await RunAsync(() => _client.UpdateOvertimeAsync(Year, Month, row.Record.Id, request));
-    }
+    private Task EditOvertimeAsync(EmployeeOvertimeRow? row) => row == null ? Task.CompletedTask : OpenEntryAsync(null, null, row.Record);
 
     [RelayCommand]
     private async Task DeleteOvertimeAsync(EmployeeOvertimeRow? row)
@@ -560,9 +637,9 @@ public partial class EmployeeViewModel : ObservableObject
         ? _client.GetPrintAsync(Year, Month, f)
         : _client.GetReviewPrintAsync(_reviewCode, Year, Month, f));
 
-    /// <summary>The approved timesheets of everybody for the month on screen, for the calculation of salaries</summary>
+    /// <summary>The month of everybody who reports to the signed-in person, on one sheet, whatever the status of each</summary>
     [RelayCommand]
-    private Task ExportApprovedAsync(string? format) => SaveFileAsync(format, f => _client.GetApprovedExportAsync(Year, Month, f));
+    private Task PrintTeamAsync(string? format) => SaveFileAsync(format, f => _client.GetTeamPrintAsync(Year, Month, f));
 
     private async Task SaveFileAsync(string? format, Func<string, Task<DownloadedFile>> download)
     {
@@ -588,7 +665,7 @@ public partial class EmployeeViewModel : ObservableObject
         catch (ApiException ex)
         {
             _logger.LogWarning(ex, "The printed sheet was refused ({Code})", ex.Code);
-            ErrorText = ex.Code == "no-approved-sheets" ? "Za ovaj mjesec još nijedna šihtarica nije odobrena." : ex.Message;
+            ErrorText = ex.Code == "no-team" ? "Nikome nisu dodijeljeni vaši nadzor ni odobravanje." : ex.Message;
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
@@ -669,9 +746,10 @@ public partial class EmployeeViewModel : ObservableObject
     [RelayCommand]
     private async Task ApproveAsync()
     {
-        if (!CanAct || _reviewCode == null) return;
-        var code = _reviewCode;
-        var confirmed = await _dialogService.ShowConfirmDialogAsync("Odobri šihtaricu", $"Odobriti šihtaricu: {ReviewTitle}?");
+        var code = _reviewCode ?? _sheet?.Workflow?.OwnerCode;
+        if (!CanAct || code == null) return;
+        var what = _reviewCode == null ? $"svoju šihtaricu za {MonthTitle}" : $"šihtaricu: {ReviewTitle}";
+        var confirmed = await _dialogService.ShowConfirmDialogAsync("Odobri šihtaricu", $"Odobriti {what}?");
         if (!confirmed) return;
 
         await RunAsync(() => _client.ApproveAsync(code, Year, Month), refreshPending: true);
@@ -692,15 +770,19 @@ public partial class EmployeeViewModel : ObservableObject
         if (!HasError) InfoText = "Šihtarica je vraćena zaposleniku.";
     }
 
-    // ---- Mode --------------------------------------------------------------------------------------------------------
+    // ---- Sign-out ----------------------------------------------------------------------------------------------------
 
+    /// <summary>Back to the sign-in screen. The next start shows it too, until the user signs in again with "remember me".</summary>
     [RelayCommand]
-    private void SwitchToConsultant()
+    private void Logout()
     {
         AppMode.Set(Mode.Consultant);
+        Loc.Initialize();
+
         if (App.Current is App app && app.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var old = desktop.MainWindow;
+            if (App.ServiceProvider != null) Program.PrepareConsultant(App.ServiceProvider);
             var next = app.CreateLoginWindow();
             desktop.MainWindow = next;
             next.Show();

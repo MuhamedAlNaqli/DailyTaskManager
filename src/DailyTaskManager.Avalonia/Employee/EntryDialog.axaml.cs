@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace DailyTaskManager.Avalonia.EmployeeMode;
 
-public partial class DayEntryDialog : Window
+public partial class EntryDialog : Window
 {
-    public DayEntryDialog()
+    public EntryDialog()
     {
         InitializeComponent();
     }

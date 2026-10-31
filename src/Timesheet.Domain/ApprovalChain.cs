@@ -20,7 +20,7 @@ public enum ChainProblem
     /// <summary>The chart loops back on itself</summary>
     Cycle,
 
-    /// <summary>Nobody can approve: no supervisor and no designated approver (nobody approves their own timesheet)</summary>
+    /// <summary>Not produced any more: a person with nobody above approves their own timesheet</summary>
     NoApprover,
 
     TooDeep
@@ -38,7 +38,7 @@ public static class ApprovalChainBuilder
     /// <summary>
     /// The people who approve a timesheet, in order: the employee's supervisor, that person's supervisor, and so on, up to and
     /// including the first one flagged as final approver, or to the top of the chart. The person at the top of the chart
-    /// has no supervisor, so their designated approver is used instead.
+    /// has no supervisor, so their designated approver is used instead; without one they approve their own timesheet.
     /// </summary>
     public static ChainOutcome Build(string employeeCode, Func<string, Person?> lookup, int maxDepth = 25)
     {
@@ -66,10 +66,15 @@ public static class ApprovalChainBuilder
         {
             var designated = employee.DesignatedApproverCode;
             if (string.IsNullOrWhiteSpace(designated) || designated.Equals(employee.Code, StringComparison.OrdinalIgnoreCase))
-                return new ChainOutcome(null, ChainProblem.NoApprover);
-
-            if (lookup(designated) == null) return new ChainOutcome(null, ChainProblem.UnknownPerson);
-            approvers.Add(designated);
+            {
+                // Nobody above: the person submits and approves their own timesheet (the chain is the person alone)
+                approvers.Add(employee.Code);
+            }
+            else
+            {
+                if (lookup(designated) == null) return new ChainOutcome(null, ChainProblem.UnknownPerson);
+                approvers.Add(designated);
+            }
         }
 
         return new ChainOutcome(new ApprovalChain(approvers), ChainProblem.None);

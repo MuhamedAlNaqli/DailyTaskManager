@@ -300,7 +300,8 @@ public sealed class TimesheetService
                 .Select(e => new HistoryDto(DateTime.SpecifyKind(e.AtUtc, DateTimeKind.Utc), e.Kind, e.ActorCode, Name(e.ActorCode), e.OnBehalfOf, e.Revision, e.Step, e.Text)).ToList(),
             revisions,
             isOwner && IsEditable(sheet) && !hasBlocking && sheet.Messages.All(m => !string.IsNullOrWhiteSpace(m.Answer)),
-            current != null && !isOwner && Same(viewer, current));
+            // The owner decides on their own timesheet only when nobody is above them (the chain is themselves alone)
+            current != null && Same(viewer, current) && (!isOwner || (chain.Count == 1 && Same(chain[0], sheet.EmployeeCode))));
     }
 
     internal static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

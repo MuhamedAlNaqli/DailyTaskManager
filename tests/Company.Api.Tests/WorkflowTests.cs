@@ -85,13 +85,39 @@ public class WorkflowTests
     }
 
     [TestMethod]
-    public async Task Submitting_ShouldNeedAnApprovalChain()
+    public async Task ANobodyAbove_SubmitsAndApprovesTheirOwnTimesheet()
     {
-        var (factory, amra, _, _, _) = await StartAsync(withChart: false);
+        var (factory, amra, benjamin, _, _) = await StartAsync(withChart: false);
         using (factory)
         {
             await Fill(amra);
-            Assert.AreEqual("no-chain", await ErrorCode(await amra.PostAsync(Url + "/submit", null), HttpStatusCode.Conflict));
+            var submitted = await Read(await amra.PostAsync(Url + "/submit", null));
+            Assert.AreEqual("Submitted", submitted.Status);
+            Assert.AreEqual("Z-001", submitted.Workflow!.CurrentApprover);
+            Assert.IsTrue(submitted.Workflow.CanAct, "the owner decides on their own timesheet");
+            Assert.IsFalse(submitted.Editable);
+
+            var pending = (await amra.GetFromJsonAsync<List<PendingApprovalDto>>("/api/approvals"))!;
+            Assert.AreEqual("Z-001", pending.Single().EmployeeCode, "it is in their own list for approval");
+
+            Assert.AreEqual("forbidden", await ErrorCode(await benjamin.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden), "nobody else may");
+
+            var approved = await Read(await amra.PostAsync("/api/approvals/Z-001/2026/9/approve", null));
+            Assert.AreEqual("Approved", approved.Status);
+            CollectionAssert.AreEqual(new[] { "Submitted", "Approved" }, approved.Workflow!.History.Select(h => h.Kind).ToArray());
+        }
+    }
+
+    [TestMethod]
+    public async Task ThePersonWithASupervisor_StillCannotApproveTheirOwnTimesheet()
+    {
+        var (factory, amra, _, _, _) = await StartAsync();
+        using (factory)
+        {
+            await Fill(amra);
+            var submitted = await Read(await amra.PostAsync(Url + "/submit", null));
+            Assert.IsFalse(submitted.Workflow!.CanAct);
+            Assert.AreEqual("self-approval", await ErrorCode(await amra.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden));
         }
     }
 

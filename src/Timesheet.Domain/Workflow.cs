@@ -79,7 +79,8 @@ public static class TimesheetWorkflow
         if (!state.IsEditableByOwner) return Fail(state, WorkflowError.NotAllowedInThisStatus);
         if (!Same(actor, state.OwnerCode)) return Fail(state, WorkflowError.NotTheOwner);
         if (chain.Approvers.Count == 0) return Fail(state, WorkflowError.EmptyChain);
-        if (chain.Approvers.Any(a => Same(a, state.OwnerCode))) return Fail(state, WorkflowError.SelfApproval);
+        // Nobody approves their own timesheet, except a person with nobody above them: their chain is themselves alone
+        if (chain.Approvers.Any(a => Same(a, state.OwnerCode)) && chain.Approvers.Count > 1) return Fail(state, WorkflowError.SelfApproval);
         if (hasBlockingIssues) return Fail(state, WorkflowError.BlockingIssues);
         if (state.MessagesOrEmpty.Any(m => !m.IsAnswered)) return Fail(state, WorkflowError.UnansweredMessages);
 
@@ -131,7 +132,7 @@ public static class TimesheetWorkflow
     {
         onBehalfOf = null;
         if (state.Status != TimesheetStatus.Submitted) return WorkflowError.NotAllowedInThisStatus;
-        if (Same(actor, state.OwnerCode)) return WorkflowError.SelfApproval;
+        if (Same(actor, state.OwnerCode) && !IsSelfApproved(state)) return WorkflowError.SelfApproval;
 
         var current = state.CurrentApprover;
         if (current == null) return WorkflowError.NotAllowedInThisStatus;
@@ -145,6 +146,10 @@ public static class TimesheetWorkflow
 
         return WorkflowError.NotTheCurrentApprover;
     }
+
+    /// <summary>The chain is the owner alone: there is nobody above, so the owner approves their own timesheet</summary>
+    public static bool IsSelfApproved(TimesheetState state) =>
+        state.ChainOrEmpty.Count == 1 && Same(state.ChainOrEmpty[0], state.OwnerCode);
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 }
