@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:em="using:DailyTaskManager.Avalonia.EmployeeMode"
+        x:Class="DailyTaskManager.Avalonia.EmployeeMode.AbsenceDialog"
+        x:DataType="em:AbsenceViewModel"
+        Title="Odsustvo" Width="560" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="28,24" Spacing="16">
+        <TextBlock Name="AbsenceDialogTitle" Text="{Binding Title}" Classes="title"/>
+        <StackPanel Spacing="6">
+            <TextBlock Text="Šifra odsustva" Classes="label"/>
+            <ComboBox Name="AbsenceCodeComboBox" Classes="form" ItemsSource="{Binding Codes}" SelectedItem="{Binding SelectedCode}" HorizontalAlignment="Stretch"/>
+        </StackPanel>
+        <Grid ColumnDefinitions="*,16,*">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Od" Classes="label"/>
+                <DatePicker Name="AbsenceFromPicker" Classes="form" SelectedDate="{Binding From, Mode=TwoWay}" MinYear="{Binding MinDate}" MaxYear="{Binding MaxDate}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="6">
+                <TextBlock Text="Do" Classes="label"/>
+                <DatePicker Name="AbsenceToPicker" Classes="form" SelectedDate="{Binding To, Mode=TwoWay}" MinYear="{Binding MinDate}" MaxYear="{Binding MaxDate}"/>
+            </StackPanel>
+        </Grid>
+        <Button Name="AbsencePreviewButton" Command="{Binding ShowPreviewCommand}" Classes="secondary" HorizontalAlignment="Left" Padding="14,8">
+            <TextBlock Text="Prikaži dane"/>
+        </Button>
+        <TextBlock Name="AbsencePreviewText" Text="{Binding PreviewText}" TextWrapping="Wrap" IsVisible="{Binding PreviewText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource AppTextStrong}"/>
+        <TextBlock Text="Vikendi i praznici se ne označavaju. Prvo pogledajte dane, zatim sačuvajte." FontSize="12" TextWrapping="Wrap"
+                   Foreground="{DynamicResource AppTextMuted}"/>
+        <TextBlock Name="AbsenceDialogError" Text="{Binding Error}" Classes="error" TextWrapping="Wrap" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Name="AbsenceCancelButton" Command="{Binding CancelCommand}" Classes="dialog secondary"><TextBlock Text="Odustani"/></Button>
+            <Button Name="AbsenceSaveButton" Command="{Binding SaveCommand}" Classes="dialog primary"><TextBlock Text="Sačuvaj"/></Button>
+        </StackPanel>
+    </StackPanel>
+</Window>

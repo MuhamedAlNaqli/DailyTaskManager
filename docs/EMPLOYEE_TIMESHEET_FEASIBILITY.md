@@ -1,6 +1,6 @@
 # Employee timesheets (šihtarica): feasibility and proposed design
 
-Status: **assessment for review; steps 1 and 2 (the domain library and the API skeleton) are implemented**, see sections 12 and 13.
+Status: **assessment for review; steps 1 to 3 (the domain library, the API skeleton and the employee mode with timesheet entry) are implemented**, see sections 12 to 14.
 
 Source: the analysis in `E:\Internal Projects\Timesheet` (`docs/timesheet-analysis`, 37 questions and answers,
 the sample sheet, the filling instruction, the employee list). The architecture file (S5) there is empty, and the
@@ -218,7 +218,7 @@ tests/Company.Api.Tests              new: authorisation and workflow tests
 | --- | --- | --- |
 | 1 (done) | `Timesheet.Domain` with tests: calendar, overtime split and classification, fund, absence ranges, validation rules. | Nothing external |
 | 2 (done) | `Company.Api` skeleton: Windows sign-in with a test mode, the Entra option behind a setting, user profiles and roles, employee import, time-code catalogue, holiday administration, audit base. | Test domain (section 3) |
-| 3 | Employee mode in the desktop app (mode choice at sign-in, Windows sign-in): month grid, absence by range, overtime register, validation report, submit. | 1, 2 |
+| 3 (done, except submit) | Employee mode in the desktop app (mode choice at sign-in, Windows sign-in): month list, absence by range, overtime register, validation report. Submitting moves to step 4 with the workflow. | 1, 2 |
 | 4 | Workflow: submit, return with message, approval up the chain (section 6), locking, frozen revisions, history. | Section 6 defaults |
 | 5 | Reminders from the API: rules, the scheduled task asking the API, notifications. | 2, 4 |
 | 6 | Printed sheet in the Excel layout, pilot with a parallel run, go-live. | 1 to 5 |
@@ -302,3 +302,38 @@ in-process test server cannot do that handshake, so the automated tests use the 
 
 **Still open:** database migrations (the tables are created automatically for now), a test domain for Kerberos
 and Entra, and everything from steps 3 to 6.
+
+## 14. Step 3 result: employee mode and timesheet entry
+
+**API** (`Company.Api`, 44 more tests than step 2): each employee's own month, created as a draft on first use.
+
+| Endpoint (under `/api/timesheet/{year}/{month}`) | What it does |
+| --- | --- |
+| `GET` | The month: days with type and holiday, entries, overtime with its split into codes, totals, the expected monthly fund, and the findings of all rules |
+| `PUT days/{date}`, `DELETE days/{date}/{code}` | Set or clear a day's entry. A day has one base entry (regular hours or an absence); a whole-day code carries no minutes. Overtime codes are refused: overtime is an interval. |
+| `POST fill-standard-days` | 8 regular hours on every working day without an entry; holidays, the employee's religious holidays and days before employment are skipped |
+| `POST absences/preview`, `POST absences` | The days a range covers and the days it leaves out, then the change |
+| `POST/PUT/DELETE overtime` | Date, start, end, description; the total and the split are computed; past midnight is allowed |
+
+Changes are accepted and the findings come back with the month ("prevent by showing", blocking findings stop the
+submission later). A submitted or approved timesheet answers `409 locked`; a returned one is editable again. Every
+change is audited with the employee as actor. The overtime part after midnight on the last day of a month belongs to
+the next month and is left out of this month's totals. The typed client `Company.Api.Client` carries all of this to
+the desktop app, with the server's error codes as `ApiException`.
+
+**Desktop app** (`Employee/`): the sign-in screen has "Employee sign-in (company account)". It opens **employee mode**: a
+Bosnian-only window with the month list (weekend and holiday stripes, entries, overtime, a count of findings per day),
+the totals and expected fund, the overtime records and the findings of the rules with their ids. Dialogs: a day's entry,
+an absence over several days (shows the days before saving) and overtime (shows the total and the split into codes
+while typing, using the domain library). The mode is remembered in `%LOCALAPPDATA%\DailyTaskManager\mode.txt`; in
+employee mode the app starts no local database and no consultant reminder, and "Consultant mode" switches back. The
+server address is `Company:ApiUrl` in `appsettings.local.json`; plain `http` is only accepted for this computer.
+A server that cannot be reached, an account that is not linked, or a refused sign-in is explained in the window.
+
+**Verified in the real app:** the API running on Kestrel with Windows sign-in, the desktop app in employee mode signed
+in with this PC's Windows account (NTLM): month load, "fill standard days" (the test holiday on a weekday was skipped
+and the missing-fund warning appeared), an absence with preview, an overtime record on a Saturday split into 2023 and
+2024, and the Bosnian date picker. 11 logic tests for the formats and dialogs run with the UI test project.
+
+**Not in this step:** submitting, the approval workflow, other people's timesheets, reminders (steps 4 and 5), an
+administrator screen (the administrator uses the API), and the printed sheet (step 6).

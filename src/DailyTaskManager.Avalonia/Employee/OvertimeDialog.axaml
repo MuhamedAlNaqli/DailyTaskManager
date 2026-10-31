@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:em="using:DailyTaskManager.Avalonia.EmployeeMode"
+        x:Class="DailyTaskManager.Avalonia.EmployeeMode.OvertimeDialog"
+        x:DataType="em:OvertimeViewModel"
+        Title="Prekovremeni rad" Width="560" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="28,24" Spacing="16">
+        <TextBlock Name="OvertimeDialogTitle" Text="{Binding Title}" Classes="title"/>
+        <Grid ColumnDefinitions="1.5*,16,*,16,*">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Datum" Classes="label"/>
+                <DatePicker Name="OvertimeDatePicker" Classes="form" SelectedDate="{Binding Date, Mode=TwoWay}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="6">
+                <TextBlock Text="Početak (HH:mm)" Classes="label"/>
+                <TextBox Name="OvertimeStartBox" Classes="form" Text="{Binding StartText}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="4" Spacing="6">
+                <TextBlock Text="Kraj (HH:mm)" Classes="label"/>
+                <TextBox Name="OvertimeEndBox" Classes="form" Text="{Binding EndText}"/>
+            </StackPanel>
+        </Grid>
+        <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="12,10">
+            <StackPanel Spacing="4">
+                <TextBlock Name="OvertimeSummaryText" Text="{Binding SummaryText}" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                <TextBlock Name="OvertimeWarningText" Text="{Binding WarningText}" TextWrapping="Wrap" Foreground="#B45309" IsVisible="{Binding WarningText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Text="Ukupno se računa iz početka i kraja; rad poslije ponoći upisuje se na sljedeći datum." FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppTextMuted}"/>
+            </StackPanel>
+        </Border>
+        <StackPanel Spacing="6">
+            <TextBlock Text="Kratak opis posla (šta je tačno rađeno) *" Classes="label"/>
+            <TextBox Name="OvertimeDescriptionBox" Classes="form" Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
+        </StackPanel>
+        <TextBlock Name="OvertimeDialogError" Text="{Binding Error}" Classes="error" TextWrapping="Wrap" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Name="OvertimeCancelButton" Command="{Binding CancelCommand}" Classes="dialog secondary"><TextBlock Text="Odustani"/></Button>
+            <Button Name="OvertimeSaveButton" Command="{Binding SaveCommand}" Classes="dialog primary"><TextBlock Text="Sačuvaj"/></Button>
+        </StackPanel>
+    </StackPanel>
+</Window>

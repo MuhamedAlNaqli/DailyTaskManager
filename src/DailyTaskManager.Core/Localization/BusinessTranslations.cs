@@ -311,6 +311,9 @@ namespace DailyTaskManager.Core.Localization
                 "Možete koristiti {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}", "Možete koristiti {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber}",
                 "Sie können {Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber} verwenden", "{Name} {Client} {YYYY} {MM} {Month} {InvoiceNumber} kullanabilirsiniz");
 
+            a("Employee sign-in (company account)", "Prijava za zaposlenike (firmski račun)", "Prijava za zaposlenike (tvrtkin račun)",
+                "Prijava za zaposlene (firmin nalog)", "Anmeldung für Mitarbeiter (Firmenkonto)", "Çalışan girişi (şirket hesabı)");
+
             // Titles of the native file and folder dialogs
             a("Choose your signature image", "Odaberite sliku potpisa", "Odaberite sliku potpisa", "Izaberite sliku potpisa", "Unterschriftsbild auswählen", "İmza görselini seçin");
             a("Choose your stamp image", "Odaberite sliku pečata", "Odaberite sliku pečata", "Izaberite sliku pečata", "Stempelbild auswählen", "Kaşe görselini seçin");

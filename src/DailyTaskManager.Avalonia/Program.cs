@@ -59,10 +59,11 @@ class Program
             App.ServiceProvider = host.Services;
             // Warm up the database (EF model, connection, schema check) on a worker thread while Avalonia
             // initializes the platform and fonts; the app waits for it before it needs data (see App).
-            DatabaseReady = Task.Run(() => InitializeDatabaseAsync(host.Services));
+            // Employee mode works against the company API and never touches the local database (an employee's PC has none)
+            DatabaseReady = AppMode.IsEmployee ? Task.CompletedTask : Task.Run(() => InitializeDatabaseAsync(host.Services));
             // The update service is not needed to show the first window
             _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
-            _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
+            if (!AppMode.IsEmployee) _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -145,6 +146,17 @@ class Program
                 services.AddSingleton<IExportService, ExportService>();
                 services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IBusinessService, BusinessService>();
+
+                // The company API (employee mode): signs in with the Windows account; created on first use, so a missing address
+                // only matters when someone opens employee mode
+                services.AddSingleton(sp =>
+                {
+                    var address = sp.GetRequiredService<IConfiguration>()["Company:ApiUrl"];
+                    if (string.IsNullOrWhiteSpace(address))
+                        throw new InvalidOperationException("The company server address is not set. Ask IT for it and set Company:ApiUrl in appsettings.local.json.");
+                    return new Company.Api.Client.CompanyApiClient(Company.Api.Client.CompanyApiClient.CreateWindowsHttpClient(new Uri(address)));
+                });
+                services.AddTransient<DailyTaskManager.Avalonia.EmployeeMode.EmployeeViewModel>();
                 services.AddSingleton<IDocumentGenerator, DocumentGenerator>();
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();

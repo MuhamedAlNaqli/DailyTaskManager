@@ -168,6 +168,24 @@
                 </Button>
             </StackPanel>
 
+            <!-- Company employees -->
+            <Button Name="EmployeeModeButton"
+                    Command="{Binding OpenEmployeeModeCommand}"
+                    Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorderStrong}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="0,10"
+                    FontSize="13"
+                    FontWeight="Medium"
+                    HorizontalAlignment="Stretch"
+                    IsEnabled="{Binding !IsLoading}">
+                <TextBlock Text="Employee sign-in (company account)"
+                           Foreground="{DynamicResource AppText}"
+                           HorizontalAlignment="Center"
+                           FontSize="13"/>
+            </Button>
+
             <!-- Footer -->
             <StackPanel HorizontalAlignment="Center" Spacing="4">
                 <TextBlock Text="Don't have an account?" 

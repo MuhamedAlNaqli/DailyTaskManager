@@ -83,8 +83,20 @@ Every change to master data (employees, accounts, chart, holidays) is written to
 save: who, when, what. The application cannot change or delete audit rows. The log is available to administrators at
 `/api/admin/audit`.
 
+## 7b. The desktop app
+
+On each employee PC the app needs one setting, in `appsettings.local.json` next to the program (or the environment
+variable `Company__ApiUrl`):
+
+```json
+{ "Company": { "ApiUrl": "https://timesheet.company.local" } }
+```
+
+The employee chooses "Employee sign-in (company account)" on the first screen; the choice is remembered. Plain `http://`
+is refused except for the local computer.
+
 ## 8. Not yet implemented
 
-The timesheet itself (month entries, validation in the API, submission and approval, reminders, printed sheet) is built
-in the next steps; see `docs/EMPLOYEE_TIMESHEET_FEASIBILITY.md` section 10. Database migrations will replace the
+Submission and approval, reminders and the printed sheet are built in the next steps (month entries and validation
+already work); see `docs/EMPLOYEE_TIMESHEET_FEASIBILITY.md` section 10. Database migrations will replace the
 automatic table creation before the first production install.

@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:em="using:DailyTaskManager.Avalonia.EmployeeMode"
+        x:Class="DailyTaskManager.Avalonia.EmployeeMode.DayEntryDialog"
+        x:DataType="em:DayEntryViewModel"
+        Title="Unos za dan" Width="480" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="28,24" Spacing="16">
+        <TextBlock Name="DayDialogTitle" Text="{Binding Title}" Classes="title"/>
+        <StackPanel Spacing="6">
+            <TextBlock Text="Šifra" Classes="label"/>
+            <ComboBox Name="DayCodeComboBox" Classes="form" ItemsSource="{Binding Codes}" SelectedItem="{Binding SelectedCode}" HorizontalAlignment="Stretch"/>
+        </StackPanel>
+        <StackPanel Spacing="6" IsVisible="{Binding NeedsHours}">
+            <TextBlock Text="Sati (na primjer 8, 7,5 ili 7:30)" Classes="label"/>
+            <TextBox Name="DayHoursBox" Classes="form" Text="{Binding HoursText}"/>
+        </StackPanel>
+        <TextBlock Text="Šifre odsustva se upisuju za cijeli dan; jedan dan se računa kao 8 sati." FontSize="12" TextWrapping="Wrap"
+                   IsVisible="{Binding !NeedsHours}" Foreground="{DynamicResource AppTextMuted}"/>
+        <TextBlock Name="DayDialogError" Text="{Binding Error}" Classes="error" TextWrapping="Wrap" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Name="DayCancelButton" Command="{Binding CancelCommand}" Classes="dialog secondary"><TextBlock Text="Odustani"/></Button>
+            <Button Name="DaySaveButton" Command="{Binding SaveCommand}" Classes="dialog primary"><TextBlock Text="Sačuvaj"/></Button>
+        </StackPanel>
+    </StackPanel>
+</Window>

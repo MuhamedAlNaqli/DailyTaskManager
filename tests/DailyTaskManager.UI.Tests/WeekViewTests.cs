@@ -25,17 +25,17 @@ public class WeekViewTests
     [TestMethod]
     public void WeekDay_ShouldSumHoursAndFlagWeekendsAndToday()
     {
-        var day = new WeekDay(new DateTime(2026, 10, 31, 15, 30, 0), new[]
+        var day = new WeekDay(new DateTime(2025, 10, 25, 15, 30, 0), new[]
         {
-            new DailyTask { Description = "a", Hours = 3.5m, CreatedAt = new DateTime(2026, 10, 31, 9, 0, 0) },
-            new DailyTask { Description = "b", Hours = 4m, CreatedAt = new DateTime(2026, 10, 31, 8, 0, 0) }
+            new DailyTask { Description = "a", Hours = 3.5m, CreatedAt = new DateTime(2025, 10, 25, 9, 0, 0) },
+            new DailyTask { Description = "b", Hours = 4m, CreatedAt = new DateTime(2025, 10, 25, 8, 0, 0) }
         });
 
-        Assert.AreEqual(new DateTime(2026, 10, 31), day.Date, "The time of day is dropped");
+        Assert.AreEqual(new DateTime(2025, 10, 25), day.Date, "The time of day is dropped");
         Assert.AreEqual(7.5m, day.TotalHours);
         Assert.AreEqual("7.5h", day.HoursText);
         Assert.AreEqual("b", day.Tasks[0].Description, "Entries are listed in the order they were created");
-        Assert.IsTrue(day.IsWeekend, "31 Oct 2026 is a Saturday");
+        Assert.IsTrue(day.IsWeekend, "25 Oct 2025 is a Saturday (a fixed date in the past, so the test does not depend on today)");
         Assert.AreEqual("Sat", day.DayName);
         Assert.IsFalse(day.IsToday);
 

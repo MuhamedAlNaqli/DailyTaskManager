@@ -1,4 +1,5 @@
 using System;
+using DailyTaskManager.Avalonia.Services;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -177,6 +178,29 @@ public partial class LoginViewModel : ObservableObject
         else
         {
             await _authService.ClearRememberedSessionAsync();
+        }
+    }
+
+    /// <summary>A company employee signs in with the Windows account in a window of their own; nothing local is used.</summary>
+    [RelayCommand]
+    private void OpenEmployeeMode()
+    {
+        try
+        {
+            if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && App.Current is App app)
+            {
+                AppMode.Set(Mode.Employee);
+                var current = desktop.MainWindow;
+                var window = app.CreateEmployeeWindow();
+                desktop.MainWindow = window;
+                window.Show();
+                current?.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error opening employee mode");
+            ErrorMessage = "Failed to open the employee view. Please try again.";
         }
     }
 

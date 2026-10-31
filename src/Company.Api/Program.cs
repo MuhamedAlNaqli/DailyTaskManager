@@ -25,6 +25,7 @@ builder.Services.AddCompanyAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ChartService>();
+builder.Services.AddScoped<TimesheetService>();
 
 var app = builder.Build();
 
@@ -42,6 +43,7 @@ app.UseAuthorization();
 
 app.MapMeEndpoints(mode);
 app.MapAdminEndpoints();
+app.MapTimesheetEndpoints();
 
 app.Run();
 

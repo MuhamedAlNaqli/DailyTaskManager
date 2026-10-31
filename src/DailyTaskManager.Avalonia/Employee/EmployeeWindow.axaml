@@ -1,0 +1,189 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="using:Material.Icons.Avalonia"
+        xmlns:em="using:DailyTaskManager.Avalonia.EmployeeMode"
+        x:Class="DailyTaskManager.Avalonia.EmployeeMode.EmployeeWindow"
+        x:DataType="em:EmployeeViewModel"
+        Title="Evidencija radnog vremena"
+        Width="1280" Height="860" MinWidth="1040" MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="14">
+
+        <!-- Header: who, month, mode -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Moja evidencija radnog vremena" Classes="header" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Name="EmpWhoText" Text="{Binding WhoText}" Foreground="{DynamicResource AppTextMuted}"/>
+                    <Border Background="{DynamicResource AppBadgeBg}" CornerRadius="5" Padding="8,2" IsVisible="{Binding IsConnected}">
+                        <TextBlock Name="EmpStatusText" Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource AppBadgeText}"/>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+                <Button Name="EmpPreviousMonthButton" Command="{Binding PreviousMonthCommand}" Classes="secondary" Padding="12,8" IsEnabled="{Binding !IsBusy}">
+                    <materialIcons:MaterialIcon Kind="ChevronLeft" Width="18" Height="18"/>
+                </Button>
+                <TextBlock Name="EmpMonthTitle" Text="{Binding MonthTitle}" FontSize="18" FontWeight="SemiBold" MinWidth="170"
+                           TextAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource AppTextStrong}"/>
+                <Button Name="EmpNextMonthButton" Command="{Binding NextMonthCommand}" Classes="secondary" Padding="12,8" IsEnabled="{Binding !IsBusy}">
+                    <materialIcons:MaterialIcon Kind="ChevronRight" Width="18" Height="18"/>
+                </Button>
+                <Button Name="EmpThisMonthButton" Command="{Binding ThisMonthCommand}" Classes="secondary" Padding="12,8" IsEnabled="{Binding !IsBusy}">
+                    <TextBlock Text="Ovaj mjesec"/>
+                </Button>
+            </StackPanel>
+
+            <Button Name="EmpConsultantButton" Grid.Column="2" Command="{Binding SwitchToConsultantCommand}" Classes="secondary" Padding="12,8" VerticalAlignment="Center">
+                <TextBlock Text="Konsultantski način"/>
+            </Button>
+        </Grid>
+
+        <!-- Error banner -->
+        <Border Grid.Row="1" IsVisible="{Binding HasError}" Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="8" Padding="14,10">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="EmpErrorText" Text="{Binding ErrorText}" TextWrapping="Wrap" Foreground="#991B1B" VerticalAlignment="Center"/>
+                <Button Name="EmpRetryButton" Grid.Column="1" Command="{Binding LoadCommand}" Classes="secondary" Padding="12,6" Margin="12,0,0,0">
+                    <TextBlock Text="Pokušaj ponovo"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsConnected}">
+            <Button Name="EmpFillButton" Command="{Binding FillStandardDaysCommand}" IsEnabled="{Binding IsEditable}" Classes="primary" Padding="14,9">
+                <TextBlock Text="Popuni standardne dane"/>
+            </Button>
+            <Button Name="EmpAbsenceButton" Command="{Binding AddAbsenceCommand}" IsEnabled="{Binding IsEditable}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Odsustvo…"/>
+            </Button>
+            <Button Name="EmpOvertimeButton" Command="{Binding AddOvertimeCommand}" IsEnabled="{Binding IsEditable}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Prekovremeni rad…"/>
+            </Button>
+            <Button Name="EmpRefreshButton" Command="{Binding LoadCommand}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Osvježi"/>
+            </Button>
+            <TextBlock Text="Šihtarica je zaključana dok čeka odobravanje." IsVisible="{Binding !IsEditable}" VerticalAlignment="Center"
+                       Foreground="{DynamicResource AppTextMuted}"/>
+        </StackPanel>
+
+        <!-- Body -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,16,380" IsVisible="{Binding IsConnected}">
+
+            <!-- Days -->
+            <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12">
+                <ScrollViewer>
+                    <ItemsControl Name="EmpDaysList" ItemsSource="{Binding Days}" Margin="6">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="em:EmployeeDayRow">
+                                <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1" Padding="0,2">
+                                    <Grid ColumnDefinitions="5,86,150,*,210,40,150" MinHeight="40">
+                                        <Border Background="{Binding Stripe}" CornerRadius="2" Margin="0,4"/>
+                                        <StackPanel Grid.Column="1" Margin="10,4,0,4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DateText}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                                            <TextBlock Text="{Binding WeekdayText}" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding TypeText}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource AppTextMuted}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding EntriesText}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,4"
+                                                   Foreground="{DynamicResource AppTextStrong}"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding OvertimeText}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                   Foreground="#B45309"/>
+                                        <Border Grid.Column="5" IsVisible="{Binding HasIssues}" Width="26" Height="22" CornerRadius="11" VerticalAlignment="Center"
+                                                Background="{DynamicResource AppBadgeBg}" ToolTip.Tip="{Binding IssueTooltip}">
+                                            <TextBlock Text="{Binding IssueCount}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource AppBadgeText}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <Button Classes="secondary" Padding="10,5" FontSize="12"
+                                                    Command="{Binding $parent[Window].DataContext.EditDayCommand}" CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
+                                                <TextBlock Text="Uredi"/>
+                                            </Button>
+                                            <Button Classes="secondary" Padding="10,5" FontSize="12" IsVisible="{Binding HasEntries}"
+                                                    Command="{Binding $parent[Window].DataContext.ClearDayCommand}" CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
+                                                <TextBlock Text="Obriši"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Summary, overtime, findings -->
+            <ScrollViewer Grid.Column="2">
+                <StackPanel Spacing="14">
+                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Zbir mjeseca" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpFundText" Text="{Binding FundText}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpOvertimeText" Text="{Binding OvertimeText}" Foreground="#B45309"/>
+                            <ItemsControl ItemsSource="{Binding TotalLines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" FontSize="12" Foreground="{DynamicResource AppTextMuted}" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Odsustva se ne računaju kao sati; jedan dan odsustva je 8 sati fonda." FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppTextMuted}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Prekovremeni rad" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Text="Nema unosa." IsVisible="{Binding NoOvertime}" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpOvertimeList" ItemsSource="{Binding Overtime}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="em:EmployeeOvertimeRow">
+                                        <StackPanel Margin="0,4" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#B45309"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                                                <Button Classes="secondary" Padding="10,4" FontSize="12"
+                                                        Command="{Binding $parent[Window].DataContext.EditOvertimeCommand}" CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
+                                                    <TextBlock Text="Uredi"/>
+                                                </Button>
+                                                <Button Classes="secondary" Padding="10,4" FontSize="12"
+                                                        Command="{Binding $parent[Window].DataContext.DeleteOvertimeCommand}" CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
+                                                    <TextBlock Text="Obriši"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Provjera unosa" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpNoIssuesText" Text="Nema primjedbi." IsVisible="{Binding NoIssues}" Foreground="#15803D"/>
+                            <ItemsControl Name="EmpIssuesList" ItemsSource="{Binding Issues}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="em:EmployeeIssueRow">
+                                        <StackPanel Margin="0,4" Spacing="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#B45309"/>
+                                            <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Window>

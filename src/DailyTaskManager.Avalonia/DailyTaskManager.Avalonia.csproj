@@ -44,6 +44,8 @@
   <ItemGroup>
     <ProjectReference Include="../DailyTaskManager.Core/DailyTaskManager.Core.csproj" />
     <ProjectReference Include="../DailyTaskManager.Infrastructure/DailyTaskManager.Infrastructure.csproj" />
+    <ProjectReference Include="../Timesheet.Domain/Timesheet.Domain.csproj" />
+    <ProjectReference Include="../Company.Api.Client/Company.Api.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

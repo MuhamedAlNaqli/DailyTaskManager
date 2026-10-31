@@ -1,4 +1,5 @@
 using System;
+using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using System.Threading.Tasks;
@@ -29,6 +30,15 @@ public partial class App : Application
             
             // Data access needs the schema; it has been initializing in parallel with the UI toolkit startup
             Program.DatabaseReady.GetAwaiter().GetResult();
+
+            // Employee mode: no local database and no personal sign-in; the Windows account is the sign-in
+            if (AppMode.IsEmployee)
+            {
+                RequestedThemeVariant = ThemeVariant.Light;
+                desktop.MainWindow = CreateEmployeeWindow();
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
 
             // Read the theme and check for a remembered session at the same time
             var themeTask = Task.Run(ReadSavedThemeAsync);
@@ -74,6 +84,38 @@ public partial class App : Application
             Serilog.Log.Warning(ex, "Could not read the saved theme");
             return null;
         }
+    }
+
+    /// <summary>The employee's month. A missing server address is shown in the window instead of stopping the app.</summary>
+    public Window CreateEmployeeWindow()
+    {
+        if (ServiceProvider == null) throw new InvalidOperationException("ServiceProvider is not initialized");
+
+        // The interface of employee mode is Bosnian only (month names, date pickers and number formats)
+        var bosnian = EmployeeMode.EmployeeFormat.Bosnian;
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = bosnian;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = bosnian;
+        System.Globalization.CultureInfo.CurrentCulture = bosnian;
+        System.Globalization.CultureInfo.CurrentUICulture = bosnian;
+
+        var window = new EmployeeMode.EmployeeWindow();
+        MemoryTrimmer.Attach(window);
+        try
+        {
+            window.DataContext = ServiceProvider.GetRequiredService<EmployeeMode.EmployeeViewModel>();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Employee mode could not start");
+            window.Content = new TextBlock
+            {
+                Text = "Evidencija radnog vremena ne može se pokrenuti: " + (ex.InnerException?.Message ?? ex.Message),
+                Margin = new global::Avalonia.Thickness(32),
+                TextWrapping = global::Avalonia.Media.TextWrapping.Wrap
+            };
+        }
+
+        return window;
     }
 
     public LoginWindow CreateLoginWindow()

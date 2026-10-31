@@ -18,6 +18,12 @@ public class CompanyDbContext : DbContext
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    public DbSet<MonthSheet> Sheets => Set<MonthSheet>();
+
+    public DbSet<SheetEntry> SheetEntries => Set<SheetEntry>();
+
+    public DbSet<SheetOvertime> SheetOvertime => Set<SheetOvertime>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Employee>(e =>
@@ -52,6 +58,29 @@ public class CompanyDbContext : DbContext
             e.HasIndex(x => new { x.EmployeeCode, x.Date }).IsUnique();
             e.Property(x => x.EmployeeCode).HasMaxLength(10).IsRequired();
             e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+        });
+
+        modelBuilder.Entity<MonthSheet>(e =>
+        {
+            e.ToTable("month_sheets");
+            e.HasIndex(x => new { x.EmployeeCode, x.Year, x.Month }).IsUnique();
+            e.Property(x => x.EmployeeCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.HasMany(x => x.Entries).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Overtime).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SheetEntry>(e =>
+        {
+            e.ToTable("sheet_entries");
+            e.HasIndex(x => new { x.SheetId, x.Date, x.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<SheetOvertime>(e =>
+        {
+            e.ToTable("sheet_overtime");
+            e.HasIndex(x => new { x.SheetId, x.Date });
+            e.Property(x => x.Description).HasMaxLength(500).IsRequired();
         });
 
         modelBuilder.Entity<AuditEvent>(e =>

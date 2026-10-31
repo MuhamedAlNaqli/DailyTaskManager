@@ -79,3 +79,57 @@ public class AuditEvent
 
     public string? Details { get; set; }
 }
+
+/// <summary>One employee's timesheet for one month</summary>
+public class MonthSheet
+{
+    public int Id { get; set; }
+
+    public string EmployeeCode { get; set; } = "";
+
+    public int Year { get; set; }
+
+    public int Month { get; set; }
+
+    public Timesheet.Domain.TimesheetStatus Status { get; set; } = Timesheet.Domain.TimesheetStatus.Draft;
+
+    public int Revision { get; set; }
+
+    public DateTime CreatedUtc { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+
+    public List<SheetEntry> Entries { get; set; } = new();
+
+    public List<SheetOvertime> Overtime { get; set; } = new();
+}
+
+/// <summary>A regular-hours, absence or hour-based code on a date. Overtime is not stored here; it is derived from the intervals.</summary>
+public class SheetEntry
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    public DateOnly Date { get; set; }
+
+    public int Code { get; set; }
+
+    /// <summary>Zero for whole-day absence codes</summary>
+    public int Minutes { get; set; }
+}
+
+public class SheetOvertime
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    public DateOnly Date { get; set; }
+
+    public TimeOnly Start { get; set; }
+
+    public TimeOnly End { get; set; }
+
+    public string Description { get; set; } = "";
+}
