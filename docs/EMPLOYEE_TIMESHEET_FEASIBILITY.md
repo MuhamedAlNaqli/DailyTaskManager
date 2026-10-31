@@ -457,7 +457,37 @@ rows").
 
 1. **A server:** a Windows machine in the company network, .NET 8 runtime, PostgreSQL, an HTTPS certificate, a service account and its service principal name (`docs/API_IT_GUIDE.md`). Without them only the test sign-in and a development database can be shown.
 2. **Real sign-in check:** `curl --negotiate -u : https://host/api/auth/diagnostics` for two or three users, and the `Get-ADUser` output (to decide how accounts are linked to employees).
-3. **Database migrations** instead of the automatic table creation, before the first production install. This is the one open item in the code.
+3. ~~Database migrations~~ **Done:** PostgreSQL is now created and updated by migrations (see below).
 4. **First data:** the employee list (import with preview), the links of accounts, "reports to" for everyone, the lawyer as final approver, the finance flag, the state holidays of the year, `Reminders:StartFrom` set to the first month in the app.
 5. **Parallel run:** one month on paper or in Excel and in the app side by side, compare the printed sheet of the app with the Excel sheet row by row, and let finance calculate from the exported sheet.
 6. **Open questions of section 10** that change behaviour: the approval-chain defaults, deputies, half-hour granularity, the rule for overtime on other absence days.
+
+### Database migrations
+
+Production (PostgreSQL) is created and updated by EF Core migrations: the API applies pending ones at start-up, so installing
+a new version updates the database. The first migration, `InitialCreate`, was applied to an empty PostgreSQL 17 database
+and produced the 11 tables plus the history table and the first administrator; the test database was dropped afterwards.
+Development and tests use a SQLite file, which is simply created.
+
+When an entity changes, add a migration from the repository root (the tool needs no database):
+
+```
+dotnet ef migrations add WhatChanged --project src/Company.Api --output-dir Data/Migrations
+```
+
+A test (`MigrationTests`) fails when the model and the migrations differ, so a forgotten migration cannot reach the build
+server. A PostgreSQL database that was created by the earlier start-up code (without migrations) must be dropped and created
+again; nothing was in production yet.
+
+### Small things closed in the same pass
+
+- The confirmation dialog of employee mode now has the buttons "Da" and "Ne" (it was "Yes/No").
+- The reminder banner refreshes after a submission or an answer, not only when a month is loaded.
+
+### Still open (by choice, not forgotten)
+
+- **Deputies:** the domain library supports them; there is no table, endpoint or screen yet. Needed when an approver is away.
+- **Administrator screen:** the administrator works through the API (`docs/API_IT_GUIDE.md`); a screen in the app is a convenience for a later release.
+- **Screen for stored revisions:** the API returns each submitted revision; the app does not show them yet.
+- **Email reminders:** optional.
+- **Real Kerberos and Entra sign-in:** only testable with the company's domain or tenant; NTLM Windows sign-in was verified.

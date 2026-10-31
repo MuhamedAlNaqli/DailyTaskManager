@@ -39,7 +39,9 @@ var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CompanyDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    // PostgreSQL (production) is created and updated by the migrations; the SQLite file of development and tests is simply created
+    if (db.Database.IsNpgsql()) await db.Database.MigrateAsync();
+    else await db.Database.EnsureCreatedAsync();
     await Bootstrap.RunAsync(db, app.Configuration, app.Logger);
 }
 

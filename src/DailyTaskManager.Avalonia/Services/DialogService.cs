@@ -7,7 +7,9 @@ using Microsoft.Extensions.Logging;
 using DailyTaskManager.Core.Models;
 using DailyTaskManager.Avalonia.ViewModels;
 using MsBox.Avalonia;
+using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
+using MsBox.Avalonia.Models;
 
 namespace DailyTaskManager.Avalonia.Services;
 
@@ -75,6 +77,20 @@ public class DialogService
             _logger.LogInformation("CONFIRM: {Title} - {Message}", title, message);
 
             var mainWindow = GetMainWindow();
+            // Employee mode is Bosnian only; the standard Yes/No buttons of the library are English
+            if (mainWindow != null && AppMode.IsEmployee)
+            {
+                var box = MessageBoxManager.GetMessageBoxCustom(new MessageBoxCustomParams
+                {
+                    ContentTitle = title,
+                    ContentMessage = message,
+                    Icon = Icon.Question,
+                    ButtonDefinitions = new[] { new ButtonDefinition { Name = "Da", IsDefault = true }, new ButtonDefinition { Name = "Ne", IsCancel = true } },
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return await box.ShowWindowDialogAsync(mainWindow) == "Da";
+            }
+
             if (mainWindow != null)
             {
                 var result = await ShowMessageBoxAsync(mainWindow, title, message, Icon.Question,

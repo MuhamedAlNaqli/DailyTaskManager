@@ -609,7 +609,7 @@ public partial class EmployeeViewModel : ObservableObject
         if (!CanSubmit) return;
         var confirmed = await _dialogService.ShowConfirmDialogAsync("Predaj na odobravanje",
             $"Nakon predaje je šihtarica za {MonthTitle} zaključana dok je neko od odobravatelja ne vrati. Predati?");
-        if (confirmed) await RunAsync(() => _client.SubmitAsync(Year, Month));
+        if (confirmed) await RunAsync(() => _client.SubmitAsync(Year, Month), refreshPending: true);
     }
 
     [RelayCommand]
@@ -619,7 +619,7 @@ public partial class EmployeeViewModel : ObservableObject
 
         var viewModel = new TextPromptViewModel("Odgovor na poruku", "Vaš odgovor", "Pošalji odgovor", $"{row.Header}: {row.Text}");
         var answer = await EmployeeDialogs.ShowAsync<TextPromptDialog, string?>(new TextPromptDialog { DataContext = viewModel }, viewModel);
-        if (answer != null) await RunAsync(() => _client.AnswerAsync(Year, Month, row.Message.Index, answer));
+        if (answer != null) await RunAsync(() => _client.AnswerAsync(Year, Month, row.Message.Index, answer), refreshPending: true);
     }
 
     // ---- Approval --------------------------------------------------------------------------------------------------
