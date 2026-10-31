@@ -1,6 +1,6 @@
 # Employee timesheets (šihtarica): feasibility and proposed design
 
-Status: **assessment for review; step 1 (the domain library) is implemented**, see section 12. Nothing else is implemented.
+Status: **assessment for review; steps 1 and 2 (the domain library and the API skeleton) are implemented**, see sections 12 and 13.
 
 Source: the analysis in `E:\Internal Projects\Timesheet` (`docs/timesheet-analysis`, 37 questions and answers,
 the sample sheet, the filling instruction, the employee list). The architecture file (S5) there is empty, and the
@@ -217,7 +217,7 @@ tests/Company.Api.Tests              new: authorisation and workflow tests
 | Step | Content | Depends on |
 | --- | --- | --- |
 | 1 (done) | `Timesheet.Domain` with tests: calendar, overtime split and classification, fund, absence ranges, validation rules. | Nothing external |
-| 2 | `Company.Api` skeleton: Windows sign-in with a test mode, the Entra option behind a setting, user profiles and roles, employee import, time-code catalogue, holiday administration, audit base. | Test domain (section 3) |
+| 2 (done) | `Company.Api` skeleton: Windows sign-in with a test mode, the Entra option behind a setting, user profiles and roles, employee import, time-code catalogue, holiday administration, audit base. | Test domain (section 3) |
 | 3 | Employee mode in the desktop app (mode choice at sign-in, Windows sign-in): month grid, absence by range, overtime register, validation report, submit. | 1, 2 |
 | 4 | Workflow: submit, return with message, approval up the chain (section 6), locking, frozen revisions, history. | Section 6 defaults |
 | 5 | Reminders from the API: rules, the scheduled task asking the API, notifications. | 2, 4 |
@@ -274,3 +274,31 @@ annual leave 01.09 to 15.09 gives exactly 11 days; the real employee list import
 - Range absences skip the employee's religious holidays (they have code 1025); state holidays use 1024 and 2010.
 - When the 25th is not a working day the deadline moves **later**; reminders start three days before the deadline.
 - A holiday on a weekend uses holiday codes, also for a religious holiday (Q-03).
+
+## 13. Step 2 result: `Company.Api`
+
+Implemented in `src/Company.Api` (ASP.NET Core, .NET 8) and `src/Company.Api.Contracts` (the request and response
+types for the desktop app), with 25 tests in `tests/Company.Api.Tests`. The guide for the company's IT is
+[API_IT_GUIDE.md](API_IT_GUIDE.md).
+
+| Part | What it does |
+| --- | --- |
+| Sign-in modes | `Windows` (Negotiate: Kerberos, NTLM fallback), `Entra` (bearer token), `Both` (a bearer token goes to Entra, anything else to Windows) and `Test` (development only; the server refuses it elsewhere). A mode that cannot work, such as Entra without a tenant, stops the server at start-up with a clear message. |
+| Identity mapping | The caller's names (Windows name, user principal name, Entra name, e-mail) are compared, ignoring case, with the accounts the administrator linked to employees. Roles follow from the data: administrator, approver (has people reporting to them), final approver (the lawyer). |
+| Not registered | A signed-in account that is linked to nobody gets `403` with the code `not-registered`, which the desktop app can show as it is. |
+| Employees | Import with a preview (the importer of the domain library), edit, supervisor, final-approver flag, designated approver, active dates. A change that would create a cycle or name an unknown person is refused and saves nothing. |
+| Accounts | Link and unlink; an account belongs to one employee. A name-matching preview proposes links between directory users and employees, ignoring accents and the order of names. |
+| Calendar | State holidays maintained by the administrator, religious holidays per employee, the days of a month for the caller. The 22 time codes come from the domain library. |
+| Audit | Append-only: every administrative change is recorded in the same save, and the data layer refuses to change or delete an audit row. |
+| First start | `Bootstrap:AdminAccounts` creates the first administrator while no employee exists. |
+| Diagnostics | `/api/auth/diagnostics` shows what the server sees of the caller, for testing Windows or Entra sign-in. |
+
+**Verified with a real handshake:** the API was started on Kestrel in `Windows` mode on this PC and called with
+`curl --negotiate`. An anonymous call got `401` with `WWW-Authenticate: Negotiate`; with the Windows identity the
+server saw `SMART-POINTmuham` (NTLM, as expected on a workgroup PC) and mapped it to the bootstrap administrator.
+Kerberos on the company domain uses the same code; only the service principal name and the domain are needed. The
+in-process test server cannot do that handshake, so the automated tests use the `Test` mode and check that the
+`Windows`, `Entra` and `Both` modes start with the right schemes.
+
+**Still open:** database migrations (the tables are created automatically for now), a test domain for Kerberos
+and Entra, and everything from steps 3 to 6.
