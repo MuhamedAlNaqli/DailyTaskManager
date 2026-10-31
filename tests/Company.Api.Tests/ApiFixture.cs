@@ -27,9 +27,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         if (settings != null) foreach (var pair in settings) _settings[pair.Key] = pair.Value;
     }
 
+    /// <summary>The clock of the server; set before the first request</summary>
+    public TimeProvider Time { get; set; } = TimeProvider.System;
+
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureTestServices(services => services.AddSingleton(Time));
         foreach (var pair in _settings) builder.UseSetting(pair.Key, pair.Value);
     }
 

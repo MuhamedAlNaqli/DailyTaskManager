@@ -1,4 +1,5 @@
 using Company.Api.Contracts;
+using DailyTaskManager.Avalonia.Background;
 using DailyTaskManager.Avalonia.EmployeeMode;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Timesheet.Domain;
@@ -201,5 +202,110 @@ public class EmployeeModeTests
         Assert.IsTrue(row.HasBlocking);
         StringAssert.Contains(row.IssueTooltip, "V-02");
         Assert.IsFalse(row.IsWorkingDay);
+    }
+
+    // ---- Submission and approval ----------------------------------------------------------------------------------------
+
+    [TestMethod]
+    public void PendingRow_ShouldNameThePersonTheMonthAndWhatIsWrong()
+    {
+        var row = new PendingRow(new PendingApprovalDto("Z-001", "Amra Adžamija", 2026, 9, 1, 0, new DateTime(2026, 10, 1, 10, 0, 0, DateTimeKind.Utc), 0, 2));
+        Assert.AreEqual("Amra Adžamija", row.Title);
+        StringAssert.Contains(row.Detail, "Septembar 2026.");
+        Assert.AreEqual("2 upozorenja", row.Warning);
+        Assert.IsTrue(row.HasWarning);
+        Assert.IsFalse(new PendingRow(new PendingApprovalDto("Z-001", "A", 2026, 9, 1, 0, DateTime.UtcNow, 0, 0)).HasWarning);
+    }
+
+    [TestMethod]
+    public void MessageRow_ShouldOfferAnAnswerOnlyWhileItIsOpenAndTheSheetIsReturned()
+    {
+        var open = new MessageDto(0, "Z-002", "Benjamin Bašić", "Ispravi sate", 1, null);
+        Assert.IsTrue(new MessageRow(open, canAnswer: true).CanAnswer);
+        Assert.IsFalse(new MessageRow(open, canAnswer: false).CanAnswer);
+
+        var answered = new MessageRow(open with { Answer = "Gotovo" }, canAnswer: true);
+        Assert.IsFalse(answered.CanAnswer);
+        Assert.AreEqual("Odgovor: Gotovo", answered.AnswerText);
+        StringAssert.Contains(answered.Header, "Benjamin");
+    }
+
+    [TestMethod]
+    public void HistoryRow_ShouldShowWhoActedAndForWhom()
+    {
+        var row = new HistoryRow(new HistoryDto(DateTime.UtcNow, "Returned", "Z-003", "Emir Ferhatbegović", "Z-002", 1, 1, "Prekovremeni"));
+        StringAssert.Contains(row.Title, "Vraćeno na ispravku");
+        StringAssert.Contains(row.Detail, "Emir Ferhatbegović");
+        StringAssert.Contains(row.Detail, "u ime Z-002");
+        StringAssert.Contains(row.Detail, "Prekovremeni");
+    }
+
+    [TestMethod]
+    public void TextPrompt_ShouldNeedATextAndTrimIt()
+    {
+        var vm = new TextPromptViewModel("Vrati", "Šta treba ispraviti?", "Vrati");
+        vm.SaveCommand.Execute(null);
+        Assert.IsNull(vm.Result);
+        Assert.AreNotEqual("", vm.Error);
+
+        vm.Text = "  Ispravi sate  ";
+        vm.SaveCommand.Execute(null);
+        Assert.AreEqual("Ispravi sate", vm.Result);
+    }
+
+    // ---- Reminders -------------------------------------------------------------------------------------------------------
+
+    private static ReminderDto Due(string kind, int month = 9, int count = 1, int deadlineDay = 25) =>
+        new(kind, 2026, month, count, new DateOnly(2026, month, deadlineDay));
+
+    [TestMethod]
+    public void Reminders_ShouldBeWordedForTheEmployee()
+    {
+        var (title, message) = EmployeeFormat.Reminder(Due("SubmitSoon"));
+        Assert.AreEqual("Predajte šihtaricu", title);
+        StringAssert.Contains(message, "Septembar 2026.");
+        StringAssert.Contains(message, "25.09.2026.");
+
+        StringAssert.Contains(EmployeeFormat.Reminder(Due("ApproveWaiting", count: 3)).Message, "3");
+        Assert.IsTrue(EmployeeFormat.ReminderOrder("FixReturned") < EmployeeFormat.ReminderOrder("SubmitSoon"), "what blocks others comes first");
+    }
+
+    [TestMethod]
+    public void TheNotification_ShouldNameTheMostUrgentAndMentionTheRest()
+    {
+        var items = new[] { Due("ApproveWaiting", count: 2), Due("SubmitOverdue") };
+        var (title, message) = EmployeeReminders.Compose(items);
+        Assert.AreEqual("Šihtarica kasni", title);
+        StringAssert.Contains(message, "predana");
+        StringAssert.Contains(message, "čekaju vaše odobrenje");
+    }
+
+    [TestMethod]
+    public void ANewItemIsAnnouncedAtOnce_ButTheSameOneOnlyNowAndThen()
+    {
+        var items = new[] { Due("SubmitSoon") };
+        var now = new DateTime(2026, 9, 23, 10, 0, 0);
+        var state = new ReminderState();
+        Assert.IsTrue(EmployeeReminders.ShouldNotify(state, items, now));
+
+        state.Record(now);
+        state.EmployeeSignature = EmployeeReminders.Signature(items);
+        Assert.IsFalse(EmployeeReminders.ShouldNotify(state, items, now.AddMinutes(30)), "told a moment ago");
+        Assert.IsTrue(EmployeeReminders.ShouldNotify(state, items, now.AddHours(3)), "a repeat after the gap");
+
+        var more = new[] { Due("SubmitSoon"), Due("ApproveWaiting") };
+        Assert.IsTrue(EmployeeReminders.ShouldNotify(state, more, now.AddMinutes(30)), "something new arrived");
+        Assert.IsFalse(EmployeeReminders.ShouldNotify(state, Array.Empty<ReminderDto>(), now), "nothing is due");
+    }
+
+    [TestMethod]
+    public void WithoutTheServer_ASubmissionDeadlineIsStillHonoured_AndNothingElseIsGuessed()
+    {
+        var last = new RemindersDto(new DateOnly(2026, 9, 10), new[] { Due("SubmitSoon"), Due("ApproveWaiting", count: 2), Due("FixReturned") });
+
+        Assert.AreEqual(0, EmployeeReminders.Offline(last, new DateOnly(2026, 9, 15)).Count, "not due yet");
+        Assert.AreEqual("SubmitSoon", EmployeeReminders.Offline(last, new DateOnly(2026, 9, 23)).Single().Kind);
+        Assert.AreEqual("SubmitOverdue", EmployeeReminders.Offline(last, new DateOnly(2026, 9, 27)).Single().Kind);
+        Assert.AreEqual(0, EmployeeReminders.Offline(null, new DateOnly(2026, 9, 27)).Count);
     }
 }

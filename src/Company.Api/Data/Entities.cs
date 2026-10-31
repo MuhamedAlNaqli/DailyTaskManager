@@ -99,9 +99,81 @@ public class MonthSheet
 
     public DateTime UpdatedUtc { get; set; }
 
+    /// <summary>Changes with every save of the sheet, so two people acting at the same moment cannot both win</summary>
+    public int Version { get; set; }
+
+    /// <summary>The approvers frozen at the last submission, in order, separated by commas</summary>
+    public string Chain { get; set; } = "";
+
+    /// <summary>Position in <see cref="Chain"/> of the person whose turn it is</summary>
+    public int Step { get; set; }
+
     public List<SheetEntry> Entries { get; set; } = new();
 
     public List<SheetOvertime> Overtime { get; set; } = new();
+
+    public List<SheetMessage> Messages { get; set; } = new();
+
+    public List<SheetEvent> Events { get; set; } = new();
+
+    public List<string> ChainCodes => Chain.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+}
+
+/// <summary>A message with which an approver returned the sheet, and the employee's answer</summary>
+public class SheetMessage
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    /// <summary>Order of the messages of the sheet, starting at 0</summary>
+    public int Position { get; set; }
+
+    public string FromCode { get; set; } = "";
+
+    public string Text { get; set; } = "";
+
+    public int Revision { get; set; }
+
+    public string? Answer { get; set; }
+
+    public DateTime CreatedUtc { get; set; }
+}
+
+/// <summary>What happened to a sheet (submitted, approved, returned, answered), shown as its history</summary>
+public class SheetEvent
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    public DateTime AtUtc { get; set; }
+
+    public string Kind { get; set; } = "";
+
+    public string ActorCode { get; set; } = "";
+
+    public string? OnBehalfOf { get; set; }
+
+    public int Revision { get; set; }
+
+    public int Step { get; set; }
+
+    public string? Text { get; set; }
+}
+
+/// <summary>What the sheet looked like when it was submitted, so a later correction can be compared with it</summary>
+public class SheetRevision
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    public int Revision { get; set; }
+
+    public DateTime SubmittedUtc { get; set; }
+
+    public string Json { get; set; } = "";
 }
 
 /// <summary>A regular-hours, absence or hour-based code on a date. Overtime is not stored here; it is derived from the intervals.</summary>

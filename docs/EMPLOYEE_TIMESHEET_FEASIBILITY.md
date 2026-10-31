@@ -1,6 +1,6 @@
 # Employee timesheets (šihtarica): feasibility and proposed design
 
-Status: **assessment for review; steps 1 to 3 (the domain library, the API skeleton and the employee mode with timesheet entry) are implemented**, see sections 12 to 14.
+Status: **assessment for review; steps 1 to 5 (the domain library, the API skeleton, the employee mode with timesheet entry, submission with the approval workflow, and the reminders) are implemented**, see sections 12 to 16.
 
 Source: the analysis in `E:\Internal Projects\Timesheet` (`docs/timesheet-analysis`, 37 questions and answers,
 the sample sheet, the filling instruction, the employee list). The architecture file (S5) there is empty, and the
@@ -218,7 +218,7 @@ tests/Company.Api.Tests              new: authorisation and workflow tests
 | --- | --- | --- |
 | 1 (done) | `Timesheet.Domain` with tests: calendar, overtime split and classification, fund, absence ranges, validation rules. | Nothing external |
 | 2 (done) | `Company.Api` skeleton: Windows sign-in with a test mode, the Entra option behind a setting, user profiles and roles, employee import, time-code catalogue, holiday administration, audit base. | Test domain (section 3) |
-| 3 (done, except submit) | Employee mode in the desktop app (mode choice at sign-in, Windows sign-in): month list, absence by range, overtime register, validation report. Submitting moves to step 4 with the workflow. | 1, 2 |
+| 3 (done) | Employee mode in the desktop app (mode choice at sign-in, Windows sign-in): month list, absence by range, overtime register, validation report. | 1, 2 |
 | 4 | Workflow: submit, return with message, approval up the chain (section 6), locking, frozen revisions, history. | Section 6 defaults |
 | 5 | Reminders from the API: rules, the scheduled task asking the API, notifications. | 2, 4 |
 | 6 | Printed sheet in the Excel layout, pilot with a parallel run, go-live. | 1 to 5 |
@@ -337,3 +337,83 @@ and the missing-fund warning appeared), an absence with preview, an overtime rec
 
 **Not in this step:** submitting, the approval workflow, other people's timesheets, reminders (steps 4 and 5), an
 administrator screen (the administrator uses the API), and the printed sheet (step 6).
+
+## 15. Step 4 result: submission and the approval workflow
+
+**API.** The status machine is the domain library's `TimesheetWorkflow`; `WorkflowService` loads the state, applies the
+transition and saves the new state, the history entry, the audit row and (on submission) a copy of the sheet in one step.
+
+| Endpoint | Who | What it does |
+| --- | --- | --- |
+| `POST /api/timesheet/{y}/{m}/submit` | the owner | Freezes the month and hands it to the first approver. Refused (409) while blocking findings remain (`blocking-issues`), while a returned message is unanswered (`unanswered-messages`), or when the chart gives no approver (`no-chain`). The chain in force is stored with the revision. |
+| `POST /api/timesheet/{y}/{m}/messages/{i}/answer` | the owner | Answers one return message; only while the sheet is returned |
+| `GET /api/timesheet/{y}/{m}/revisions/{n}` | the owner | The sheet exactly as it was submitted in revision n |
+| `GET /api/approvals` | an approver | The submitted timesheets waiting for the caller right now (oldest first, with counts of findings) |
+| `GET /api/approvals/{code}/{y}/{m}` | owner or anyone in the sheet's chain | Someone else's sheet, read only (`editable` is always false for them); `workflow.canAct` says whether it is the caller's turn |
+| `POST /api/approvals/{code}/{y}/{m}/approve` | the current approver | Moves to the next step, or sets the sheet to Approved after the last one |
+| `POST /api/approvals/{code}/{y}/{m}/return` | the current approver | Returns it to the employee; a message is mandatory |
+| `GET /api/approvals/{code}/{y}/{m}/revisions/{n}` | owner or chain | A submitted revision, for comparing a correction with what was approved earlier |
+
+Rules, all enforced on the server:
+
+- Only the person whose turn it is can approve or return (`not-your-turn` otherwise); nobody approves their own sheet
+  (`self-approval`); anyone outside the chain gets `forbidden` and cannot even read the sheet.
+- A return always goes to the employee; the resubmission is a new revision and starts again at the first step.
+- A submitted or approved sheet cannot be edited (`locked`); a returned one can.
+- Each sheet row has a version number that changes with every save, so two people acting at the same moment cannot both
+  win (`changed`, "open it again").
+- Submissions, step approvals, returns and answers are in the sheet's history (visible to the employee and the chain) and in
+  the append-only audit log.
+- Deputies (`isDeputyFor`) are supported by the domain library but there is no table or screen for them yet.
+
+**Desktop app.** Two tabs in employee mode. "Moja šihtarica" gets the button "Predaj na odobravanje" (enabled only when
+nothing blocks the submission), a status text with whose turn it is, the chain, the approvers' messages with an
+"Odgovori" button, and the history. "Za odobravanje (n)" lists the timesheets waiting for the signed-in person (the count is
+on the tab); "Otvori" shows one read only with "Odobri" and "Vrati na ispravku…" (a message is required). The editing
+buttons are hidden while a sheet cannot be edited.
+
+**Verified in the real app** (API on Kestrel with Windows sign-in, a second instance with the test sign-in to act as the
+other employees, one SQLite file for both): as the approver, the tab showed "(1)", the sheet opened read only, an empty
+return message was refused, the return with a message reached the employee, the answer and the resubmission (revision 2)
+went back to the same approver, whose approval moved it to the second step; as the employee, the submitted sheet was locked,
+a returned sheet showed the message with "Odgovori", the submit button stayed disabled until the answer was written, and the
+submission handed the sheet to the first approver. The test servers and data were removed afterwards.
+
+**Not in this step:** reminders (step 5), the printed sheet and finance's view of approved sheets (step 6), an administrator
+screen, a screen for the stored revisions (the API is ready), notification of the next approver. The confirmation dialog still
+shows the buttons in English ("Yes/No"); it is the shared dialog of the consultant app.
+
+## 16. Step 5 result: reminders from the API
+
+**API.** `GET /api/reminders` answers "what is due for me today?" for the signed-in person. The rules are the domain library's
+`ReminderRules` and `Deadlines`; the server only gathers the facts, so the banner in the app and the scheduled task never
+disagree. The answer says what is due (kind, month, count, deadline), not how to word it.
+
+| Kind | Who and when |
+| --- | --- |
+| `SubmitSoon` | The month is still a draft and the deadline (the 25th, or the next working day when the 25th is a weekend or a holiday) is three days away or less |
+| `SubmitOverdue` | The deadline has passed and the month is still a draft; applies to the current and the previous month |
+| `FixReturned` | A sheet was returned and waits for the employee (any month) |
+| `ApproveWaiting` | Sheets wait for this person as an approver; the count is in the answer |
+| `ApproveOverdue` | The oldest waiting sheet belongs to a month that is over |
+
+Months before `Reminders:StartFrom` (for example `2026-09`, the go-live month) are ignored, as are months outside a person's
+employment and inactive employees. Without that setting, the first day after go-live would remind everybody about last month.
+
+**Desktop app.**
+
+- **In the window:** a yellow banner above the toolbar lists what is due (most urgent first); it refreshes whenever the month is loaded.
+- **Scheduled task:** employee mode installs the same Windows task as the consultant reminder (every 30 minutes and at sign-in, runs as the user, no password, no resident process). The run asks the API and shows one notification; clicking it opens the app.
+- **How often:** something new is announced at once (for example a timesheet that has just arrived for approval); what the user was already told about repeats at most twice a day, two hours apart.
+- **Offline:** when the server cannot be reached (a laptop outside the network), the last answer is reused only for the submission deadline, which depends on the date alone, so a due date is still honoured. Nothing else is guessed.
+
+**Verified:** 7 API tests with a fixed server clock (three days before the deadline and not earlier, overdue, a deadline that
+moves from Sunday 25 October to Monday the 26th, approval overdue after month end, returned sheets, the start month,
+employment dates) and 4 logic tests for the wording and the rate limit. In the real app, with the API on Windows sign-in:
+the banner showed "Šihtarica kasni" for October with the deadline 26.10.2026., the task run (`--reminder-check`) wrote its
+notification and its state, and with the server stopped the run still announced the overdue month from the saved deadline.
+The reminder state file and the mode file were restored afterwards.
+
+**Not in this step:** email reminders (optional, section 4), a refresh of the banner while the window stays open (it
+refreshes on loading a month and on "Osvježi"), a screen for the administrator, and the printed sheet (step 6). The
+notification text is Bosnian only.

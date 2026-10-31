@@ -41,6 +41,43 @@ public static class EmployeeFormat
         _ => status
     };
 
+    /// <summary>The title and the text of one due item, in the words of the employee</summary>
+    public static (string Title, string Message) Reminder(ReminderDto item)
+    {
+        var month = Month(item.Year, item.Month);
+        var deadline = Date(item.Deadline);
+        return item.Kind switch
+        {
+            "SubmitSoon" => ("Predajte šihtaricu", $"Šihtarica za {month} se predaje do {deadline}"),
+            "SubmitOverdue" => ("Šihtarica kasni", $"Šihtarica za {month} je trebala biti predana do {deadline}"),
+            "FixReturned" => ("Šihtarica je vraćena na ispravku", $"Šihtarica za {month} je vraćena. Pročitajte poruku, ispravite unos i predajte je ponovo."),
+            "ApproveWaiting" => ("Šihtarice čekaju odobrenje", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je {deadline}"),
+            "ApproveOverdue" => ("Odobravanje kasni", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je bio {deadline}"),
+            _ => (item.Kind, month)
+        };
+    }
+
+    /// <summary>The most urgent first: what blocks others, then what is late, then what is coming</summary>
+    public static int ReminderOrder(string kind) => kind switch
+    {
+        "FixReturned" => 0,
+        "SubmitOverdue" => 1,
+        "ApproveOverdue" => 2,
+        "SubmitSoon" => 3,
+        "ApproveWaiting" => 4,
+        _ => 9
+    };
+
+    public static string HistoryKind(string kind) => kind switch
+    {
+        "Submitted" => "Predano na odobravanje",
+        "StepApproved" => "Odobreno, ide dalje",
+        "Approved" => "Odobreno",
+        "Returned" => "Vraćeno na ispravku",
+        "Answered" => "Odgovor zaposlenika",
+        _ => kind
+    };
+
     public static string DayType(string type) => type switch
     {
         "Weekend" => "vikend",

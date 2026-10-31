@@ -24,6 +24,12 @@ public class CompanyDbContext : DbContext
 
     public DbSet<SheetOvertime> SheetOvertime => Set<SheetOvertime>();
 
+    public DbSet<SheetMessage> SheetMessages => Set<SheetMessage>();
+
+    public DbSet<SheetEvent> SheetEvents => Set<SheetEvent>();
+
+    public DbSet<SheetRevision> SheetRevisions => Set<SheetRevision>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Employee>(e =>
@@ -68,6 +74,37 @@ public class CompanyDbContext : DbContext
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.HasMany(x => x.Entries).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Overtime).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Messages).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.Property(x => x.Chain).HasMaxLength(400).IsRequired();
+            e.Ignore(x => x.ChainCodes);
+        });
+
+        modelBuilder.Entity<SheetMessage>(e =>
+        {
+            e.ToTable("sheet_messages");
+            e.HasIndex(x => new { x.SheetId, x.Position }).IsUnique();
+            e.Property(x => x.FromCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.Text).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Answer).HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<SheetEvent>(e =>
+        {
+            e.ToTable("sheet_events");
+            e.HasIndex(x => x.SheetId);
+            e.Property(x => x.Kind).HasMaxLength(30).IsRequired();
+            e.Property(x => x.ActorCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.OnBehalfOf).HasMaxLength(10);
+            e.Property(x => x.Text).HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<SheetRevision>(e =>
+        {
+            e.ToTable("sheet_revisions");
+            e.HasIndex(x => new { x.SheetId, x.Revision }).IsUnique();
+            e.HasOne<MonthSheet>().WithMany().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SheetEntry>(e =>

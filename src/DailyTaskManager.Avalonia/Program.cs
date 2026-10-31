@@ -64,6 +64,7 @@ class Program
             // The update service is not needed to show the first window
             _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
             if (!AppMode.IsEmployee) _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
+            else _ = Task.Run(() => InstallEmployeeReminderAsync(host.Services));
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -214,6 +215,22 @@ class Program
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Employee mode needs the scheduled task too: it asks the company server what is due and shows it, even when the app is closed.
+    /// The employee has no local settings, so the task is simply installed.
+    /// </summary>
+    private static async Task InstallEmployeeReminderAsync(IServiceProvider services)
+    {
+        try
+        {
+            await services.GetRequiredService<IBackgroundReminderService>().SetInstalledAsync(true);
+        }
+        catch (Exception ex)
+        {
+            services.GetService<ILogger<Program>>()?.LogWarning(ex, "Could not install the employee reminder task");
         }
     }
 

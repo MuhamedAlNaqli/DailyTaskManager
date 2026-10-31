@@ -219,7 +219,8 @@ public sealed class TimesheetService
         return new Context(calendar, religious, new EmployeeStatus(true, employee.ActiveFrom, employee.ActiveTo));
     }
 
-    private async Task<SheetDto> BuildAsync(MonthSheet sheet)
+    /// <summary>The month as <paramref name="viewer"/> sees it (the owner when null): only the owner may edit</summary>
+    internal async Task<SheetDto> BuildAsync(MonthSheet sheet, string? viewer = null)
     {
         var context = await ContextAsync(sheet.EmployeeCode, sheet.Year);
         var settings = WorkingTimeSettings.Default;
@@ -265,18 +266,52 @@ public sealed class TimesheetService
         }).ToList();
 
         return new SheetDto(
-            sheet.Year, sheet.Month, sheet.Status.ToString(), sheet.Revision, IsEditable(sheet), days, overtime,
+            sheet.Year, sheet.Month, sheet.Status.ToString(), sheet.Revision, IsEditable(sheet) && Same(viewer ?? sheet.EmployeeCode, sheet.EmployeeCode), days, overtime,
             new SummaryDto(summary.MinutesByCode, summary.DaysByCode, summary.FundMinutes, expected, summary.OvertimeMinutes),
-            issues.Select(i => new IssueDto(i.RuleId, i.Severity.ToString(), i.Date, i.Message)).ToList());
+            issues.Select(i => new IssueDto(i.RuleId, i.Severity.ToString(), i.Date, i.Message)).ToList(),
+            await WorkflowOfAsync(sheet, viewer ?? sheet.EmployeeCode, issues.Any(i => i.Severity == Severity.Blocking)));
     }
+
+    private async Task<WorkflowDto> WorkflowOfAsync(MonthSheet sheet, string viewer, bool hasBlocking)
+    {
+        var chain = sheet.ChainCodes;
+        var codes = chain.Append(sheet.EmployeeCode)
+            .Concat(sheet.Messages.Select(m => m.FromCode))
+            .Concat(sheet.Events.Select(e => e.ActorCode))
+            .Concat(sheet.Events.Where(e => e.OnBehalfOf != null).Select(e => e.OnBehalfOf!))
+            .Distinct().ToList();
+        var names = await _db.Employees.AsNoTracking().Where(e => codes.Contains(e.Code)).ToDictionaryAsync(e => e.Code, e => e.Name);
+        string Name(string code) => names.GetValueOrDefault(code, code);
+
+        var isOwner = Same(viewer, sheet.EmployeeCode);
+        var current = sheet.Status == TimesheetStatus.Submitted && sheet.Step < chain.Count ? chain[sheet.Step] : null;
+        var revisions = await _db.SheetRevisions.AsNoTracking().Where(r => r.SheetId == sheet.Id).OrderBy(r => r.Revision)
+            .Select(r => new RevisionDto(r.Revision, r.SubmittedUtc)).ToListAsync();
+
+        return new WorkflowDto(
+            sheet.EmployeeCode,
+            Name(sheet.EmployeeCode),
+            chain.Select(c => new ChainStepDto(c, Name(c))).ToList(),
+            sheet.Step,
+            current,
+            current == null ? null : Name(current),
+            sheet.Messages.OrderBy(m => m.Position).Select(m => new MessageDto(m.Position, m.FromCode, Name(m.FromCode), m.Text, m.Revision, m.Answer)).ToList(),
+            sheet.Events.OrderBy(e => e.AtUtc).ThenBy(e => e.Id)
+                .Select(e => new HistoryDto(DateTime.SpecifyKind(e.AtUtc, DateTimeKind.Utc), e.Kind, e.ActorCode, Name(e.ActorCode), e.OnBehalfOf, e.Revision, e.Step, e.Text)).ToList(),
+            revisions,
+            isOwner && IsEditable(sheet) && !hasBlocking && sheet.Messages.All(m => !string.IsNullOrWhiteSpace(m.Answer)),
+            current != null && !isOwner && Same(viewer, current));
+    }
+
+    internal static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     // ---- Helpers ---------------------------------------------------------------------------------------------------
 
-    private static bool IsEditable(MonthSheet sheet) => sheet.Status is TimesheetStatus.Draft or TimesheetStatus.Returned;
+    internal static bool IsEditable(MonthSheet sheet) => sheet.Status is TimesheetStatus.Draft or TimesheetStatus.Returned;
 
-    private async Task<MonthSheet> LoadOrCreateAsync(string employeeCode, int year, int month)
+    internal async Task<MonthSheet> LoadOrCreateAsync(string employeeCode, int year, int month)
     {
-        var sheet = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime)
+        var sheet = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
             .FirstOrDefaultAsync(s => s.EmployeeCode == employeeCode && s.Year == year && s.Month == month);
         if (sheet != null) return sheet;
 
@@ -295,9 +330,10 @@ public sealed class TimesheetService
         return sheet;
     }
 
-    private void Touch(MonthSheet sheet, string action, string details)
+    internal void Touch(MonthSheet sheet, string action, string details)
     {
         sheet.UpdatedUtc = DateTime.UtcNow;
+        sheet.Version++;
         _audit.Record(action, "MonthSheet", $"{sheet.EmployeeCode}/{sheet.Year}-{sheet.Month:00}", details);
     }
 

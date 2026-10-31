@@ -8,7 +8,7 @@
         Width="1280" Height="860" MinWidth="1040" MinHeight="620"
         WindowStartupLocation="CenterScreen">
 
-    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="14">
+    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="14">
 
         <!-- Header: who, month, mode -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
@@ -16,13 +16,15 @@
                 <TextBlock Text="Moja evidencija radnog vremena" Classes="header" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Name="EmpWhoText" Text="{Binding WhoText}" Foreground="{DynamicResource AppTextMuted}"/>
-                    <Border Background="{DynamicResource AppBadgeBg}" CornerRadius="5" Padding="8,2" IsVisible="{Binding IsConnected}">
+                    <Border Background="{DynamicResource AppBadgeBg}" CornerRadius="5" Padding="8,2" IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <TextBlock Name="EmpStatusText" Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource AppBadgeText}"/>
                     </Border>
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Name="EmpReviewTitle" Grid.Column="1" Text="{Binding ReviewTitle}" IsVisible="{Binding IsReviewing}" FontSize="18" FontWeight="SemiBold"
+                       VerticalAlignment="Center" Margin="0,0,16,0" Foreground="{DynamicResource AppTextStrong}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0" IsVisible="{Binding ShowMineToolbar}">
                 <Button Name="EmpPreviousMonthButton" Command="{Binding PreviousMonthCommand}" Classes="secondary" Padding="12,8" IsEnabled="{Binding !IsBusy}">
                     <materialIcons:MaterialIcon Kind="ChevronLeft" Width="18" Height="18"/>
                 </Button>
@@ -41,8 +43,34 @@
             </Button>
         </Grid>
 
-        <!-- Error banner -->
-        <Border Grid.Row="1" IsVisible="{Binding HasError}" Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="8" Padding="14,10">
+        <!-- Own timesheet or timesheets waiting for approval -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsConnected}">
+            <Button Name="EmpMineTab" Command="{Binding ShowMineCommand}" Classes.secondary="{Binding InApprovals}" Classes.primary="{Binding !InApprovals}" Padding="16,8">
+                <TextBlock Text="Moja šihtarica"/>
+            </Button>
+            <Button Name="EmpApprovalsTab" Command="{Binding ShowApprovalsCommand}" Classes.secondary="{Binding !InApprovals}" Classes.primary="{Binding InApprovals}" Padding="16,8">
+                <TextBlock Name="EmpApprovalsTabText" Text="{Binding ApprovalsTabText}"/>
+            </Button>
+        </StackPanel>
+
+        <!-- Error banner and confirmation -->
+        <StackPanel Grid.Row="2" Spacing="8">
+        <Border IsVisible="{Binding HasReminders}" Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="14,10">
+            <ItemsControl Name="EmpRemindersList" ItemsSource="{Binding Reminders}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="em:ReminderRow">
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#92400E"/>
+                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="#92400E"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+        <Border IsVisible="{Binding HasInfo}" Background="#F0FDF4" BorderBrush="#86EFAC" BorderThickness="1" CornerRadius="8" Padding="14,10">
+            <TextBlock Name="EmpInfoText" Text="{Binding InfoText}" TextWrapping="Wrap" Foreground="#166534"/>
+        </Border>
+        <Border IsVisible="{Binding HasError}" Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="8" Padding="14,10">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Name="EmpErrorText" Text="{Binding ErrorText}" TextWrapping="Wrap" Foreground="#991B1B" VerticalAlignment="Center"/>
                 <Button Name="EmpRetryButton" Grid.Column="1" Command="{Binding LoadCommand}" Classes="secondary" Padding="12,6" Margin="12,0,0,0">
@@ -50,9 +78,25 @@
                 </Button>
             </Grid>
         </Border>
+        </StackPanel>
+
+        <!-- Toolbar of an opened timesheet of somebody else -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowReviewToolbar}">
+            <Button Name="EmpApproveButton" Command="{Binding ApproveCommand}" IsEnabled="{Binding CanAct}" Classes="primary" Padding="14,9">
+                <TextBlock Text="Odobri"/>
+            </Button>
+            <Button Name="EmpReturnButton" Command="{Binding ReturnCommand}" IsEnabled="{Binding CanAct}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Vrati na ispravku…"/>
+            </Button>
+            <Button Name="EmpCloseReviewButton" Command="{Binding CloseReviewCommand}" Classes="secondary" Padding="14,9">
+                <TextBlock Text="Zatvori"/>
+            </Button>
+            <TextBlock Text="Odobravatelj ne mijenja unose; može samo odobriti ili vratiti uz poruku." VerticalAlignment="Center"
+                       Foreground="{DynamicResource AppTextMuted}"/>
+        </StackPanel>
 
         <!-- Toolbar -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsConnected}">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowMineToolbar}">
             <Button Name="EmpFillButton" Command="{Binding FillStandardDaysCommand}" IsEnabled="{Binding IsEditable}" Classes="primary" Padding="14,9">
                 <TextBlock Text="Popuni standardne dane"/>
             </Button>
@@ -62,18 +106,24 @@
             <Button Name="EmpOvertimeButton" Command="{Binding AddOvertimeCommand}" IsEnabled="{Binding IsEditable}" Classes="secondary" Padding="14,9">
                 <TextBlock Text="Prekovremeni rad…"/>
             </Button>
+            <Button Name="EmpSubmitButton" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" Classes="primary" Padding="14,9">
+                <TextBlock Text="Predaj na odobravanje"/>
+            </Button>
             <Button Name="EmpRefreshButton" Command="{Binding LoadCommand}" Classes="secondary" Padding="14,9">
                 <TextBlock Text="Osvježi"/>
             </Button>
-            <TextBlock Text="Šihtarica je zaključana dok čeka odobravanje." IsVisible="{Binding !IsEditable}" VerticalAlignment="Center"
+            <TextBlock Text="Šihtarica je zaključana i ne može se mijenjati." IsVisible="{Binding !IsEditable}" VerticalAlignment="Center"
                        Foreground="{DynamicResource AppTextMuted}"/>
         </StackPanel>
 
         <!-- Body -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,16,380" IsVisible="{Binding IsConnected}">
+        <Grid Grid.Row="4" ColumnDefinitions="*,16,380" IsVisible="{Binding IsConnected}">
 
             <!-- Days -->
             <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12">
+                <Grid>
+                <TextBlock Name="EmpApprovalsHint" IsVisible="{Binding ShowApprovalsHint}" Text="Izaberite šihtaricu iz liste desno da je pregledate." Margin="24"
+                           Foreground="{DynamicResource AppTextMuted}"/>
                 <ScrollViewer>
                     <ItemsControl Name="EmpDaysList" ItemsSource="{Binding Days}" Margin="6">
                         <ItemsControl.ItemTemplate>
@@ -96,7 +146,7 @@
                                             <TextBlock Text="{Binding IssueCount}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource AppBadgeText}"/>
                                         </Border>
-                                        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding $parent[Window].DataContext.IsEditable}">
                                             <Button Classes="secondary" Padding="10,5" FontSize="12"
                                                     Command="{Binding $parent[Window].DataContext.EditDayCommand}" CommandParameter="{Binding}"
                                                     IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
@@ -114,12 +164,71 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
+                </Grid>
             </Border>
 
             <!-- Summary, overtime, findings -->
             <ScrollViewer Grid.Column="2">
                 <StackPanel Spacing="14">
-                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                    <Border IsVisible="{Binding InApprovals}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Čeka vaše odobrenje" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpNoPendingText" Text="Nema šihtarica koje čekaju vaše odobrenje." IsVisible="{Binding NoPending}" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpPendingList" ItemsSource="{Binding Pending}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="em:PendingRow">
+                                        <StackPanel Margin="0,4" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource AppTextMuted}"/>
+                                            <TextBlock Text="{Binding Warning}" IsVisible="{Binding HasWarning}" FontSize="12" Foreground="#B45309"/>
+                                            <Button Classes="secondary" Padding="10,4" FontSize="12" HorizontalAlignment="Left" Margin="0,2,0,0"
+                                                    Command="{Binding $parent[Window].DataContext.OpenPendingCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Otvori"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border IsVisible="{Binding HasWorkflow}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Odobravanje" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpWorkflowText" Text="{Binding WorkflowText}" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpChainText" Text="{Binding ChainText}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpMessagesList" ItemsSource="{Binding Messages}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="em:MessageRow">
+                                        <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="10,8" Margin="0,4">
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="{Binding Header}" FontSize="11" FontWeight="SemiBold" Foreground="#B45309"/>
+                                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                                                <TextBlock Text="{Binding AnswerText}" IsVisible="{Binding HasAnswer}" TextWrapping="Wrap" FontSize="12" Foreground="#15803D"/>
+                                                <Button Classes="secondary" Padding="10,4" FontSize="12" HorizontalAlignment="Left" IsVisible="{Binding CanAnswer}"
+                                                        Command="{Binding $parent[Window].DataContext.AnswerCommand}" CommandParameter="{Binding}">
+                                                    <TextBlock Text="Odgovori"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Historija" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpHistoryList" ItemsSource="{Binding History}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="em:HistoryRow">
+                                        <StackPanel Margin="0,2">
+                                            <TextBlock Text="{Binding Title}" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="6">
                             <TextBlock Text="Zbir mjeseca" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
                             <TextBlock Name="EmpFundText" Text="{Binding FundText}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
@@ -136,7 +245,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                    <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Prekovremeni rad" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
                             <TextBlock Text="Nema unosa." IsVisible="{Binding NoOvertime}" Foreground="{DynamicResource AppTextMuted}"/>
@@ -147,7 +256,7 @@
                                             <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
                                             <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#B45309"/>
                                             <TextBlock Text="{Binding Description}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}"/>
-                                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0" IsVisible="{Binding $parent[Window].DataContext.IsEditable}">
                                                 <Button Classes="secondary" Padding="10,4" FontSize="12"
                                                         Command="{Binding $parent[Window].DataContext.EditOvertimeCommand}" CommandParameter="{Binding}"
                                                         IsEnabled="{Binding $parent[Window].DataContext.IsEditable}">
@@ -166,7 +275,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                    <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Provjera unosa" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
                             <TextBlock Name="EmpNoIssuesText" Text="Nema primjedbi." IsVisible="{Binding NoIssues}" Foreground="#15803D"/>

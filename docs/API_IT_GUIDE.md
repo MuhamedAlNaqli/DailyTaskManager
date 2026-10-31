@@ -2,7 +2,7 @@
 
 This guide is for whoever runs the server of the employee timesheet API (`src/Company.Api`). It covers what is needed,
 how to configure sign-in, and how to test it before any employee uses it. Status: the sign-in, employee administration,
-holidays and audit are implemented; the timesheet itself comes in the next steps.
+holidays and audit are implemented; month entry, submission, approval and reminders work; the printed sheet comes in the next step.
 
 ## 1. What is needed
 
@@ -24,6 +24,7 @@ holidays and audit are implemented; the timesheet itself comes in the next steps
 | `Authentication:Entra:TenantId`, `ClientId`, `Audience` | Needed for `Entra` and `Both`; the server refuses to start without them |
 | `Bootstrap:AdminAccounts` | Sign-in names of the first administrators, for example `["CORP\\jane.admin"]`. Used once, while no employee exists. |
 | `Bootstrap:AdminCode` | Employee code given to that first administrator (default `Z-000`) |
+| `Reminders:StartFrom` | The first month that is reminded about, as `yyyy-MM` (for example the go-live month). Earlier months are ignored. Without it, last month counts as overdue on the first day. |
 | `Kestrel:Endpoints:Https:Url` / certificate | The HTTPS address and certificate of the server |
 
 Environment variables use double underscores, for example `Authentication__Mode=Windows`.
@@ -92,11 +93,11 @@ variable `Company__ApiUrl`):
 { "Company": { "ApiUrl": "https://timesheet.company.local" } }
 ```
 
-The employee chooses "Employee sign-in (company account)" on the first screen; the choice is remembered. Plain `http://`
+The employee chooses "Employee sign-in (company account)" on the first screen; the choice is remembered. In employee mode the app also registers a Windows scheduled task for the signed-in user (no administrator rights, no password) that asks the server every 30 minutes what is due and shows a notification. Plain `http://`
 is refused except for the local computer.
 
 ## 8. Not yet implemented
 
-Submission and approval, reminders and the printed sheet are built in the next steps (month entries and validation
-already work); see `docs/EMPLOYEE_TIMESHEET_FEASIBILITY.md` section 10. Database migrations will replace the
+The printed sheet is built in the next step (month entries, validation, submission, approval and reminders already work);
+see `docs/EMPLOYEE_TIMESHEET_FEASIBILITY.md` section 10. Database migrations will replace the
 automatic table creation before the first production install.

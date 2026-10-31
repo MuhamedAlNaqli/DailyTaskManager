@@ -3,6 +3,7 @@ using Company.Api.Data;
 using Company.Api.Endpoints;
 using Company.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ChartService>();
 builder.Services.AddScoped<TimesheetService>();
+builder.Services.AddScoped<WorkflowService>();
+builder.Services.AddScoped<ReminderService>();
+builder.Services.TryAddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 
@@ -44,6 +48,7 @@ app.UseAuthorization();
 app.MapMeEndpoints(mode);
 app.MapAdminEndpoints();
 app.MapTimesheetEndpoints();
+app.MapApprovalEndpoints();
 
 app.Run();
 

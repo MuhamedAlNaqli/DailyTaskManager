@@ -115,7 +115,53 @@ public sealed record SheetDto(
     IReadOnlyList<DayDto> Days,
     IReadOnlyList<OvertimeDto> Overtime,
     SummaryDto Summary,
-    IReadOnlyList<IssueDto> Issues);
+    IReadOnlyList<IssueDto> Issues,
+    WorkflowDto? Workflow = null);
+
+// ---- Submission and approval ------------------------------------------------------------------------------------------
+
+public sealed record ChainStepDto(string Code, string Name);
+
+public sealed record MessageDto(int Index, string From, string FromName, string Text, int Revision, string? Answer);
+
+public sealed record HistoryDto(DateTime AtUtc, string Kind, string Actor, string ActorName, string? OnBehalfOf, int Revision, int Step, string? Text);
+
+public sealed record RevisionDto(int Revision, DateTime SubmittedUtc);
+
+/// <summary>Where a sheet stands in the approval chain, and what the caller may do with it</summary>
+public sealed record WorkflowDto(
+    string OwnerCode,
+    string OwnerName,
+    IReadOnlyList<ChainStepDto> Chain,
+    int Step,
+    string? CurrentApprover,
+    string? CurrentApproverName,
+    IReadOnlyList<MessageDto> Messages,
+    IReadOnlyList<HistoryDto> History,
+    IReadOnlyList<RevisionDto> Revisions,
+    bool CanSubmit,
+    bool CanAct);
+
+public sealed record ReturnRequest(string Message);
+
+public sealed record AnswerRequest(string Answer);
+
+/// <summary>One thing that is due for the caller. Kind is a ReminderKind name; the app words it.</summary>
+public sealed record ReminderDto(string Kind, int Year, int Month, int Count, DateOnly Deadline);
+
+public sealed record RemindersDto(DateOnly Today, IReadOnlyList<ReminderDto> Items);
+
+/// <summary>A submitted timesheet waiting for the caller</summary>
+public sealed record PendingApprovalDto(
+    string EmployeeCode,
+    string EmployeeName,
+    int Year,
+    int Month,
+    int Revision,
+    int Step,
+    DateTime SubmittedUtc,
+    int BlockingCount,
+    int WarningCount);
 
 /// <summary>Sets the day's entry. A whole-day absence code needs no minutes; an hours code needs them.</summary>
 public sealed record SetEntryRequest(int Code, int Minutes);

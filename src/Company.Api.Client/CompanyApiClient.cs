@@ -84,6 +84,36 @@ public sealed class CompanyApiClient
     public Task<SheetDto> DeleteOvertimeAsync(int year, int month, int id, CancellationToken ct = default) =>
         SendAsync<SheetDto>(HttpMethod.Delete, $"{Sheet(year, month)}/overtime/{id}", null, ct);
 
+    // ---- Submission and approval ----------------------------------------------------------------------------------------
+
+    public Task<SheetDto> SubmitAsync(int year, int month, CancellationToken ct = default) =>
+        SendAsync<SheetDto>(HttpMethod.Post, $"{Sheet(year, month)}/submit", null, ct);
+
+    public Task<SheetDto> AnswerAsync(int year, int month, int index, string answer, CancellationToken ct = default) =>
+        SendAsync<SheetDto>(HttpMethod.Post, $"{Sheet(year, month)}/messages/{index}/answer", new AnswerRequest(answer), ct);
+
+    public Task<SheetDto> GetRevisionAsync(int year, int month, int revision, CancellationToken ct = default) =>
+        GetAsync<SheetDto>($"{Sheet(year, month)}/revisions/{revision}", ct);
+
+    /// <summary>The timesheets that wait for the signed-in person</summary>
+    public Task<List<PendingApprovalDto>> GetPendingAsync(CancellationToken ct = default) => GetAsync<List<PendingApprovalDto>>("/api/approvals", ct);
+
+    private static string Review(string code, int year, int month) => $"/api/approvals/{Uri.EscapeDataString(code)}/{year}/{month}";
+
+    public Task<SheetDto> GetReviewAsync(string code, int year, int month, CancellationToken ct = default) => GetAsync<SheetDto>(Review(code, year, month), ct);
+
+    public Task<SheetDto> GetReviewRevisionAsync(string code, int year, int month, int revision, CancellationToken ct = default) =>
+        GetAsync<SheetDto>($"{Review(code, year, month)}/revisions/{revision}", ct);
+
+    public Task<SheetDto> ApproveAsync(string code, int year, int month, CancellationToken ct = default) =>
+        SendAsync<SheetDto>(HttpMethod.Post, $"{Review(code, year, month)}/approve", null, ct);
+
+    public Task<SheetDto> ReturnAsync(string code, int year, int month, string message, CancellationToken ct = default) =>
+        SendAsync<SheetDto>(HttpMethod.Post, $"{Review(code, year, month)}/return", new ReturnRequest(message), ct);
+
+    /// <summary>What is due for the signed-in person today (submit, fix a returned sheet, approve)</summary>
+    public Task<RemindersDto> GetRemindersAsync(CancellationToken ct = default) => GetAsync<RemindersDto>("/api/reminders", ct);
+
     // ---- Plumbing --------------------------------------------------------------------------------------------------------
 
     private Task<T> GetAsync<T>(string url, CancellationToken ct) => SendAsync<T>(HttpMethod.Get, url, null, ct);
