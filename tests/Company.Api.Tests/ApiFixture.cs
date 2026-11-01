@@ -11,6 +11,9 @@ namespace Company.Api.Tests;
 /// <summary>The API on a fresh SQLite file with the development sign-in (the account comes from the X-Test-User header)</summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>The SQLite file of this server, for tests that look at (or tamper with) the database itself</summary>
+    public string DatabasePath => _database;
+
     private readonly string _database = Path.Combine(Path.GetTempPath(), $"company-api-test-{Guid.NewGuid():N}.db");
     private readonly Dictionary<string, string?> _settings;
 
@@ -41,6 +44,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(AuthenticationSetup.TestHeader, account);
+        client.DefaultRequestHeaders.Add(ApiHeaders.RequestedWith, ApiHeaders.RequestedWithValue);
         return client;
     }
 

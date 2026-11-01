@@ -1,7 +1,6 @@
 using System.Globalization;
 using Company.Api.Contracts;
 using Company.Api.Data;
-using Company.Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using Timesheet.Domain;
 
@@ -17,6 +16,7 @@ public sealed class ReminderService
     private readonly CompanyDbContext _db;
     private readonly WorkflowService _workflow;
     private readonly TimeProvider _time;
+    private const int MonthsLookedBack = 6;
     private readonly DateOnly? _startFrom;
 
     public ReminderService(CompanyDbContext db, WorkflowService workflow, TimeProvider time, IConfiguration configuration)
@@ -44,25 +44,32 @@ public sealed class ReminderService
         foreach (var sheet in returned)
         {
             var deadline = await SubmissionDeadlineAsync(sheet.Year, sheet.Month);
-            items.Add(new ReminderDto(nameof(ReminderKind.FixReturned), sheet.Year, sheet.Month, 1, deadline));
+            items.Add(new ReminderDto(ReminderType.FixReturned, sheet.Year, sheet.Month, 1, deadline));
         }
 
-        // This month and the one before it (a month that was not submitted stays overdue until it is)
+        // Every month from the first one that counts up to this one: a month that was not submitted stays overdue until it is.
+        // Without a start month the last six are looked at, so a long absence does not fill the screen.
         var thisMonth = new DateOnly(today.Year, today.Month, 1);
-        foreach (var first in new[] { thisMonth.AddMonths(-1), thisMonth })
+        var firstMonth = thisMonth.AddMonths(-MonthsLookedBack);
+        if (_startFrom is { } begin && begin > firstMonth) firstMonth = new DateOnly(begin.Year, begin.Month, 1);
+        if (employee.ActiveFrom is { } hired && hired > firstMonth) firstMonth = new DateOnly(hired.Year, hired.Month, 1);
+
+        var sheets = await _db.Sheets.AsNoTracking().Where(s => s.EmployeeCode == employeeCode && (s.Year * 12 + s.Month) >= firstMonth.Year * 12 + firstMonth.Month)
+            .Select(s => new { s.Year, s.Month, s.Status }).ToListAsync();
+
+        for (var first = firstMonth; first <= thisMonth; first = first.AddMonths(1))
         {
             var last = new DateOnly(first.Year, first.Month, DateTime.DaysInMonth(first.Year, first.Month));
             if (_startFrom is { } start && last < start) continue;
             if (employee.ActiveFrom is { } from && from > last) continue;
             if (employee.ActiveTo is { } to && to < first) continue;
 
-            var status = await _db.Sheets.AsNoTracking().Where(s => s.EmployeeCode == employeeCode && s.Year == first.Year && s.Month == first.Month)
-                .Select(s => (TimesheetStatus?)s.Status).FirstOrDefaultAsync() ?? TimesheetStatus.Draft;
+            var status = sheets.FirstOrDefault(s => s.Year == first.Year && s.Month == first.Month)?.Status ?? TimesheetStatus.Draft;
             if (status != TimesheetStatus.Draft) continue;
 
             var deadline = await SubmissionDeadlineAsync(first.Year, first.Month);
             var kind = ReminderRules.ForEmployee(today, status, deadline);
-            if (kind != null) items.Add(new ReminderDto(kind.Value.ToString(), first.Year, first.Month, 1, deadline));
+            if (kind != null) items.Add(new ReminderDto(kind.Value.ToDto(), first.Year, first.Month, 1, deadline));
         }
 
         // Timesheets that wait for this person as an approver
@@ -72,7 +79,7 @@ public sealed class ReminderService
             var oldest = waiting.OrderBy(w => w.Year).ThenBy(w => w.Month).First();
             var deadline = Deadlines.Approval(oldest.Year, oldest.Month);
             var kind = ReminderRules.ForApprover(today, deadline, waiting.Count);
-            if (kind != null) items.Add(new ReminderDto(kind.Value.ToString(), oldest.Year, oldest.Month, waiting.Count, deadline));
+            if (kind != null) items.Add(new ReminderDto(kind.Value.ToDto(), oldest.Year, oldest.Month, waiting.Count, deadline));
         }
 
         return new RemindersDto(today, items);

@@ -87,6 +87,8 @@ internal static class ReminderRunner
 
     private static async Task<int> RemindEmployeeAsync(IServiceProvider services, ILogger logger, string exePath, ReminderState state, DateTime now)
     {
+        if (EmployeeReminders.IsQuiet(now)) return 0;
+
         var items = await EmployeeReminders.DueAsync(services, logger, DateOnly.FromDateTime(now));
         if (!EmployeeReminders.ShouldNotify(state, items, now)) return 0;
 

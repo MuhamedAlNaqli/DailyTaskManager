@@ -103,6 +103,13 @@ public class SettingsPageTests : BaseUITest
                 t.Name?.Contains("Application Settings", StringComparison.OrdinalIgnoreCase) == true);
         }
 
+        if (appSettingsText == null)
+        {
+            // What the page does show, so that a failure explains itself
+            var shown = MainWindow!.FindAllDescendants(cf.ByControlType(ControlType.Text)).Select(t => t.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Take(80);
+            Console.WriteLine("Texts on the page: " + string.Join(" | ", shown));
+        }
+
         Assert.IsNotNull(appSettingsText, "Application Settings section should be visible");
 
         // Verify database connection information is displayed

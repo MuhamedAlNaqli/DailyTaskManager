@@ -1,3 +1,4 @@
+using System.IO;
 using Company.Api.Contracts;
 using DailyTaskManager.Avalonia.Background;
 using DailyTaskManager.Avalonia.EmployeeMode;
@@ -52,7 +53,7 @@ public class EmployeeModeTests
         Assert.AreEqual("2,5 h", EmployeeFormat.Hours(150));
         Assert.AreEqual("8 h", EmployeeFormat.Hours(480));
         Assert.AreEqual("utorak", EmployeeFormat.Weekday(new DateOnly(2026, 9, 1)));
-        Assert.AreEqual("Vraćeno na ispravku", EmployeeFormat.Status("Returned"));
+        Assert.AreEqual("Vraćeno na ispravku", EmployeeFormat.Status(SheetStatus.Returned));
         Assert.AreEqual("1022 Godišnji odmor A", EmployeeFormat.Entry(new EntryDto(1022, 0)));
         Assert.AreEqual("1010 Redovan rad: 8 h", EmployeeFormat.Entry(new EntryDto(1010, 480)));
     }
@@ -120,7 +121,7 @@ public class EmployeeModeTests
         {
             calls++;
             return Task.FromResult(new AbsencePreviewDto(request.Code, new[] { new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 8) },
-                new[] { new SkippedDayDto(new DateOnly(2026, 9, 12), "Weekend") }));
+                new[] { new SkippedDayDto(new DateOnly(2026, 9, 12), SkippedBecause.Weekend) }));
         });
         vm.SelectedCode = vm.Codes.Single(c => c.Code.Code == Codes.AnnualLeaveA);
         vm.To = new DateTimeOffset(new DateTime(2026, 9, 13));
@@ -225,9 +226,9 @@ public class EmployeeModeTests
     [TestMethod]
     public void DayRows_ShouldShowEntriesOvertimeAndFindings()
     {
-        var day = new DayDto(new DateOnly(2026, 9, 5), "S", "Weekend", null,
+        var day = new DayDto(new DateOnly(2026, 9, 5), "S", DayKind.Weekend, null,
             new[] { new EntryDto(1022, 0) }, new[] { new AllocationDto(new DateOnly(2026, 9, 5), 2023, 150) });
-        var row = new EmployeeDayRow(day, new[] { new IssueDto("V-02", "Blocking", new DateOnly(2026, 9, 5), "Godišnji odmor na vikend") });
+        var row = new EmployeeDayRow(day, new[] { new IssueDto("V-02", IssueSeverity.Blocking, new DateOnly(2026, 9, 5), "Godišnji odmor na vikend") });
 
         Assert.AreEqual("05.09.", row.DateText);
         Assert.AreEqual("vikend", row.TypeText);
@@ -269,7 +270,7 @@ public class EmployeeModeTests
     [TestMethod]
     public void HistoryRow_ShouldShowWhoActedAndForWhom()
     {
-        var row = new HistoryRow(new HistoryDto(DateTime.UtcNow, "Returned", "Z-003", "Emir Ferhatbegović", "Z-002", 1, 1, "Prekovremeni"));
+        var row = new HistoryRow(new HistoryDto(DateTime.UtcNow, HistoryKind.Returned, "Z-003", "Emir Ferhatbegović", "Z-002", 1, 1, "Prekovremeni"));
         StringAssert.Contains(row.Title, "Vraćeno na ispravku");
         StringAssert.Contains(row.Detail, "Emir Ferhatbegović");
         StringAssert.Contains(row.Detail, "u ime Z-002");
@@ -291,25 +292,25 @@ public class EmployeeModeTests
 
     // ---- Reminders -------------------------------------------------------------------------------------------------------
 
-    private static ReminderDto Due(string kind, int month = 9, int count = 1, int deadlineDay = 25) =>
+    private static ReminderDto Due(ReminderType kind, int month = 9, int count = 1, int deadlineDay = 25) =>
         new(kind, 2026, month, count, new DateOnly(2026, month, deadlineDay));
 
     [TestMethod]
     public void Reminders_ShouldBeWordedForTheEmployee()
     {
-        var (title, message) = EmployeeFormat.Reminder(Due("SubmitSoon"));
+        var (title, message) = EmployeeFormat.Reminder(Due(ReminderType.SubmitSoon));
         Assert.AreEqual("Predajte šihtaricu", title);
         StringAssert.Contains(message, "Septembar 2026.");
         StringAssert.Contains(message, "25.09.2026.");
 
-        StringAssert.Contains(EmployeeFormat.Reminder(Due("ApproveWaiting", count: 3)).Message, "3");
-        Assert.IsTrue(EmployeeFormat.ReminderOrder("FixReturned") < EmployeeFormat.ReminderOrder("SubmitSoon"), "what blocks others comes first");
+        StringAssert.Contains(EmployeeFormat.Reminder(Due(ReminderType.ApproveWaiting, count: 3)).Message, "3");
+        Assert.IsTrue(EmployeeFormat.ReminderOrder(ReminderType.FixReturned) < EmployeeFormat.ReminderOrder(ReminderType.SubmitSoon), "what blocks others comes first");
     }
 
     [TestMethod]
     public void TheNotification_ShouldNameTheMostUrgentAndMentionTheRest()
     {
-        var items = new[] { Due("ApproveWaiting", count: 2), Due("SubmitOverdue") };
+        var items = new[] { Due(ReminderType.ApproveWaiting, count: 2), Due(ReminderType.SubmitOverdue) };
         var (title, message) = EmployeeReminders.Compose(items);
         Assert.AreEqual("Šihtarica kasni", title);
         StringAssert.Contains(message, "predana");
@@ -319,7 +320,7 @@ public class EmployeeModeTests
     [TestMethod]
     public void ANewItemIsAnnouncedAtOnce_ButTheSameOneOnlyNowAndThen()
     {
-        var items = new[] { Due("SubmitSoon") };
+        var items = new[] { Due(ReminderType.SubmitSoon) };
         var now = new DateTime(2026, 9, 23, 10, 0, 0);
         var state = new ReminderState();
         Assert.IsTrue(EmployeeReminders.ShouldNotify(state, items, now));
@@ -329,7 +330,7 @@ public class EmployeeModeTests
         Assert.IsFalse(EmployeeReminders.ShouldNotify(state, items, now.AddMinutes(30)), "told a moment ago");
         Assert.IsTrue(EmployeeReminders.ShouldNotify(state, items, now.AddHours(3)), "a repeat after the gap");
 
-        var more = new[] { Due("SubmitSoon"), Due("ApproveWaiting") };
+        var more = new[] { Due(ReminderType.SubmitSoon), Due(ReminderType.ApproveWaiting) };
         Assert.IsTrue(EmployeeReminders.ShouldNotify(state, more, now.AddMinutes(30)), "something new arrived");
         Assert.IsFalse(EmployeeReminders.ShouldNotify(state, Array.Empty<ReminderDto>(), now), "nothing is due");
     }
@@ -337,11 +338,73 @@ public class EmployeeModeTests
     [TestMethod]
     public void WithoutTheServer_ASubmissionDeadlineIsStillHonoured_AndNothingElseIsGuessed()
     {
-        var last = new RemindersDto(new DateOnly(2026, 9, 10), new[] { Due("SubmitSoon"), Due("ApproveWaiting", count: 2), Due("FixReturned") });
+        var last = new RemindersDto(new DateOnly(2026, 9, 10), new[] { Due(ReminderType.SubmitSoon), Due(ReminderType.ApproveWaiting, count: 2), Due(ReminderType.FixReturned) });
 
         Assert.AreEqual(0, EmployeeReminders.Offline(last, new DateOnly(2026, 9, 15)).Count, "not due yet");
-        Assert.AreEqual("SubmitSoon", EmployeeReminders.Offline(last, new DateOnly(2026, 9, 23)).Single().Kind);
-        Assert.AreEqual("SubmitOverdue", EmployeeReminders.Offline(last, new DateOnly(2026, 9, 27)).Single().Kind);
+        Assert.AreEqual(ReminderType.SubmitSoon, EmployeeReminders.Offline(last, new DateOnly(2026, 9, 23)).Single().Kind);
+        Assert.AreEqual(ReminderType.SubmitOverdue, EmployeeReminders.Offline(last, new DateOnly(2026, 9, 27)).Single().Kind);
         Assert.AreEqual(0, EmployeeReminders.Offline(null, new DateOnly(2026, 9, 27)).Count);
+    }
+
+    // ---- Findings of the code review ----------------------------------------------------------------------------------------
+
+    [TestMethod]
+    public void TheReminderIsQuietAtNightAndOnDaysOff()
+    {
+        Assert.IsTrue(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 2, 6, 59, 0)), "Monday, before seven");
+        Assert.IsFalse(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 2, 7, 0, 0)));
+        Assert.IsFalse(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 2, 19, 59, 0)));
+        Assert.IsTrue(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 2, 20, 0, 0)));
+        Assert.IsTrue(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 7, 10, 0, 0)), "Saturday");
+        Assert.IsTrue(EmployeeReminders.IsQuiet(new DateTime(2026, 11, 8, 10, 0, 0)), "Sunday");
+    }
+
+    [TestMethod]
+    public void AFileIsReplacedInOneStep_AndNoTemporaryFileIsLeft()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dtm-atomic-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var path = Path.Combine(folder, "state.json");
+            ReminderState.WriteAtomically(path, "first");
+            ReminderState.WriteAtomically(path, "second");
+            Assert.AreEqual("second", File.ReadAllText(path));
+            CollectionAssert.AreEqual(new[] { path }, Directory.GetFiles(folder));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ADocumentThatExists_IsNeverReplaced()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dtm-docs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var first = Path.Combine(folder, "Faktura.docx");
+            Assert.AreEqual(first, DailyTaskManager.Infrastructure.Services.DocumentGenerator.FreeName(first));
+
+            File.WriteAllText(first, "edited by hand");
+            Assert.AreEqual(Path.Combine(folder, "Faktura (2).docx"), DailyTaskManager.Infrastructure.Services.DocumentGenerator.FreeName(first));
+
+            File.WriteAllText(Path.Combine(folder, "Faktura (2).docx"), "x");
+            Assert.AreEqual(Path.Combine(folder, "Faktura (3).docx"), DailyTaskManager.Infrastructure.Services.DocumentGenerator.FreeName(first));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void APathIsInsideAFolderOnlyWhenItReallyIs()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "images");
+        Assert.IsTrue(DailyTaskManager.Infrastructure.Services.BusinessService.IsInside(folder, Path.Combine(folder, "a.png")));
+        Assert.IsFalse(DailyTaskManager.Infrastructure.Services.BusinessService.IsInside(folder, folder + "-other" + Path.DirectorySeparatorChar + "a.png"), "a folder with the same beginning");
+        Assert.IsFalse(DailyTaskManager.Infrastructure.Services.BusinessService.IsInside(folder, Path.Combine(folder, "..", "secret.png")), "a way out through ..");
     }
 }

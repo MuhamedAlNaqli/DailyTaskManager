@@ -102,11 +102,11 @@ public class WorkflowTests
         var first = TimesheetWorkflow.Approve(submitted.State, "Z-010");
         Assert.AreEqual(TimesheetStatus.Submitted, first.State.Status);
         Assert.AreEqual("Z-020", first.State.CurrentApprover);
-        Assert.AreEqual("StepApproved", first.Event!.Kind);
+        Assert.AreEqual(WorkflowEventKind.StepApproved, first.Event!.Kind);
 
         var last = TimesheetWorkflow.Approve(first.State, "Z-020");
         Assert.AreEqual(TimesheetStatus.Approved, last.State.Status);
-        Assert.AreEqual("Approved", last.Event!.Kind);
+        Assert.AreEqual(WorkflowEventKind.Approved, last.Event!.Kind);
         Assert.IsNull(last.State.CurrentApprover);
     }
 
@@ -135,6 +135,26 @@ public class WorkflowTests
     }
 
     [TestMethod]
+    public void AnAnsweredMessage_StaysAsItWas()
+    {
+        var returned = new TimesheetState("Z-001", TimesheetStatus.Returned, 1, Chain.Approvers, 0, new[] { new ReturnMessage("Z-010", "Ispravi", 1) });
+        var answered = TimesheetWorkflow.Answer(returned, "Z-001", 0, "Prvi odgovor");
+        Assert.IsTrue(answered.Ok);
+
+        var again = TimesheetWorkflow.Answer(answered.State, "Z-001", 0, "Drugi odgovor");
+        Assert.AreEqual(WorkflowError.AlreadyAnswered, again.Error);
+        Assert.AreEqual("Prvi odgovor", answered.State.MessagesOrEmpty[0].Answer);
+    }
+
+    [TestMethod]
+    public void TheTopPersonsDesignatedApprover_MayBeSomebodyWhoReportsToThem()
+    {
+        // Somebody has to approve the person at the top, and that is usually the lawyer or finance, who report to them
+        var chart = new[] { new Person("Z-040", null, DesignatedApproverCode: "Z-030"), new Person("Z-030", "Z-040") };
+        Assert.AreEqual(ChainProblem.None, ApprovalChainBuilder.CheckChart(chart));
+    }
+
+    [TestMethod]
     public void Submit_ShouldBeRefusedWhenItIsNotAllowed()
     {
         var draft = new TimesheetState("Z-001");
@@ -154,7 +174,7 @@ public class WorkflowTests
         var returned = TimesheetWorkflow.Return(state, "Z-010", "Godišnji odmor je upisan za vikend.");
         Assert.AreEqual(TimesheetStatus.Returned, returned.State.Status);
         Assert.IsTrue(returned.State.IsEditableByOwner);
-        Assert.AreEqual("Returned", returned.Event!.Kind);
+        Assert.AreEqual(WorkflowEventKind.Returned, returned.Event!.Kind);
         Assert.AreEqual(1, returned.State.MessagesOrEmpty.Count);
     }
 

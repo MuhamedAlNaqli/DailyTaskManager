@@ -1,3 +1,4 @@
+using Company.Api.Contracts;
 using Company.Api.Data;
 using Company.Api.Printing;
 using Microsoft.EntityFrameworkCore;
@@ -16,15 +17,20 @@ public sealed class PrintService
     private const string ExcelType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private const string PdfType = "application/pdf";
 
+    // Drawing a sheet takes memory and processor time; a few at a time is plenty for a company of this size
+    private static readonly SemaphoreSlim Renders = new(2);
+
     private readonly CompanyDbContext _db;
     private readonly TimesheetService _sheets;
+    private readonly SheetDtoBuilder _builder;
     private readonly WorkflowService _workflow;
     private readonly AuditService _audit;
 
-    public PrintService(CompanyDbContext db, TimesheetService sheets, WorkflowService workflow, AuditService audit)
+    public PrintService(CompanyDbContext db, TimesheetService sheets, SheetDtoBuilder builder, WorkflowService workflow, AuditService audit)
     {
         _db = db;
         _sheets = sheets;
+        _builder = builder;
         _workflow = workflow;
         _audit = audit;
     }
@@ -42,6 +48,7 @@ public sealed class PrintService
     {
         CheckFormat(format);
         var sheet = await _workflow.FindForReviewAsync(viewerCode, ownerCode, year, month);
+        await _workflow.AuditViewAsync(sheet, viewerCode, "SheetPrinted", format);
         return await RenderAsync(new[] { sheet }, year, month, format, single: true);
     }
 
@@ -57,7 +64,7 @@ public sealed class PrintService
             .OrderBy(e => e.Code).Select(e => e.Code).ToListAsync();
         if (team.Count == 0) throw new SheetException(404, "no-team", "Nobody reports to you.");
 
-        var stored = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
+        var stored = await _db.Sheets.AsNoTracking().WithDetails()
             .Where(s => s.Year == year && s.Month == month && team.Contains(s.EmployeeCode)).ToListAsync();
 
         // A month nobody has opened yet is an empty draft; it is printed but not saved
@@ -73,7 +80,7 @@ public sealed class PrintService
     public async Task<PrintedFile> ApprovedAsync(int year, int month, string format)
     {
         CheckFormat(format);
-        var sheets = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
+        var sheets = await _db.Sheets.AsNoTracking().WithDetails()
             .Where(s => s.Year == year && s.Month == month && s.Status == TimesheetStatus.Approved).OrderBy(s => s.EmployeeCode).ToListAsync();
         if (sheets.Count == 0) throw new SheetException(404, "no-approved-sheets", "No timesheet has been approved for this month yet.");
 
@@ -90,20 +97,28 @@ public sealed class PrintService
         var employees = new List<PrintedEmployee>();
         foreach (var sheet in sheets)
         {
-            var built = await _sheets.BuildAsync(sheet);
+            var built = await _builder.BuildAsync(sheet);
             employees.Add(new PrintedEmployee(sheet.EmployeeCode, names.GetValueOrDefault(sheet.EmployeeCode, sheet.EmployeeCode), built,
                 team ? LegacySheet.StatusText(built.Status) : null));
         }
 
         var statusLine = team ? "Šihtarice zaposlenika koje nadgledate" : single
-            ? "Status: " + LegacySheet.StatusText(employees[0].Sheet.Status) + (employees[0].Sheet.Status == "Approved" ? "" : " (nije odobreno)")
+            ? "Status: " + LegacySheet.StatusText(employees[0].Sheet.Status) + (employees[0].Sheet.Status == SheetStatus.Approved ? "" : " (nije odobreno)")
             : "Odobrene šihtarice";
         var isExcel = format.Equals("xlsx", StringComparison.OrdinalIgnoreCase);
         var stem = single ? $"Sihtarica_{employees[0].Code}_{year}-{month:00}" : team ? $"Sihtarice_tima_{year}-{month:00}" : $"Sihtarice_{year}-{month:00}";
 
-        return isExcel
-            ? new PrintedFile(LegacySheet.ToExcel(year, month, employees, statusLine), ExcelType, stem + ".xlsx")
-            : new PrintedFile(LegacySheet.ToPdf(year, month, employees, statusLine), PdfType, stem + ".pdf");
+        await Renders.WaitAsync();
+        try
+        {
+            return isExcel
+                ? new PrintedFile(LegacySheet.ToExcel(year, month, employees, statusLine), ExcelType, stem + ".xlsx")
+                : new PrintedFile(LegacySheet.ToPdf(year, month, employees, statusLine), PdfType, stem + ".pdf");
+        }
+        finally
+        {
+            Renders.Release();
+        }
     }
 
     private static void CheckFormat(string format)

@@ -88,13 +88,24 @@ public class ReminderState
     {
         try
         {
-            Directory.CreateDirectory(FolderPath);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+            WriteAtomically(FilePath, JsonSerializer.Serialize(this));
         }
         catch
         {
             // Worst case the reminder repeats; not worth failing for
         }
+    }
+
+    /// <summary>
+    /// The app and the scheduled task write the same files. The text goes to a file of its own first and replaces the old one in one
+    /// step, so a reader never meets half a file (which would reset the counters and repeat the notification).
+    /// </summary>
+    public static void WriteAtomically(string path, string text)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Environment.ProcessId + ".tmp";
+        File.WriteAllText(temporary, text);
+        File.Move(temporary, path, overwrite: true);
     }
 
     private static string DayKey(DateTime time) => time.ToString("yyyy-MM-dd");

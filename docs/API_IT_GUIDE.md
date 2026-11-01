@@ -71,6 +71,32 @@ With `Both`, a request with a bearer token is validated as Entra and every other
 The database is created and updated by the API itself: at start-up it applies the migrations that are missing, so the
 service account needs the right to create tables in that database (and nothing else). Back up before installing a new version.
 
+### Database accounts and the audit log
+
+The log is append-only inside the program, but a database account with wider rights could change it. Use two accounts:
+
+- a **migration account** (owner of the tables) that runs `dotnet Company.Api.dll --migrate` once per installed version;
+- the **service account** of the API, which has `SELECT, INSERT, UPDATE, DELETE` on the tables and only `SELECT, INSERT` on
+  `audit_events`, and `Database:MigrateOnStart` set to `false`.
+
+If one account is used (a pilot), leave `Database:MigrateOnStart` at its default `true`; the API then updates the database itself.
+
+The audit log is also a chain of hashes: every event holds the hash of the one before it. Once a month (or after any doubt) the
+administrator calls `GET /api/admin/audit/verify`. `isIntact` must be `true`; if not, `firstBrokenId` is the first event that was
+changed, removed or inserted behind the program's back. Keep the answer with the monthly records.
+
+### What the server asks of every request
+
+- Requests that change data must carry the header `X-Requested-With: CompanyTimesheet` (the desktop app does). A tool such as
+  `curl` has to add it. Reading needs nothing.
+- A request that names another origin (a web page of another site) is refused.
+- A request is at most 2 MB; the longest text fields are limited (description 500, messages 2000, names 150).
+- Behind a reverse proxy, set `AllowedHosts` in `appsettings.json` to the real host name instead of `*`.
+- In Entra mode the administrator links the account written as `entra:<tenant id>/<object id>` (shown by `/api/auth/diagnostics`)
+  or the user principal name, not the e-mail address.
+- A timesheet waiting for somebody who left: `POST /api/admin/sheets/{code}/{year}/{month}/reassign` with
+  `{ "toCode": "Z-017", "reason": "..." }`. A person who still has people or waiting timesheets cannot be deactivated.
+
 ## 6. First start
 
 1. Start the API with `Bootstrap:AdminAccounts` set. The first administrator is created and is recorded in the audit log.

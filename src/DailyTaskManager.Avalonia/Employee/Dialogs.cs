@@ -44,7 +44,7 @@ public enum EntryKind
 /// <summary>A code the employee can pick; the form changes with it</summary>
 public sealed record CodeOption(TimeCode Code)
 {
-    public string Label => $"{Code.Code} · {Code.NameBs}";
+    public string Label => $"{Code.Code} · {TimeCodeNames.Bs(Code.Code)}";
 
     public bool NeedsHours => Code.Unit == CodeUnit.Hours;
 
@@ -191,7 +191,7 @@ public partial class EntryViewModel : ObservableObject, IDialogResult<EntryResul
         }
 
         var result = OvertimeClassifier.Classify(interval, _dayTypeOf);
-        var parts = result.Allocations.Select(a => $"{a.Code} {TimeCodes.Get(a.Code).NameBs}: {EmployeeFormat.Hours(a.Minutes)}" +
+        var parts = result.Allocations.Select(a => $"{a.Code} {TimeCodeNames.Bs(a.Code)}: {EmployeeFormat.Hours(a.Minutes)}" +
                                                     (a.Date != interval.Date ? $" (za {EmployeeFormat.ShortDate(a.Date)})" : ""));
         SummaryText = $"Ukupno {EmployeeFormat.Hours(result.TotalMinutes)}" + (result.Allocations.Count > 0 ? " — " + string.Join("; ", parts) : "");
         if (result.Conflicts.Count > 0)
@@ -236,7 +236,7 @@ public partial class EntryViewModel : ObservableObject, IDialogResult<EntryResul
 
             var skipped = preview.Skipped.Count == 0
                 ? ""
-                : "\nPreskočeno: " + string.Join(", ", preview.Skipped.Select(s => $"{EmployeeFormat.ShortDate(s.Date)} ({Reason(s.Reason)})"));
+                : "\nPreskočeno: " + string.Join(", ", preview.Skipped.Select(s => $"{EmployeeFormat.ShortDate(s.Date)} ({BosnianTexts.SkippedBecause(s.Reason)})"));
             PreviewText = $"Šifra {request.Code} bit će upisana za {preview.Days.Count} {(preview.Days.Count == 1 ? "dan" : "dana")}: " +
                           string.Join(", ", preview.Days.Select(EmployeeFormat.ShortDate)) + skipped;
             Previewed = true;
@@ -246,14 +246,6 @@ public partial class EntryViewModel : ObservableObject, IDialogResult<EntryResul
             Error = ex.Message;
         }
     }
-
-    private static string Reason(string reason) => reason switch
-    {
-        "Weekend" => "vikend",
-        "StateHoliday" => "državni praznik",
-        "ReligiousHoliday" => "vjerski praznik",
-        _ => reason
-    };
 
     private bool InMonth(DateOnly date) => date.Year == _year && date.Month == _month;
 

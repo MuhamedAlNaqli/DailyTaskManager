@@ -82,7 +82,9 @@ public static class ApprovalChainBuilder
 
     /// <summary>
     /// Whether the chart can be saved: every supervisor exists and nobody (directly or indirectly) is their own
-    /// supervisor. Used when the administrator changes a "reports to".
+    /// supervisor. The designated approver of the person at the top is deliberately not part of this check: somebody has to
+    /// approve the top person, and that is usually somebody who reports to them (the lawyer or finance). Used when the
+    /// administrator changes a "reports to".
     /// </summary>
     public static ChainProblem CheckChart(IEnumerable<Person> people)
     {

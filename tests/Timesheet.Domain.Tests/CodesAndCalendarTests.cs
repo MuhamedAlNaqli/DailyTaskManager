@@ -12,7 +12,6 @@ public class CodesAndCalendarTests
         // The analysis speaks of 20 codes; the legend of the sample sheet lists 22
         Assert.AreEqual(22, TimeCodes.All.Count);
         Assert.AreEqual(22, TimeCodes.All.Select(c => c.Code).Distinct().Count());
-        Assert.IsTrue(TimeCodes.All.All(c => c.NameBs.Length > 0 && c.NameEn.Length > 0));
         Assert.IsFalse(TimeCodes.Exists(1026), "1026 is skipped in the numbering");
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => TimeCodes.Get(9999));
     }
@@ -56,13 +55,11 @@ public class CodesAndCalendarTests
     }
 
     [TestMethod]
-    public void Weekdays_ShouldBeGeneratedWithBosnianInitials()
+    public void TheSampleSheetsSunday27September_IsASunday()
     {
-        // The sample sheet starts on Tuesday 1 September: U S Č P S N P. Its Sunday 27 September was labelled Thursday.
-        var week = Enumerable.Range(1, 7).Select(d => WorkCalendar.WeekdayInitial(T.Sep(d))).ToArray();
-        CollectionAssert.AreEqual(new[] { "U", "S", "Č", "P", "S", "N", "P" }, week);
+        // The sample sheet labelled its Sunday 27 September "Thursday"; the weekday comes from the date, never from a typed letter
+        Assert.AreEqual(DayOfWeek.Tuesday, T.Sep(1).DayOfWeek);
         Assert.AreEqual(DayOfWeek.Sunday, T.Sep(27).DayOfWeek);
-        Assert.AreEqual("N", WorkCalendar.WeekdayInitial(T.Sep(27)));
     }
 
     [TestMethod]

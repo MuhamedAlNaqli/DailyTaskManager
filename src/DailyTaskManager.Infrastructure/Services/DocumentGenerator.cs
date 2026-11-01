@@ -177,6 +177,21 @@ public class DocumentGenerator : IDocumentGenerator
 
     // ---- Public -----------------------------------------------------------------------------------------------
 
+    /// <summary>A document made earlier (and perhaps corrected by hand) is never replaced: the new one gets " (2)", " (3)" ...</summary>
+    public static string FreeName(string path)
+    {
+        if (!File.Exists(path)) return path;
+
+        var folder = Path.GetDirectoryName(path)!;
+        var stem = Path.GetFileNameWithoutExtension(path);
+        var extension = Path.GetExtension(path);
+        for (var n = 2; ; n++)
+        {
+            var candidate = Path.Combine(folder, $"{stem} ({n}){extension}");
+            if (!File.Exists(candidate)) return candidate;
+        }
+    }
+
     public async Task<GeneratedDocument> GenerateAsync(DocumentTemplate template, DocumentRequest request)
     {
         if (!File.Exists(template.TemplatePath)) throw new FileNotFoundException("The template file is missing", template.TemplatePath);
@@ -186,8 +201,8 @@ public class DocumentGenerator : IDocumentGenerator
         Directory.CreateDirectory(request.Folder);
 
         var name = Sanitize(ApplyPattern(template, data, request));
-        var target = Path.Combine(request.Folder, name + "." + template.Format);
-        File.Copy(template.TemplatePath, target, overwrite: true);
+        var target = FreeName(Path.Combine(request.Folder, name + "." + template.Format));
+        File.Copy(template.TemplatePath, target, overwrite: false);
 
         var unknown = new List<string>();
         try

@@ -17,207 +17,25 @@ using Timesheet.Domain;
 
 namespace DailyTaskManager.Avalonia.EmployeeMode;
 
-/// <summary>One day of the month as a row of the list</summary>
-public sealed class EmployeeDayRow
-{
-    public EmployeeDayRow(DayDto day, IReadOnlyList<IssueDto> issues)
-    {
-        Day = day;
-        Date = day.Date;
-        DateText = EmployeeFormat.ShortDate(day.Date);
-        WeekdayText = EmployeeFormat.Weekday(day.Date);
-        TypeText = day.HolidayName is { Length: > 0 } ? $"{EmployeeFormat.DayType(day.Type)}: {day.HolidayName}" : EmployeeFormat.DayType(day.Type);
-        Stripe = day.Type switch
-        {
-            "Weekend" => Brush.Parse("#C00000"),
-            "Holiday" => Brush.Parse("#EA580C"),
-            _ => Brushes.Transparent
-        };
-        IsWorkingDay = day.Type == "Working";
-        CalendarEntriesText = string.Join("\n", day.Entries.Select(e => TimeCodes.Get(e.Code).Unit == CodeUnit.Hours
-            ? (e.Code == Timesheet.Domain.Codes.RegularWork ? EmployeeFormat.Hours(e.Minutes) : $"{e.Code} · {EmployeeFormat.Hours(e.Minutes)}")
-            : $"{e.Code} {TimeCodes.Get(e.Code).NameBs}"));
-        var overtimeMinutes = day.OvertimeAllocations.Sum(a => a.Minutes);
-        CalendarOvertimeText = overtimeMinutes == 0 ? "" : "Prek. " + EmployeeFormat.Hours(overtimeMinutes);
-        EntriesText = string.Join("\n", day.Entries.Select(EmployeeFormat.Entry));
-        OvertimeText = string.Join("\n", day.OvertimeAllocations.Select(a => $"{a.Code} {TimeCodes.Get(a.Code).NameBs}: {EmployeeFormat.Hours(a.Minutes)}"));
-        var mine = issues.Where(i => i.Date == day.Date).ToList();
-        IssueCount = mine.Count;
-        HasBlocking = mine.Any(i => i.Severity == "Blocking");
-        IssueTooltip = string.Join("\n", mine.Select(i => $"{i.RuleId}: {i.Message}"));
-    }
-
-    public DayDto Day { get; }
-    public DateOnly Date { get; }
-
-    // The cell of the calendar view
-    public string DayNumber => Date.Day.ToString();
-    public IBrush CellBackground => Day.Type switch
-    {
-        "Weekend" => Brush.Parse("#FDEDED"),
-        "Holiday" => Brush.Parse("#FFF1E0"),
-        _ => Brushes.White
-    };
-    public IBrush CellBorder => Date == DateOnly.FromDateTime(DateTime.Today) ? Brush.Parse("#0F766E") : Brush.Parse("#E5E7EB");
-    public global::Avalonia.Thickness CellBorderThickness => new(Date == DateOnly.FromDateTime(DateTime.Today) ? 2 : 1);
-    public string HolidayText => Day.HolidayName ?? "";
-    public string CalendarEntriesText { get; private set; } = "";
-    public string CalendarOvertimeText { get; private set; } = "";
-    public string DateText { get; }
-    public string WeekdayText { get; }
-    public string TypeText { get; }
-    public IBrush Stripe { get; }
-    public bool IsWorkingDay { get; }
-    public string EntriesText { get; }
-    public string OvertimeText { get; }
-    public int IssueCount { get; }
-    public bool HasIssues => IssueCount > 0;
-    public bool HasBlocking { get; }
-    public string IssueTooltip { get; }
-    public bool HasEntries => Day.Entries.Count > 0;
-}
-
-/// <summary>One square of the calendar: a day of the month, or an empty square before the first</summary>
-public sealed class CalendarCell
-{
-    public CalendarCell(EmployeeDayRow? row) => Row = row;
-
-    public EmployeeDayRow? Row { get; }
-
-    public bool HasDay => Row != null;
-}
-
-public sealed class EmployeeOvertimeRow
-{
-    public EmployeeOvertimeRow(OvertimeDto record)
-    {
-        Record = record;
-        Title = $"{EmployeeFormat.ShortDate(record.Date)} {record.Start:HH\\:mm}–{record.End:HH\\:mm} ({EmployeeFormat.Hours(record.TotalMinutes)})";
-        Detail = string.Join(", ", record.Allocations.Select(a => $"{a.Code}: {EmployeeFormat.Hours(a.Minutes)}"));
-        Description = record.Description;
-        HasConflict = record.HasRegularWindowConflict;
-    }
-
-    public OvertimeDto Record { get; }
-    public string Title { get; }
-    public string Detail { get; }
-    public string Description { get; }
-    public bool HasConflict { get; }
-}
-
-public sealed class EmployeeIssueRow
-{
-    public EmployeeIssueRow(IssueDto issue)
-    {
-        Issue = issue;
-        Title = issue.RuleId + (issue.Severity == "Blocking" ? " · zaustavlja predaju" : " · upozorenje");
-        Message = issue.Message;
-        IsBlocking = issue.Severity == "Blocking";
-    }
-
-    public IssueDto Issue { get; }
-    public string Title { get; }
-    public string Message { get; }
-    public bool IsBlocking { get; }
-}
-
-/// <summary>A submitted timesheet waiting for the signed-in approver</summary>
-public sealed class PendingRow
-{
-    public PendingRow(PendingApprovalDto item)
-    {
-        Item = item;
-        Title = item.EmployeeName;
-        Detail = $"{EmployeeFormat.Month(item.Year, item.Month)} · predano {item.SubmittedUtc.ToLocalTime():dd.MM.yyyy. HH:mm}";
-        Warning = item.BlockingCount > 0
-            ? $"{item.BlockingCount} primjedbi koje zaustavljaju predaju"
-            : item.WarningCount > 0 ? $"{item.WarningCount} upozorenja" : "";
-    }
-
-    public PendingApprovalDto Item { get; }
-    public string Title { get; }
-    public string Detail { get; }
-    public string Warning { get; }
-    public bool HasWarning => Warning.Length > 0;
-}
-
-/// <summary>A message with which a timesheet was returned, and the answer to it</summary>
-public sealed class MessageRow
-{
-    public MessageRow(MessageDto message, bool canAnswer)
-    {
-        Message = message;
-        Header = $"{message.FromName} (predaja {message.Revision})";
-        Text = message.Text;
-        AnswerText = string.IsNullOrWhiteSpace(message.Answer) ? "" : "Odgovor: " + message.Answer;
-        CanAnswer = canAnswer && string.IsNullOrWhiteSpace(message.Answer);
-    }
-
-    public MessageDto Message { get; }
-    public string Header { get; }
-    public string Text { get; }
-    public string AnswerText { get; }
-    public bool HasAnswer => AnswerText.Length > 0;
-    public bool CanAnswer { get; }
-}
-
-public sealed class HistoryRow
-{
-    public HistoryRow(HistoryDto item)
-    {
-        var onBehalf = item.OnBehalfOf == null ? "" : $" (u ime {item.OnBehalfOf})";
-        Title = $"{item.AtUtc.ToLocalTime():dd.MM.yyyy. HH:mm} · {EmployeeFormat.HistoryKind(item.Kind)}";
-        Detail = item.ActorName + onBehalf + (string.IsNullOrWhiteSpace(item.Text) ? "" : ": " + item.Text);
-    }
-
-    public string Title { get; }
-    public string Detail { get; }
-}
-
-public sealed class ReminderRow
-{
-    public ReminderRow(ReminderDto item)
-    {
-        Item = item;
-        (Title, Message) = EmployeeFormat.Reminder(item);
-        IsLate = item.Kind is "SubmitOverdue" or "ApproveOverdue" or "FixReturned";
-    }
-
-    public ReminderDto Item { get; }
-    public string Title { get; }
-    public string Message { get; }
-    public bool IsLate { get; }
-}
-
 /// <summary>The employee's month: the list of days, the overtime, the totals and the findings of the rules</summary>
 public partial class EmployeeViewModel : ObservableObject
 {
-    private readonly CompanyApiClient _client;
-    private readonly DialogService _dialogService;
-    private readonly IPlatformService _platform;
+    private readonly ICompanyApiClient _client;
+    private readonly IEmployeeDialogs _dialogs;
+    private readonly ISheetFileSaver _files;
+    private readonly IEmployeeShell _shell;
     private readonly ILogger<EmployeeViewModel> _logger;
     private SheetDto? _sheet;
-
-    public ObservableCollection<EmployeeDayRow> Days { get; } = new();
-
-    public ObservableCollection<EmployeeOvertimeRow> Overtime { get; } = new();
-
-    public ObservableCollection<EmployeeIssueRow> Issues { get; } = new();
-
-    public ObservableCollection<string> TotalLines { get; } = new();
 
     [ObservableProperty] private int _year = DateTime.Today.Year;
     [ObservableProperty] private int _month = DateTime.Today.Month;
     [ObservableProperty] private string _monthTitle = "";
     [ObservableProperty] private string _whoText = "";
     [ObservableProperty] private string _statusText = "";
-    [ObservableProperty] private string _fundText = "";
-    [ObservableProperty] private string _overtimeText = "";
     [ObservableProperty] private string _errorText = "";
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isEditable;
     [ObservableProperty] private bool _isConnected;
-    [ObservableProperty] private bool _fundOk;
     [ObservableProperty] private string _infoText = "";
 
     /// <summary>The person has people reporting to them: the sheet of their team can be printed</summary>
@@ -230,10 +48,6 @@ public partial class EmployeeViewModel : ObservableObject
 
     public bool IsListView => !IsCalendarView;
 
-    public ObservableCollection<CalendarCell> CalendarCells { get; } = new();
-
-    public IReadOnlyList<string> WeekdayHeaders { get; } = new[] { "Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned" };
-
     partial void OnIsCalendarViewChanged(bool value) => EmployeePreferences.SaveCalendarView(value);
 
     [RelayCommand]
@@ -245,10 +59,7 @@ public partial class EmployeeViewModel : ObservableObject
     // Submission and approval
     [ObservableProperty] private bool _canSubmit;
     [ObservableProperty] private bool _canAct;
-    [ObservableProperty] private string _workflowText = "";
-    [ObservableProperty] private string _chainText = "";
     [ObservableProperty] private string _reviewTitle = "";
-    [ObservableProperty] private int _pendingCount;
 
     /// <summary>The "for approval" part is shown instead of the employee's own month</summary>
     [ObservableProperty] private bool _inApprovals;
@@ -258,15 +69,14 @@ public partial class EmployeeViewModel : ObservableObject
 
     private string? _reviewCode;
 
-    public ObservableCollection<PendingRow> Pending { get; } = new();
+    /// <summary>The month on screen: days, calendar, overtime, totals, findings, messages and history</summary>
+    public SheetViewModel Sheet { get; } = new();
 
-    public ObservableCollection<ReminderRow> Reminders { get; } = new();
+    /// <summary>The timesheets waiting for this person as an approver</summary>
+    public PendingListViewModel PendingApprovals { get; } = new();
 
-    public bool HasReminders => Reminders.Count > 0;
-
-    public ObservableCollection<MessageRow> Messages { get; } = new();
-
-    public ObservableCollection<HistoryRow> History { get; } = new();
+    /// <summary>What is due for this person (submit, fix, approve)</summary>
+    public RemindersViewModel Reminders { get; } = new();
 
     public bool HasInfo => InfoText.Length > 0;
 
@@ -283,14 +93,6 @@ public partial class EmployeeViewModel : ObservableObject
 
     public bool ShowApprovalsHint => IsConnected && InApprovals && !IsReviewing;
 
-    public bool NoPending => Pending.Count == 0;
-
-    public bool HasMessages => Messages.Count > 0;
-
-    public bool HasWorkflow => WorkflowText.Length > 0;
-
-    public string ApprovalsTabText => PendingCount > 0 ? $"Za odobravanje ({PendingCount})" : "Za odobravanje";
-
     partial void OnInfoTextChanged(string value) => OnPropertyChanged(nameof(HasInfo));
 
     partial void OnInApprovalsChanged(bool value) => RaiseModeChanged();
@@ -298,10 +100,6 @@ public partial class EmployeeViewModel : ObservableObject
     partial void OnIsReviewingChanged(bool value) => RaiseModeChanged();
 
     partial void OnIsConnectedChanged(bool value) => RaiseModeChanged();
-
-    partial void OnWorkflowTextChanged(string value) => OnPropertyChanged(nameof(HasWorkflow));
-
-    partial void OnPendingCountChanged(int value) => OnPropertyChanged(nameof(ApprovalsTabText));
 
     partial void OnCanActChanged(bool value) => OnPropertyChanged(nameof(CanApproveOwn));
 
@@ -317,19 +115,14 @@ public partial class EmployeeViewModel : ObservableObject
 
     public bool HasError => ErrorText.Length > 0;
 
-    public bool HasIssues => Issues.Count > 0;
-
-    public bool NoIssues => Issues.Count == 0 && IsConnected;
-
-    public bool NoOvertime => Overtime.Count == 0;
-
     partial void OnErrorTextChanged(string value) => OnPropertyChanged(nameof(HasError));
 
-    public EmployeeViewModel(CompanyApiClient client, DialogService dialogService, IPlatformService platform, ILogger<EmployeeViewModel> logger)
+    public EmployeeViewModel(ICompanyApiClient client, IEmployeeDialogs dialogs, ISheetFileSaver files, IEmployeeShell shell, ILogger<EmployeeViewModel> logger)
     {
         _client = client;
-        _dialogService = dialogService;
-        _platform = platform;
+        _dialogs = dialogs;
+        _files = files;
+        _shell = shell;
         _logger = logger;
         MonthTitle = EmployeeFormat.Month(Year, Month);
     }
@@ -337,9 +130,11 @@ public partial class EmployeeViewModel : ObservableObject
     // ---- Loading ---------------------------------------------------------------------------------------------------
 
     [RelayCommand]
-    public async Task LoadAsync()
-    {
-        await RunAsync(async () =>
+    public Task LoadAsync() => LoadCoreAsync();
+
+    /// <summary>Loads the month on screen; false when the server refused, was out of reach, or another call was still running</summary>
+    private Task<bool> LoadCoreAsync() =>
+        RunAsync(async () =>
         {
             if (!IsConnected)
             {
@@ -350,16 +145,15 @@ public partial class EmployeeViewModel : ObservableObject
 
             return await LoadCurrentAsync();
         }, connecting: true, refreshPending: true);
-    }
 
     private Task<SheetDto> LoadCurrentAsync() => _reviewCode == null
         ? _client.GetSheetAsync(Year, Month)
         : _client.GetReviewAsync(_reviewCode, Year, Month);
 
     /// <summary>Runs one call, shows the new state of the month, and turns a refusal into a message instead of an exception</summary>
-    private async Task RunAsync(Func<Task<SheetDto>> call, bool connecting = false, bool refreshPending = false)
+    private async Task<bool> RunAsync(Func<Task<SheetDto>> call, bool connecting = false, bool refreshPending = false)
     {
-        if (IsBusy) return;
+        if (IsBusy) return false;
         try
         {
             IsBusy = true;
@@ -368,6 +162,7 @@ public partial class EmployeeViewModel : ObservableObject
             Show(await call());
             IsConnected = true;
             if (refreshPending) await RefreshPendingAsync();
+            return true;
         }
         catch (ApiException ex)
         {
@@ -380,12 +175,14 @@ public partial class EmployeeViewModel : ObservableObject
                 _ => ex.Message
             };
             if (connecting) IsConnected = false;
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Employee mode failed");
             ErrorText = "Došlo je do greške: " + ex.Message;
             if (connecting) IsConnected = false;
+            return false;
         }
         finally
         {
@@ -393,49 +190,30 @@ public partial class EmployeeViewModel : ObservableObject
         }
     }
 
-    /// <summary>The list of timesheets waiting for this person. A failure here must not spoil the month that was just shown.</summary>
+    /// <summary>The reminders and the list of timesheets for approval. A failure here must not spoil the month that was just shown.</summary>
     private async Task RefreshPendingAsync()
     {
         try
         {
-            var due = await _client.GetRemindersAsync();
-            Reminders.Clear();
-            foreach (var item in due.Items.OrderBy(i => EmployeeFormat.ReminderOrder(i.Kind))) Reminders.Add(new ReminderRow(item));
-            OnPropertyChanged(nameof(HasReminders));
-
-            var items = await _client.GetPendingAsync();
-            Pending.Clear();
-            foreach (var item in items) Pending.Add(new PendingRow(item));
-            PendingCount = items.Count;
-            OnPropertyChanged(nameof(NoPending));
+            await Reminders.RefreshAsync(_client);
+            await PendingApprovals.RefreshAsync(_client);
         }
-        catch (ApiException ex)
+        catch (Exception ex)
         {
-            _logger.LogWarning(ex, "The list of timesheets for approval could not be read ({Code})", ex.Code);
+            // An answer that is not ours (a login page of a proxy, say) or a failure of the network: the month stays as it is
+            _logger.LogWarning(ex, "The reminders and the list of timesheets for approval could not be read");
         }
     }
 
     private void ClearSheet()
     {
         _sheet = null;
-        Days.Clear();
-        CalendarCells.Clear();
-        Overtime.Clear();
-        Issues.Clear();
-        TotalLines.Clear();
-        Messages.Clear();
-        History.Clear();
+        Sheet.Clear();
         StatusText = "";
-        FundText = "";
-        OvertimeText = "";
-        WorkflowText = "";
-        ChainText = "";
         ReviewTitle = "";
         IsEditable = false;
         CanSubmit = false;
         CanAct = false;
-        OnPropertyChanged(nameof(HasMessages));
-        OnPropertyChanged(nameof(NoOvertime));
     }
 
     private void Show(SheetDto sheet)
@@ -447,78 +225,12 @@ public partial class EmployeeViewModel : ObservableObject
         StatusText = EmployeeFormat.Status(sheet.Status);
         IsEditable = sheet.Editable;
 
-        Days.Clear();
-        foreach (var day in sheet.Days) Days.Add(new EmployeeDayRow(day, sheet.Issues));
-        BuildCalendar();
+        Sheet.Show(sheet, own: _reviewCode == null);
 
-        Overtime.Clear();
-        foreach (var record in sheet.Overtime) Overtime.Add(new EmployeeOvertimeRow(record));
-
-        Issues.Clear();
-        foreach (var issue in sheet.Issues.OrderByDescending(i => i.Severity == "Blocking")) Issues.Add(new EmployeeIssueRow(issue));
-
-        var summary = sheet.Summary;
-        FundOk = summary.FundMinutes >= summary.ExpectedFundMinutes;
-        FundText = $"Mjesečni fond: {EmployeeFormat.Hours(summary.FundMinutes)} od {EmployeeFormat.Hours(summary.ExpectedFundMinutes)}";
-        OvertimeText = $"Prekovremeni rad: {EmployeeFormat.Hours(summary.OvertimeMinutes)}";
-
-        TotalLines.Clear();
-        foreach (var (code, minutes) in summary.MinutesByCode.OrderBy(p => p.Key))
-            TotalLines.Add($"{code} {TimeCodes.Get(code).NameBs}: {EmployeeFormat.Hours(minutes)}");
-        foreach (var (code, days) in summary.DaysByCode.Where(p => TimeCodes.Get(p.Key).IsAbsence).OrderBy(p => p.Key))
-            TotalLines.Add($"{code} {TimeCodes.Get(code).NameBs}: {days} {(days == 1 ? "dan" : "dana")}");
-
-        ShowWorkflow(sheet);
-
-        OnPropertyChanged(nameof(HasIssues));
-        OnPropertyChanged(nameof(NoIssues));
-        OnPropertyChanged(nameof(NoOvertime));
-    }
-
-    /// <summary>Monday first: empty squares up to the weekday of the first, then the days</summary>
-    private void BuildCalendar()
-    {
-        CalendarCells.Clear();
-        if (Days.Count == 0) return;
-
-        var offset = ((int)Days[0].Date.DayOfWeek + 6) % 7;
-        for (var i = 0; i < offset; i++) CalendarCells.Add(new CalendarCell(null));
-        foreach (var day in Days) CalendarCells.Add(new CalendarCell(day));
-    }
-
-    private void ShowWorkflow(SheetDto sheet)
-    {
         var workflow = sheet.Workflow;
-        Messages.Clear();
-        History.Clear();
         CanSubmit = workflow?.CanSubmit == true;
         CanAct = workflow?.CanAct == true;
         ReviewTitle = _reviewCode != null && workflow != null ? $"{workflow.OwnerName} · {MonthTitle}" : "";
-
-        if (workflow == null)
-        {
-            WorkflowText = "";
-            ChainText = "";
-        }
-        else
-        {
-            WorkflowText = sheet.Status switch
-            {
-                "Submitted" => $"Čeka odobravanje: {workflow.CurrentApproverName} (korak {workflow.Step + 1} od {workflow.Chain.Count}).",
-                "Returned" => _reviewCode == null
-                    ? "Vraćeno na ispravku. Odgovorite na poruke, ispravite unos i predajte ponovo."
-                    : "Vraćeno zaposleniku na ispravku.",
-                "Approved" => "Odobreno. Šihtarica je zaključana.",
-                _ => _reviewCode == null ? "Još nije predano na odobravanje." : ""
-            };
-            ChainText = workflow.Chain.Count == 0 ? "" : "Lanac odobravanja: " + string.Join(" → ", workflow.Chain.Select(c => c.Name));
-
-            var canAnswer = _reviewCode == null && sheet.Status == "Returned";
-            foreach (var message in workflow.Messages) Messages.Add(new MessageRow(message, canAnswer));
-            foreach (var item in workflow.History.Reverse()) History.Add(new HistoryRow(item));
-        }
-
-        OnPropertyChanged(nameof(HasMessages));
     }
 
     // ---- Month navigation ------------------------------------------------------------------------------------------
@@ -537,9 +249,10 @@ public partial class EmployeeViewModel : ObservableObject
         return LoadAsync();
     }
 
-    private Task ChangeMonthAsync(int delta)
+    private async Task ChangeMonthAsync(int delta)
     {
-        if (IsReviewing) return Task.CompletedTask;
+        if (IsReviewing || IsBusy) return;
+        var (previousYear, previousMonth) = (Year, Month);
         var next = new DateTime(Year, Month, 1).AddMonths(delta);
         Year = next.Year;
         Month = next.Month;
@@ -548,10 +261,16 @@ public partial class EmployeeViewModel : ObservableObject
         if (InApprovals)
         {
             MonthTitle = EmployeeFormat.Month(Year, Month);
-            return Task.CompletedTask;
+            return;
         }
 
-        return LoadAsync();
+        // If the month could not be loaded, the screen still shows the old one, so that is the one that stays selected
+        if (!await LoadCoreAsync())
+        {
+            Year = previousYear;
+            Month = previousMonth;
+            MonthTitle = EmployeeFormat.Month(Year, Month);
+        }
     }
 
     // ---- Editing ---------------------------------------------------------------------------------------------------
@@ -560,8 +279,8 @@ public partial class EmployeeViewModel : ObservableObject
     private async Task FillStandardDaysAsync()
     {
         if (!IsEditable) return;
-        var confirmed = await _dialogService.ShowConfirmDialogAsync("Popuni standardne dane",
-            "Svaki radni dan bez unosa dobit će redovan rad od 8 sati. Praznici i vaši vjerski praznici se preskaču. Nastaviti?");
+        var confirmed = await _dialogs.ConfirmAsync("Popuni standardne dane",
+            $"Svaki radni dan bez unosa u mjesecu {MonthTitle} dobit će redovan rad od 8 sati. Praznici i vaši vjerski praznici se preskaču. Nastaviti?");
         if (confirmed) await RunAsync(() => _client.FillStandardDaysAsync(Year, Month));
     }
 
@@ -584,7 +303,7 @@ public partial class EmployeeViewModel : ObservableObject
         if (!IsEditable || _sheet == null) return;
 
         var viewModel = new EntryViewModel(Year, Month, DayTypeResolver(), request => _client.PreviewAbsenceAsync(Year, Month, request), date, entry, overtime);
-        var result = await EmployeeDialogs.ShowAsync<EntryDialog, EntryResult?>(new EntryDialog { DataContext = viewModel }, viewModel);
+        var result = await _dialogs.EntryAsync(viewModel);
         if (result == null) return;
 
         if (result.Overtime != null)
@@ -618,14 +337,14 @@ public partial class EmployeeViewModel : ObservableObject
     {
         if (row == null || !IsEditable) return;
 
-        var confirmed = await _dialogService.ShowConfirmDialogAsync("Obriši prekovremeni rad", $"Obrisati unos {row.Title}?");
+        var confirmed = await _dialogs.ConfirmAsync("Obriši prekovremeni rad", $"Obrisati unos {row.Title}?");
         if (confirmed) await RunAsync(() => _client.DeleteOvertimeAsync(Year, Month, row.Record.Id));
     }
 
     /// <summary>The type of a date for the live preview of overtime: from the month's calendar, else by weekday</summary>
     private Func<DateOnly, DayType> DayTypeResolver()
     {
-        var types = _sheet!.Days.ToDictionary(d => d.Date, d => Enum.Parse<DayType>(d.Type));
+        var types = _sheet!.Days.ToDictionary(d => d.Date, d => d.Type switch { DayKind.Weekend => DayType.Weekend, DayKind.Holiday => DayType.Holiday, _ => DayType.Working });
         return date => types.TryGetValue(date, out var type) ? type : (WorkCalendar.IsWeekend(date) ? DayType.Weekend : DayType.Working);
     }
 
@@ -644,33 +363,15 @@ public partial class EmployeeViewModel : ObservableObject
     private async Task SaveFileAsync(string? format, Func<string, Task<DownloadedFile>> download)
     {
         if (IsBusy) return;
-        format = string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase) ? "pdf" : "xlsx";
 
         try
         {
             IsBusy = true;
             ErrorText = "";
             InfoText = "";
-            var file = await download(format);
-
-            var types = format == "pdf"
-                ? new Dictionary<string, List<string>> { ["PDF"] = new() { "pdf" } }
-                : new Dictionary<string, List<string>> { ["Excel"] = new() { "xlsx" } };
-            var path = await _platform.ShowSaveFileDialogAsync("Sačuvaj šihtaricu", file.FileName, types);
-            if (path == null) return;
-
-            await System.IO.File.WriteAllBytesAsync(path, file.Bytes);
-            InfoText = $"Sačuvano: {path}";
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogWarning(ex, "The printed sheet was refused ({Code})", ex.Code);
-            ErrorText = ex.Code == "no-team" ? "Nikome nisu dodijeljeni vaši nadzor ni odobravanje." : ex.Message;
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarning(ex, "The printed sheet could not be saved");
-            ErrorText = "Datoteka nije sačuvana: " + ex.Message;
+            var result = await _files.SaveAsync(format, download);
+            if (result.Error != null) ErrorText = result.Error;
+            else if (result.Path != null) InfoText = $"Sačuvano: {result.Path}";
         }
         finally
         {
@@ -684,7 +385,7 @@ public partial class EmployeeViewModel : ObservableObject
     private async Task SubmitAsync()
     {
         if (!CanSubmit) return;
-        var confirmed = await _dialogService.ShowConfirmDialogAsync("Predaj na odobravanje",
+        var confirmed = await _dialogs.ConfirmAsync("Predaj na odobravanje",
             $"Nakon predaje je šihtarica za {MonthTitle} zaključana dok je neko od odobravatelja ne vrati. Predati?");
         if (confirmed) await RunAsync(() => _client.SubmitAsync(Year, Month), refreshPending: true);
     }
@@ -695,7 +396,7 @@ public partial class EmployeeViewModel : ObservableObject
         if (row == null || !row.CanAnswer) return;
 
         var viewModel = new TextPromptViewModel("Odgovor na poruku", "Vaš odgovor", "Pošalji odgovor", $"{row.Header}: {row.Text}");
-        var answer = await EmployeeDialogs.ShowAsync<TextPromptDialog, string?>(new TextPromptDialog { DataContext = viewModel }, viewModel);
+        var answer = await _dialogs.PromptAsync(viewModel);
         if (answer != null) await RunAsync(() => _client.AnswerAsync(Year, Month, row.Message.Index, answer), refreshPending: true);
     }
 
@@ -731,8 +432,7 @@ public partial class EmployeeViewModel : ObservableObject
         Month = row.Item.Month;
         MonthTitle = EmployeeFormat.Month(Year, Month);
         IsReviewing = true;
-        await LoadAsync();
-        if (HasError) CloseReview();
+        if (!await LoadCoreAsync()) CloseReview();
     }
 
     [RelayCommand]
@@ -749,11 +449,10 @@ public partial class EmployeeViewModel : ObservableObject
         var code = _reviewCode ?? _sheet?.Workflow?.OwnerCode;
         if (!CanAct || code == null) return;
         var what = _reviewCode == null ? $"svoju šihtaricu za {MonthTitle}" : $"šihtaricu: {ReviewTitle}";
-        var confirmed = await _dialogService.ShowConfirmDialogAsync("Odobri šihtaricu", $"Odobriti {what}?");
+        var confirmed = await _dialogs.ConfirmAsync("Odobri šihtaricu", $"Odobriti {what}?");
         if (!confirmed) return;
 
-        await RunAsync(() => _client.ApproveAsync(code, Year, Month), refreshPending: true);
-        if (!HasError) InfoText = "Odobreno.";
+        if (await RunAsync(() => _client.ApproveAsync(code, Year, Month), refreshPending: true)) InfoText = "Odobreno.";
     }
 
     [RelayCommand]
@@ -763,30 +462,15 @@ public partial class EmployeeViewModel : ObservableObject
         var code = _reviewCode;
 
         var viewModel = new TextPromptViewModel("Vrati na ispravku", "Šta treba ispraviti? (obavezno)", "Vrati zaposleniku");
-        var message = await EmployeeDialogs.ShowAsync<TextPromptDialog, string?>(new TextPromptDialog { DataContext = viewModel }, viewModel);
+        var message = await _dialogs.PromptAsync(viewModel);
         if (message == null) return;
 
-        await RunAsync(() => _client.ReturnAsync(code, Year, Month, message), refreshPending: true);
-        if (!HasError) InfoText = "Šihtarica je vraćena zaposleniku.";
+        if (await RunAsync(() => _client.ReturnAsync(code, Year, Month, message), refreshPending: true)) InfoText = "Šihtarica je vraćena zaposleniku.";
     }
 
     // ---- Sign-out ----------------------------------------------------------------------------------------------------
 
     /// <summary>Back to the sign-in screen. The next start shows it too, until the user signs in again with "remember me".</summary>
     [RelayCommand]
-    private void Logout()
-    {
-        AppMode.Set(Mode.Consultant);
-        Loc.Initialize();
-
-        if (App.Current is App app && app.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var old = desktop.MainWindow;
-            if (App.ServiceProvider != null) Program.PrepareConsultant(App.ServiceProvider);
-            var next = app.CreateLoginWindow();
-            desktop.MainWindow = next;
-            next.Show();
-            old?.Close();
-        }
-    }
+    private void Logout() => _shell.SignOut();
 }

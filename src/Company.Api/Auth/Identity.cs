@@ -35,14 +35,31 @@ public static class Identities
     public const string AdminPolicy = "Admin";
     public const string FinancePolicy = "Finance";
 
+    private const string ObjectIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    private const string TenantIdClaim = "http://schemas.microsoft.com/identity/claims/tenantid";
+
     /// <summary>
-    /// The names a caller is known by: the Windows name (DOMAIN\user), the user principal name, an Entra name or the
-    /// e-mail address. Any of them may be what the administrator linked to the employee.
+    /// The names a caller is known by, any of which may be what the administrator linked to the employee.
+    /// A Windows caller (and the test sign-in) is known by DOMAIN\user and the user principal name from the directory.
+    /// An Entra caller is known by the immutable object id of the token (written "entra:tenant/object", see
+    /// /api/auth/diagnostics) and the user principal name. The e-mail address, preferred_username and the display name of a token
+    /// can be changed by the user or are not verified, so they are never used to decide who somebody is.
     /// </summary>
     public static IReadOnlyList<string> Candidates(ClaimsPrincipal user)
     {
-        var names = new List<string?> { user.Identity?.Name };
-        foreach (var type in new[] { ClaimTypes.Upn, "upn", "preferred_username", "unique_name", ClaimTypes.Email, "email" })
+        var names = new List<string?>();
+        var objectId = user.FindFirstValue("oid") ?? user.FindFirstValue(ObjectIdClaim);
+        if (objectId != null)
+        {
+            var tenant = user.FindFirstValue("tid") ?? user.FindFirstValue(TenantIdClaim);
+            names.Add(tenant == null ? $"entra:{objectId}" : $"entra:{tenant}/{objectId}");
+        }
+        else
+        {
+            names.Add(user.Identity?.Name);
+        }
+
+        foreach (var type in new[] { ClaimTypes.Upn, "upn" })
             names.AddRange(user.FindAll(type).Select(c => c.Value));
 
         return names.Select(AccountNormalizer.Normalize).Where(n => n.Length > 0).Distinct().ToList();
@@ -55,12 +72,48 @@ public static class Identities
         EmployeeCode(user) ?? user.Identity?.Name ?? "unknown";
 }
 
+/// <summary>Who an account is and what they may do</summary>
+public sealed record EmployeeIdentity(string Code, bool IsAdmin, bool IsFinalApprover, bool IsFinance, bool IsApprover);
+
+/// <summary>
+/// Remembers for half a minute who an account is, so that a request does not repeat four queries. Only a found employee is
+/// remembered, and the administrator's changes (a link, a role, a deactivation) empty it at once.
+/// </summary>
+public sealed class EmployeeLookupCache
+{
+    private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(30);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Expires, EmployeeIdentity Value)> _items = new();
+
+    public bool TryGet(string key, out EmployeeIdentity? value)
+    {
+        if (_items.TryGetValue(key, out var item) && item.Expires > DateTime.UtcNow)
+        {
+            value = item.Value;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    public void Set(string key, EmployeeIdentity value) => _items[key] = (DateTime.UtcNow + Lifetime, value);
+
+    public void Clear() => _items.Clear();
+}
+
 /// <summary>After sign-in, finds the employee the account is linked to and adds the employee code and the roles to the caller</summary>
 public sealed class EmployeeClaimsTransformation : IClaimsTransformation
 {
     private readonly CompanyDbContext _db;
+    private readonly EmployeeLookupCache _cache;
+    private readonly ILogger<EmployeeClaimsTransformation> _logger;
 
-    public EmployeeClaimsTransformation(CompanyDbContext db) => _db = db;
+    public EmployeeClaimsTransformation(CompanyDbContext db, EmployeeLookupCache cache, ILogger<EmployeeClaimsTransformation> logger)
+    {
+        _db = db;
+        _cache = cache;
+        _logger = logger;
+    }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -70,23 +123,42 @@ public sealed class EmployeeClaimsTransformation : IClaimsTransformation
         var identity = new ClaimsIdentity();
         identity.AddClaim(new Claim(Identities.ResolvedClaim, "1"));
 
-        var account = await _db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => candidates.Contains(a.Account));
-        if (account != null)
+        var found = await FindAsync(candidates);
+        if (found != null)
         {
-            var employee = await _db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Code == account.EmployeeCode && e.IsActive);
-            if (employee != null)
-            {
-                identity.AddClaim(new Claim(Identities.EmployeeCodeClaim, employee.Code));
-                if (employee.IsAdmin) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Admin));
-                if (employee.IsFinalApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.FinalApprover));
-                if (employee.IsFinance) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Finance));
-                if (await _db.Employees.AnyAsync(e => e.SupervisorCode == employee.Code || e.DesignatedApproverCode == employee.Code))
-                    identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Approver));
-            }
+            identity.AddClaim(new Claim(Identities.EmployeeCodeClaim, found.Code));
+            if (found.IsAdmin) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Admin));
+            if (found.IsFinalApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.FinalApprover));
+            if (found.IsFinance) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Finance));
+            if (found.IsApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Approver));
         }
 
         principal.AddIdentity(identity);
         return principal;
+    }
+
+    private async Task<EmployeeIdentity?> FindAsync(IReadOnlyList<string> candidates)
+    {
+        var key = string.Join("|", candidates);
+        if (_cache.TryGet(key, out var known)) return known;
+
+        // Names that lead to two different employees are a mistake of the links: nobody is signed in as either
+        var codes = await _db.Accounts.AsNoTracking().Where(a => candidates.Contains(a.Account)).Select(a => a.EmployeeCode).Distinct().ToListAsync();
+        if (codes.Count > 1)
+        {
+            _logger.LogWarning("The sign-in names {Names} are linked to different employees ({Codes}); nobody is signed in", key, string.Join(", ", codes));
+            return null;
+        }
+
+        if (codes.Count == 0) return null;
+
+        var employee = await _db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Code == codes[0] && e.IsActive);
+        if (employee == null) return null;
+
+        var approver = await _db.Employees.AnyAsync(e => e.IsActive && (e.SupervisorCode == employee.Code || e.DesignatedApproverCode == employee.Code));
+        var result = new EmployeeIdentity(employee.Code, employee.IsAdmin, employee.IsFinalApprover, employee.IsFinance, approver);
+        _cache.Set(key, result);
+        return result;
     }
 }
 

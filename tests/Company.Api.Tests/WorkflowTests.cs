@@ -53,7 +53,7 @@ public class WorkflowTests
             await Fill(amra);
             var sheet = await Read(await amra.PostAsync(Url + "/submit", null));
 
-            Assert.AreEqual("Submitted", sheet.Status);
+            Assert.AreEqual(SheetStatus.Submitted, sheet.Status);
             Assert.AreEqual(1, sheet.Revision);
             Assert.IsFalse(sheet.Editable);
             Assert.AreEqual("Z-002", sheet.Workflow!.CurrentApprover);
@@ -80,7 +80,7 @@ public class WorkflowTests
             await Read(await amra.PutAsJsonAsync(Url + "/days/2026-09-05", new SetEntryRequest(Codes.AnnualLeaveA, 0)));
 
             Assert.AreEqual("blocking-issues", await ErrorCode(await amra.PostAsync(Url + "/submit", null), HttpStatusCode.Conflict));
-            Assert.AreEqual("Draft", (await amra.GetFromJsonAsync<SheetDto>(Url))!.Status);
+            Assert.AreEqual(SheetStatus.Draft, (await amra.GetFromJsonAsync<SheetDto>(Url))!.Status);
         }
     }
 
@@ -92,7 +92,7 @@ public class WorkflowTests
         {
             await Fill(amra);
             var submitted = await Read(await amra.PostAsync(Url + "/submit", null));
-            Assert.AreEqual("Submitted", submitted.Status);
+            Assert.AreEqual(SheetStatus.Submitted, submitted.Status);
             Assert.AreEqual("Z-001", submitted.Workflow!.CurrentApprover);
             Assert.IsTrue(submitted.Workflow.CanAct, "the owner decides on their own timesheet");
             Assert.IsFalse(submitted.Editable);
@@ -103,8 +103,8 @@ public class WorkflowTests
             Assert.AreEqual("forbidden", await ErrorCode(await benjamin.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden), "nobody else may");
 
             var approved = await Read(await amra.PostAsync("/api/approvals/Z-001/2026/9/approve", null));
-            Assert.AreEqual("Approved", approved.Status);
-            CollectionAssert.AreEqual(new[] { "Submitted", "Approved" }, approved.Workflow!.History.Select(h => h.Kind).ToArray());
+            Assert.AreEqual(SheetStatus.Approved, approved.Status);
+            CollectionAssert.AreEqual(new[] { HistoryKind.Submitted, HistoryKind.Approved }, approved.Workflow!.History.Select(h => h.Kind).ToArray());
         }
     }
 
@@ -133,20 +133,20 @@ public class WorkflowTests
             Assert.AreEqual("not-your-turn", await ErrorCode(await emir.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden), "the lawyer waits for the team lead");
 
             var afterFirst = await Read(await benjamin.PostAsync("/api/approvals/Z-001/2026/9/approve", null));
-            Assert.AreEqual("Submitted", afterFirst.Status);
+            Assert.AreEqual(SheetStatus.Submitted, afterFirst.Status);
             Assert.AreEqual("Z-003", afterFirst.Workflow!.CurrentApprover);
             Assert.IsFalse(afterFirst.Workflow.CanAct, "Benjamin has done his part");
             Assert.AreEqual("not-your-turn", await ErrorCode(await benjamin.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden));
             Assert.AreEqual(1, (await emir.GetFromJsonAsync<List<PendingApprovalDto>>("/api/approvals"))!.Count);
 
             var done = await Read(await emir.PostAsync("/api/approvals/Z-001/2026/9/approve", null));
-            Assert.AreEqual("Approved", done.Status);
+            Assert.AreEqual(SheetStatus.Approved, done.Status);
             Assert.IsNull(done.Workflow!.CurrentApprover);
-            CollectionAssert.AreEqual(new[] { "Submitted", "StepApproved", "Approved" }, done.Workflow.History.Select(h => h.Kind).ToArray());
+            CollectionAssert.AreEqual(new[] { HistoryKind.Submitted, HistoryKind.StepApproved, HistoryKind.Approved }, done.Workflow.History.Select(h => h.Kind).ToArray());
             Assert.AreEqual(0, (await emir.GetFromJsonAsync<List<PendingApprovalDto>>("/api/approvals"))!.Count);
 
             var mine = await amra.GetFromJsonAsync<SheetDto>(Url);
-            Assert.AreEqual("Approved", mine!.Status);
+            Assert.AreEqual(SheetStatus.Approved, mine!.Status);
             Assert.IsFalse(mine.Editable, "an approved timesheet is locked");
             Assert.AreEqual("locked", await ErrorCode(await amra.PutAsJsonAsync(Url + "/days/2026-09-01", new SetEntryRequest(Codes.RegularWork, 300)), HttpStatusCode.Conflict));
         }
@@ -182,7 +182,7 @@ public class WorkflowTests
             await Read(await amra.PostAsync(Url + "/submit", null));
 
             Assert.AreEqual("self-approval", await ErrorCode(await amra.PostAsync("/api/approvals/Z-001/2026/9/approve", null), HttpStatusCode.Forbidden));
-            Assert.AreEqual("Submitted", (await amra.GetFromJsonAsync<SheetDto>(Url))!.Status);
+            Assert.AreEqual(SheetStatus.Submitted, (await amra.GetFromJsonAsync<SheetDto>(Url))!.Status);
         }
     }
 
@@ -198,7 +198,7 @@ public class WorkflowTests
 
             Assert.AreEqual("message-required", await ErrorCode(await emir.PostAsJsonAsync("/api/approvals/Z-001/2026/9/return", new ReturnRequest("  ")), HttpStatusCode.BadRequest));
             var returned = await Read(await emir.PostAsJsonAsync("/api/approvals/Z-001/2026/9/return", new ReturnRequest("Prekovremeni sati nisu jasni")));
-            Assert.AreEqual("Returned", returned.Status);
+            Assert.AreEqual(SheetStatus.Returned, returned.Status);
 
             var mine = await Read(await amra.GetAsync(Url));
             Assert.IsTrue(mine.Editable, "a returned sheet is editable again");

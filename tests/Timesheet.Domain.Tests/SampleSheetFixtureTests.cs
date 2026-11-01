@@ -91,7 +91,7 @@ public class SampleSheetFixtureTests
         {
             var issues = TimesheetValidator.Validate(Build(sample).Data);
             var blocking = issues.Where(i => i.Severity == Severity.Blocking).ToList();
-            Assert.AreEqual(0, blocking.Count, $"{sample.Code}: {string.Join(" | ", blocking.Select(b => b.RuleId + " " + b.Message))}");
+            Assert.AreEqual(0, blocking.Count, $"{sample.Code}: {string.Join(" | ", blocking.Select(b => b.Key + " " + string.Join(", ", b.Values.Select(v => v.Key + "=" + v.Value))))}");
         }
     }
 

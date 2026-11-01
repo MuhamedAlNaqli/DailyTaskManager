@@ -60,15 +60,15 @@
             <Button Name="EmpApprovalsTab" Command="{Binding ShowApprovalsCommand}" Classes.secondary="{Binding !InApprovals}" Classes.primary="{Binding InApprovals}" Padding="16,8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <materialIcons:MaterialIcon Kind="AccountGroup" Width="18" Height="18"/>
-                    <TextBlock Name="EmpApprovalsTabText" Text="{Binding ApprovalsTabText}"/>
+                    <TextBlock Name="EmpApprovalsTabText" Text="{Binding PendingApprovals.TabText}"/>
                 </StackPanel>
             </Button>
         </StackPanel>
 
         <!-- Reminders, confirmation and error banners -->
         <StackPanel Grid.Row="2" Spacing="8">
-            <Border IsVisible="{Binding HasReminders}" Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="14,10">
-                <ItemsControl Name="EmpRemindersList" ItemsSource="{Binding Reminders}">
+            <Border IsVisible="{Binding Reminders.HasAny}" Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                <ItemsControl Name="EmpRemindersList" ItemsSource="{Binding Reminders.Items}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="em:ReminderRow">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
@@ -244,7 +244,7 @@
 
                     <!-- List -->
                     <ScrollViewer IsVisible="{Binding IsListView}">
-                        <ItemsControl Name="EmpDaysList" ItemsSource="{Binding Days}" Margin="6">
+                        <ItemsControl Name="EmpDaysList" ItemsSource="{Binding Sheet.Days}" Margin="6">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="em:EmployeeDayRow">
                                     <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1" Padding="0,2">
@@ -258,9 +258,9 @@
                                                        Foreground="{DynamicResource AppTextMuted}"/>
                                             <TextBlock Grid.Column="3" Text="{Binding EntriesText}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,4"
                                                        Foreground="{DynamicResource AppTextStrong}"/>
-                                            <TextBlock Grid.Column="4" Text="{Binding OvertimeText}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
+                                            <TextBlock Grid.Column="4" Text="{Binding Sheet.OvertimeText}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
                                                        Foreground="#B45309"/>
-                                            <Border Grid.Column="5" IsVisible="{Binding HasIssues}" Width="26" Height="22" CornerRadius="11" VerticalAlignment="Center"
+                                            <Border Grid.Column="5" IsVisible="{Binding Sheet.HasIssues}" Width="26" Height="22" CornerRadius="11" VerticalAlignment="Center"
                                                     Background="{DynamicResource AppBadgeBg}" ToolTip.Tip="{Binding IssueTooltip}">
                                                 <TextBlock Text="{Binding IssueCount}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            Foreground="{DynamicResource AppBadgeText}"/>
@@ -286,7 +286,7 @@
                     <!-- Calendar: a week to a row, Monday first; a click on a day opens it -->
                     <ScrollViewer IsVisible="{Binding IsCalendarView}">
                         <StackPanel Margin="10" Spacing="6">
-                            <ItemsControl ItemsSource="{Binding WeekdayHeaders}">
+                            <ItemsControl ItemsSource="{Binding Sheet.WeekdayHeaders}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
@@ -296,7 +296,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <ItemsControl Name="EmpCalendar" ItemsSource="{Binding CalendarCells}">
+                            <ItemsControl Name="EmpCalendar" ItemsSource="{Binding Sheet.CalendarCells}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
@@ -340,8 +340,8 @@
                     <Border IsVisible="{Binding InApprovals}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Čeka vaše odobrenje" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpNoPendingText" Text="Nema šihtarica koje čekaju vaše odobrenje." IsVisible="{Binding NoPending}" Foreground="{DynamicResource AppTextMuted}"/>
-                            <ItemsControl Name="EmpPendingList" ItemsSource="{Binding Pending}">
+                            <TextBlock Name="EmpNoPendingText" Text="Nema šihtarica koje čekaju vaše odobrenje." IsVisible="{Binding PendingApprovals.IsEmpty}" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpPendingList" ItemsSource="{Binding PendingApprovals.Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="em:PendingRow">
                                         <StackPanel Margin="0,4" Spacing="2">
@@ -362,12 +362,12 @@
                         </StackPanel>
                     </Border>
 
-                    <Border IsVisible="{Binding HasWorkflow}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
+                    <Border IsVisible="{Binding Sheet.HasWorkflow}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Odobravanje" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpWorkflowText" Text="{Binding WorkflowText}" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpChainText" Text="{Binding ChainText}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}"/>
-                            <ItemsControl Name="EmpMessagesList" ItemsSource="{Binding Messages}">
+                            <TextBlock Name="EmpWorkflowText" Text="{Binding Sheet.WorkflowText}" TextWrapping="Wrap" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpChainText" Text="{Binding Sheet.ChainText}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpMessagesList" ItemsSource="{Binding Sheet.Messages}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="em:MessageRow">
                                         <Border Background="{DynamicResource AppSurfaceAlt}" CornerRadius="8" Padding="10,8" Margin="0,4">
@@ -388,7 +388,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <TextBlock Text="Historija" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0" Foreground="{DynamicResource AppTextMuted}"/>
-                            <ItemsControl Name="EmpHistoryList" ItemsSource="{Binding History}">
+                            <ItemsControl Name="EmpHistoryList" ItemsSource="{Binding Sheet.History}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="em:HistoryRow">
                                         <StackPanel Margin="0,2">
@@ -404,9 +404,9 @@
                     <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="6">
                             <TextBlock Text="Zbir mjeseca" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpFundText" Text="{Binding FundText}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpOvertimeText" Text="{Binding OvertimeText}" Foreground="#B45309"/>
-                            <ItemsControl ItemsSource="{Binding TotalLines}">
+                            <TextBlock Name="EmpFundText" Text="{Binding Sheet.FundText}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                            <TextBlock Name="EmpOvertimeText" Text="{Binding Sheet.OvertimeText}" Foreground="#B45309"/>
+                            <ItemsControl ItemsSource="{Binding Sheet.TotalLines}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="x:String">
                                         <TextBlock Text="{Binding}" FontSize="12" Foreground="{DynamicResource AppTextMuted}" Margin="0,1"/>
@@ -421,8 +421,15 @@
                     <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Prekovremeni rad" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Text="Nema unosa." IsVisible="{Binding NoOvertime}" Foreground="{DynamicResource AppTextMuted}"/>
-                            <ItemsControl Name="EmpOvertimeList" ItemsSource="{Binding Overtime}">
+                            <TextBlock Text="Nema unosa." IsVisible="{Binding Sheet.NoOvertime}" Foreground="{DynamicResource AppTextMuted}"/>
+                            <ItemsControl Name="EmpCarriedList" ItemsSource="{Binding Sheet.Carried}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Foreground="#B45309" Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl Name="EmpOvertimeList" ItemsSource="{Binding Sheet.Overtime}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="em:EmployeeOvertimeRow">
                                         <StackPanel Margin="0,4" Spacing="2">
@@ -449,8 +456,8 @@
                     <Border IsVisible="{Binding !ShowApprovalsHint}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Provjera unosa" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
-                            <TextBlock Name="EmpNoIssuesText" Text="Nema primjedbi." IsVisible="{Binding NoIssues}" Foreground="#15803D"/>
-                            <ItemsControl Name="EmpIssuesList" ItemsSource="{Binding Issues}">
+                            <TextBlock Name="EmpNoIssuesText" Text="Nema primjedbi." IsVisible="{Binding Sheet.NoIssues}" Foreground="#15803D"/>
+                            <ItemsControl Name="EmpIssuesList" ItemsSource="{Binding Sheet.Issues}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="em:EmployeeIssueRow">
                                         <StackPanel Margin="0,4" Spacing="1">

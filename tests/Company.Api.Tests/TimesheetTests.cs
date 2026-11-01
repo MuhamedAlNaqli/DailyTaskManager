@@ -36,11 +36,11 @@ public class TimesheetTests
         {
             var sheet = await amra.GetFromJsonAsync<SheetDto>(Url);
 
-            Assert.AreEqual("Draft", sheet!.Status);
+            Assert.AreEqual(SheetStatus.Draft, sheet!.Status);
             Assert.IsTrue(sheet.Editable);
             Assert.AreEqual(30, sheet.Days.Count);
             Assert.AreEqual("U", sheet.Days[0].Weekday, "1 September 2026 is a Tuesday");
-            Assert.AreEqual("Weekend", sheet.Days.Single(d => d.Date.Day == 5).Type);
+            Assert.AreEqual(DayKind.Weekend, sheet.Days.Single(d => d.Date.Day == 5).Type);
             Assert.AreEqual(176 * 60, sheet.Summary.ExpectedFundMinutes);
             Assert.AreEqual(0, sheet.Summary.FundMinutes);
             Assert.AreEqual(22, sheet.Issues.Count(i => i.RuleId == "V-04"), "every working day is missing");
@@ -142,7 +142,7 @@ public class TimesheetTests
         {
             var sheet = await Read(await amra.PutAsJsonAsync(Url + "/days/2026-09-05", new SetEntryRequest(Codes.AnnualLeaveA, 0)));
             var issue = sheet.Issues.Single(i => i.RuleId == "V-02");
-            Assert.AreEqual("Blocking", issue.Severity);
+            Assert.AreEqual(IssueSeverity.Blocking, issue.Severity);
             Assert.AreEqual(new DateOnly(2026, 9, 5), issue.Date);
         }
     }
@@ -174,7 +174,7 @@ public class TimesheetTests
             var preview = await (await amra.PostAsJsonAsync(Url + "/absences/preview", request)).ReadAsync<AbsencePreviewDto>();
             Assert.AreEqual(11, preview!.Days.Count);
             CollectionAssert.AreEqual(new[] { 5, 6, 12, 13 }, preview.Skipped.Select(s => s.Date.Day).ToArray());
-            Assert.IsTrue(preview.Skipped.All(s => s.Reason == "Weekend"));
+            Assert.IsTrue(preview.Skipped.All(s => s.Reason == SkippedBecause.Weekend));
 
             var before = await amra.GetFromJsonAsync<SheetDto>(Url);
             Assert.AreEqual(0, before!.Summary.DaysByCode.GetValueOrDefault(Codes.AnnualLeaveA), "a preview saves nothing");
@@ -234,7 +234,7 @@ public class TimesheetTests
 
             Assert.AreEqual(120, sheet.Overtime.Single().TotalMinutes, "the total is computed, never typed");
             Assert.IsTrue(sheet.Overtime.Single().HasRegularWindowConflict);
-            Assert.AreEqual("Blocking", sheet.Issues.Single(i => i.RuleId == "V-03").Severity);
+            Assert.AreEqual(IssueSeverity.Blocking, sheet.Issues.Single(i => i.RuleId == "V-03").Severity);
         }
     }
 
@@ -245,7 +245,7 @@ public class TimesheetTests
         using (factory)
         {
             var sheet = await Read(await amra.PostAsJsonAsync(Url + "/overtime", new OvertimeRequest(new DateOnly(2026, 9, 7), new TimeOnly(18, 0), new TimeOnly(20, 0), "  ")));
-            Assert.AreEqual("Blocking", sheet.Issues.Single(i => i.RuleId == "V-13").Severity);
+            Assert.AreEqual(IssueSeverity.Blocking, sheet.Issues.Single(i => i.RuleId == "V-13").Severity);
 
             var equal = await amra.PostAsJsonAsync(Url + "/overtime", new OvertimeRequest(new DateOnly(2026, 9, 7), new TimeOnly(18, 0), new TimeOnly(18, 0), "x"));
             Assert.AreEqual("invalid-interval", (await equal.ReadAsync<ApiErrorDto>())!.Code);
@@ -330,7 +330,7 @@ public class TimesheetTests
 
                 var read = await amra.GetFromJsonAsync<SheetDto>(Url);
                 Assert.IsFalse(read!.Editable, "reading is always allowed");
-                Assert.AreEqual(status.ToString(), read.Status);
+                Assert.AreEqual(status.ToString(), read.Status.ToString());
             }
 
             await SetStatus(TimesheetStatus.Returned);

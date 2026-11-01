@@ -24,6 +24,8 @@ public class CompanyDbContext : DbContext
 
     public DbSet<SheetOvertime> SheetOvertime => Set<SheetOvertime>();
 
+    public DbSet<SheetChainStep> SheetChainSteps => Set<SheetChainStep>();
+
     public DbSet<SheetMessage> SheetMessages => Set<SheetMessage>();
 
     public DbSet<SheetEvent> SheetEvents => Set<SheetEvent>();
@@ -76,9 +78,20 @@ public class CompanyDbContext : DbContext
             e.HasMany(x => x.Overtime).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Messages).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.ChainSteps).WithOne().HasForeignKey(x => x.SheetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeCode).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.Version).IsConcurrencyToken();
-            e.Property(x => x.Chain).HasMaxLength(400).IsRequired();
+            e.Property(x => x.CurrentApproverCode).HasMaxLength(10);
+            e.HasIndex(x => new { x.CurrentApproverCode, x.Status });
             e.Ignore(x => x.ChainCodes);
+        });
+
+        modelBuilder.Entity<SheetChainStep>(e =>
+        {
+            e.ToTable("sheet_chain_steps");
+            e.HasIndex(x => new { x.SheetId, x.Position }).IsUnique();
+            e.Property(x => x.EmployeeCode).HasMaxLength(10).IsRequired();
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeCode).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SheetMessage>(e =>
@@ -94,7 +107,7 @@ public class CompanyDbContext : DbContext
         {
             e.ToTable("sheet_events");
             e.HasIndex(x => x.SheetId);
-            e.Property(x => x.Kind).HasMaxLength(30).IsRequired();
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.ActorCode).HasMaxLength(10).IsRequired();
             e.Property(x => x.OnBehalfOf).HasMaxLength(10);
             e.Property(x => x.Text).HasMaxLength(2000);
@@ -129,25 +142,98 @@ public class CompanyDbContext : DbContext
             e.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
             e.Property(x => x.EntityId).HasMaxLength(100).IsRequired();
             e.Property(x => x.Details).HasMaxLength(2000);
+            e.Property(x => x.Hash).HasMaxLength(64);
+            e.Property(x => x.PreviousHash).HasMaxLength(64);
+
+            // Two events cannot follow the same event: a second server writing at the same moment is stopped instead of forking the chain
+            e.HasIndex(x => x.PreviousHash).IsUnique();
         });
     }
 
-    /// <summary>The audit log is append-only: changing or deleting an event is refused in the application itself</summary>
+    private static readonly SemaphoreSlim AuditLock = new(1, 1);
+
+    /// <summary>
+    /// The audit log is append-only: changing or deleting an event is refused in the application itself. Every event is chained to
+    /// the one before it by a hash (see <see cref="AuditChain"/>), so a change made behind the application's back shows up in the
+    /// verification. Every change to a sheet or to anything that belongs to it also counts the sheet's version, here, so that no
+    /// code path can change a sheet and forget to.
+    /// </summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         GuardAudit();
-        return base.SaveChanges(acceptAllChangesOnSuccess);
+        CountSheetVersions();
+
+        var added = AddedAuditEvents();
+        if (added.Count == 0) return base.SaveChanges(acceptAllChangesOnSuccess);
+
+        AuditLock.Wait();
+        try
+        {
+            AuditChain.Link(added, AuditEvents.AsNoTracking().OrderByDescending(e => e.Id).Select(e => e.Hash).FirstOrDefault());
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+        finally
+        {
+            AuditLock.Release();
+        }
     }
 
-    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         GuardAudit();
-        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        CountSheetVersions();
+
+        var added = AddedAuditEvents();
+        if (added.Count == 0) return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+
+        await AuditLock.WaitAsync(cancellationToken);
+        try
+        {
+            var last = await AuditEvents.AsNoTracking().OrderByDescending(e => e.Id).Select(e => e.Hash).FirstOrDefaultAsync(cancellationToken);
+            AuditChain.Link(added, last);
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        finally
+        {
+            AuditLock.Release();
+        }
     }
+
+    private List<AuditEvent> AddedAuditEvents() =>
+        ChangeTracker.Entries<AuditEvent>().Where(e => e.State == EntityState.Added).Select(e => e.Entity).ToList();
 
     private void GuardAudit()
     {
         if (ChangeTracker.Entries<AuditEvent>().Any(e => e.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("The audit log is append-only.");
+    }
+
+    /// <summary>A sheet whose own row or anything of it (entries, overtime, messages, events, chain) changes gets the next version once per save</summary>
+    private void CountSheetVersions()
+    {
+        ChangeTracker.DetectChanges();
+
+        var touched = new HashSet<int>();
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            var sheetId = entry.Entity switch
+            {
+                SheetEntry x => x.SheetId,
+                SheetOvertime x => x.SheetId,
+                SheetMessage x => x.SheetId,
+                SheetEvent x => x.SheetId,
+                SheetChainStep x => x.SheetId,
+                _ => 0
+            };
+            if (sheetId > 0) touched.Add(sheetId);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<MonthSheet>().Where(e => e.State != EntityState.Added && e.State != EntityState.Deleted))
+        {
+            if (entry.State != EntityState.Modified && !touched.Contains(entry.Entity.Id)) continue;
+
+            var version = entry.Property(x => x.Version);
+            if (version.CurrentValue == version.OriginalValue) version.CurrentValue = version.OriginalValue + 1;
+        }
     }
 }

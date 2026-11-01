@@ -83,6 +83,14 @@ public static class AuthenticationSetup
                 if (!builder.Environment.IsDevelopment())
                     throw new InvalidOperationException("The Test authentication mode is only allowed in the Development environment.");
 
+                // Anybody who can reach a Test server can be anybody: it may listen on this computer only
+                var urls = configuration["urls"] ?? configuration["ASPNETCORE_URLS"] ?? "";
+                foreach (var url in urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!Uri.TryCreate(url.Replace("+", "localhost").Replace("*", "0.0.0.0"), UriKind.Absolute, out var address) || !(address.IsLoopback || address.Host == "localhost"))
+                        throw new InvalidOperationException($"The Test authentication mode may only listen on this computer (localhost), not on {url}.");
+                }
+
                 builder.Services.Configure<AuthenticationOptions>(o => o.DefaultScheme = o.DefaultChallengeScheme = TestScheme);
                 auth.AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestScheme, _ => { });
                 break;

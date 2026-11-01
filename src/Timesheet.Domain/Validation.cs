@@ -11,8 +11,16 @@ public enum Severity
     Info
 }
 
-/// <summary>One finding of a rule. <see cref="RuleId"/> links it to the source of the rule (V-01 to V-21).</summary>
-public sealed record ValidationIssue(string RuleId, Severity Severity, DateOnly? Date, string Message);
+/// <summary>
+/// One finding of a rule. <see cref="RuleId"/> links it to the source of the rule (V-01 to V-21). The finding says what was found
+/// (<see cref="Values"/>: the date, the code, the minutes ...), not how to word it: wording is for the program that shows it, in
+/// the language of the people who read it.
+/// </summary>
+public sealed record ValidationIssue(string RuleId, Severity Severity, DateOnly? Date, IReadOnlyDictionary<string, object> Values, string? Variant = null)
+{
+    /// <summary>The rule and, for a rule that finds two kinds of things, which of them ("V-08.inactive")</summary>
+    public string Key => Variant == null ? RuleId : RuleId + "." + Variant;
+}
 
 /// <summary>An overtime record as entered: when, and why (the description justifies the overtime, Q-23)</summary>
 public sealed record OvertimeRecord(
@@ -100,8 +108,10 @@ public static class TimesheetValidator
         var religious = data.ReligiousHolidays;
         var issues = new List<ValidationIssue>();
 
-        void Add(string rule, DateOnly? date, string message) => issues.Add(new ValidationIssue(rule, settings.For(rule), date, message));
-        string D(DateOnly date) => date.ToString("dd.MM.yyyy.");
+        void Add(string rule, DateOnly? date, params (string Name, object Value)[] values) =>
+            issues.Add(new ValidationIssue(rule, settings.For(rule), date, values.ToDictionary(v => v.Name, v => v.Value)));
+        void AddVariant(string rule, string variant, DateOnly? date, params (string Name, object Value)[] values) =>
+            issues.Add(new ValidationIssue(rule, settings.For(rule), date, values.ToDictionary(v => v.Name, v => v.Value), variant));
 
         var first = new DateOnly(data.Year, data.Month, 1);
         var last = new DateOnly(data.Year, data.Month, DateTime.DaysInMonth(data.Year, data.Month));
@@ -111,9 +121,9 @@ public static class TimesheetValidator
 
         // V-08: unknown or inactive employee
         if (!employee.IsKnown)
-            Add("V-08", null, $"Zaposlenik {data.EmployeeCode} nije u evidenciji zaposlenika.");
+            AddVariant("V-08", "unknown", null, ("employee", data.EmployeeCode));
         else if ((employee.ActiveFrom.HasValue && employee.ActiveFrom.Value > last) || (employee.ActiveTo.HasValue && employee.ActiveTo.Value < first))
-            Add("V-08", null, $"Zaposlenik {data.EmployeeCode} nije aktivan u ovom mjesecu.");
+            AddVariant("V-08", "inactive", null, ("employee", data.EmployeeCode));
 
         foreach (var entry in data.Entries)
         {
@@ -124,31 +134,31 @@ public static class TimesheetValidator
             if (WorkCalendar.IsWeekend(entry.Date) && code.IsAbsence)
             {
                 if (Codes.IsAnnualLeave(code.Code))
-                    Add("V-02", entry.Date, $"Godišnji odmor ({code.Code}) ne smije biti upisan za neradni dan {D(entry.Date)}.");
+                    Add("V-02", entry.Date, ("code", code.Code), ("date", entry.Date));
                 else
-                    Add("V-17", entry.Date, $"Odsustvo ({code.Code}) se ne upisuje za vikend {D(entry.Date)}.");
+                    Add("V-17", entry.Date, ("code", code.Code), ("date", entry.Date));
             }
 
             // V-06: regular work on a weekend
             if (code.Code == Codes.RegularWork && WorkCalendar.IsWeekend(entry.Date))
-                Add("V-06", entry.Date, $"Redovan rad ne može biti upisan za vikend {D(entry.Date)}; rad vikendom je prekovremeni rad.");
+                Add("V-06", entry.Date, ("date", entry.Date));
 
             // V-07: anything in the regular-work row on a state holiday
             if (code.IsBaseEntry && info.HolidayKind == HolidayKind.State)
-                Add("V-07", entry.Date, $"Državni praznik {D(entry.Date)}: koristite šifre 1024 i 2010, ne {code.Code}.");
+                Add("V-07", entry.Date, ("date", entry.Date), ("code", code.Code));
 
             // V-14: regular hours differ from the daily norm
             if (code.Code == Codes.RegularWork && info.Type == DayType.Working && entry.Minutes != wt.DailyNormMinutes)
-                Add("V-14", entry.Date, $"Redovni sati {D(entry.Date)} ({entry.Minutes / 60m:0.##} h) razlikuju se od dnevne norme ({wt.DailyNormMinutes / 60m:0.##} h).");
+                Add("V-14", entry.Date, ("date", entry.Date), ("minutes", entry.Minutes), ("normMinutes", wt.DailyNormMinutes));
 
             // V-12: granularity
             if (code.Unit == CodeUnit.Hours && wt.GranularityMinutes > 0 && entry.Minutes % wt.GranularityMinutes != 0)
-                Add("V-12", entry.Date, $"Sati {D(entry.Date)} nisu višekratnik od {wt.GranularityMinutes} min.");
+                AddVariant("V-12", "hours", entry.Date, ("date", entry.Date), ("step", wt.GranularityMinutes));
         }
 
         // V-05: more than one base entry on a day
         foreach (var (date, list) in baseByDate.Where(p => p.Value.Count > 1))
-            Add("V-05", date, $"Više od jednog unosa u redu Redovan rad za {D(date)}: {string.Join(", ", list.Select(e => e.Code))}.");
+            Add("V-05", date, ("date", date), ("codes", string.Join(", ", list.Select(e => e.Code))));
 
         // V-04: a working day without a base entry (state holidays use 1024/2010, so they are not expected here)
         foreach (var date in WorkCalendar.DaysOf(data.Year, data.Month))
@@ -157,7 +167,7 @@ public static class TimesheetValidator
             var info = Day(date);
             if (info.HolidayKind == HolidayKind.State) continue;
             if (!baseByDate.ContainsKey(date))
-                Add("V-04", date, $"Za radni dan {D(date)} nema unosa.");
+                Add("V-04", date, ("date", date));
         }
 
         // V-20: state holiday on a weekday: 1024 + 2010 must equal the daily norm
@@ -167,7 +177,7 @@ public static class TimesheetValidator
             var holiday = data.Entries.Where(e => e.Date == date && e.Code == Codes.StateHoliday).Sum(e => e.Minutes);
             var worked = data.Entries.Where(e => e.Date == date && e.Code == Codes.HolidayWork).Sum(e => e.Minutes);
             if ((holiday > 0 || worked > 0) && holiday + worked != wt.DailyNormMinutes)
-                Add("V-20", date, $"Državni praznik {D(date)}: 1024 ({holiday / 60m:0.##} h) + 2010 ({worked / 60m:0.##} h) mora biti {wt.DailyNormMinutes / 60m:0.##} h.");
+                Add("V-20", date, ("date", date), ("holidayMinutes", holiday), ("workedMinutes", worked), ("normMinutes", wt.DailyNormMinutes));
         }
 
         // Overtime
@@ -179,29 +189,29 @@ public static class TimesheetValidator
             // V-15: start and end must differ (an end before the start means past midnight, which is allowed)
             if (interval.TotalMinutes == 0)
             {
-                Add("V-15", record.Date, $"Prekovremeni rad {D(record.Date)}: početak i kraj su isti.");
+                Add("V-15", record.Date, ("date", record.Date));
                 continue;
             }
 
             // V-01: the total must match the interval (matters for imported or legacy data)
             if (record.DeclaredTotalMinutes.HasValue && record.DeclaredTotalMinutes.Value != interval.TotalMinutes)
-                Add("V-01", record.Date, $"Prekovremeni rad {D(record.Date)}: ukupno {record.DeclaredTotalMinutes.Value / 60m:0.##} h ne odgovara intervalu ({interval.TotalMinutes / 60m:0.##} h).");
+                Add("V-01", record.Date, ("date", record.Date), ("declaredMinutes", record.DeclaredTotalMinutes.Value), ("intervalMinutes", interval.TotalMinutes));
 
             // V-03: overtime inside the regular window
             foreach (var conflict in classification.Conflicts)
-                Add("V-03", conflict.Date, $"Prekovremeni rad {D(record.Date)} zalazi u redovno radno vrijeme ({wt.RegularStart:HH\\:mm}–{wt.RegularEnd:HH\\:mm}) dana {D(conflict.Date)}.");
+                Add("V-03", conflict.Date, ("date", record.Date), ("conflictDate", conflict.Date), ("regularStart", wt.RegularStart), ("regularEnd", wt.RegularEnd));
 
             // V-13: the description justifies the overtime
             if (string.IsNullOrWhiteSpace(record.Description))
-                Add("V-13", record.Date, $"Prekovremeni rad {D(record.Date)}: kratak opis posla je obavezan.");
+                Add("V-13", record.Date, ("date", record.Date));
 
             // V-12 for the interval ends
             if (wt.GranularityMinutes > 0 && (interval.Absolute.Start % wt.GranularityMinutes != 0 || interval.Absolute.End % wt.GranularityMinutes != 0))
-                Add("V-12", record.Date, $"Prekovremeni rad {D(record.Date)}: vrijeme nije višekratnik od {wt.GranularityMinutes} min.");
+                AddVariant("V-12", "overtime", record.Date, ("date", record.Date), ("step", wt.GranularityMinutes));
 
             // V-18: categories changed by hand
             if (record.CategoriesOverridden)
-                Add("V-18", record.Date, $"Prekovremeni rad {D(record.Date)}: kategorije su ručno izmijenjene.");
+                Add("V-18", record.Date, ("date", record.Date));
 
             // V-19 / V-19b / V-19c: overtime on a day with an absence
             foreach (var date in classification.Allocations.Select(a => a.Date).Concat(classification.Conflicts.Select(c => c.Date)).Distinct())
@@ -210,11 +220,11 @@ public static class TimesheetValidator
                 foreach (var absence in onDay.Where(e => e.TimeCode.IsAbsence))
                 {
                     if (Codes.IsBusinessTrip(absence.Code))
-                        Add("V-19", date, $"Na dan službenog puta ({absence.Code}) {D(date)} ne može se upisati prekovremeni rad.");
+                        Add("V-19", date, ("code", absence.Code), ("date", date));
                     else if (Codes.IsSickLeave(absence.Code))
-                        Add("V-19b", date, $"Na bolovanju ({absence.Code}) {D(date)} ne smije se raditi.");
+                        Add("V-19b", date, ("code", absence.Code), ("date", date));
                     else if (!Codes.IsAnnualLeave(absence.Code))
-                        Add("V-19c", date, $"Prekovremeni rad na dan odsustva ({absence.Code}) {D(date)} nije potvrđen kao dozvoljen.");
+                        Add("V-19c", date, ("code", absence.Code), ("date", date));
                 }
             }
         }
@@ -230,7 +240,7 @@ public static class TimesheetValidator
 
                 if (a.Date == b.Date && a.Start == b.Start && a.End == b.End)
                 {
-                    Add("V-10", a.Date, $"Prekovremeni rad {D(a.Date)} {a.Start:HH\\:mm}–{a.End:HH\\:mm} je unesen dvaput.");
+                    Add("V-10", a.Date, ("date", a.Date), ("start", a.Start), ("end", a.End));
                     continue;
                 }
 
@@ -238,7 +248,7 @@ public static class TimesheetValidator
                 var (aStart, aEnd) = a.Absolute;
                 var (bStart, bEnd) = (b.Absolute.Start + offsetB, b.Absolute.End + offsetB);
                 if (aStart < bEnd && bStart < aEnd)
-                    Add("V-09", a.Date, $"Prekovremeni rad {D(a.Date)} {a.Start:HH\\:mm}–{a.End:HH\\:mm} preklapa se s unosom {D(b.Date)} {b.Start:HH\\:mm}–{b.End:HH\\:mm}.");
+                    Add("V-09", a.Date, ("date", a.Date), ("start", a.Start), ("end", a.End), ("otherDate", b.Date), ("otherStart", b.Start), ("otherEnd", b.End));
             }
         }
 
@@ -254,13 +264,13 @@ public static class TimesheetValidator
             .GroupBy(x => x.Date)
             .Select(g => (Date: g.Key, Minutes: g.Sum(x => x.Minutes)));
         foreach (var (date, minutes) in perDate.Where(p => p.Minutes > OvertimeInterval.MinutesPerDay))
-            Add("V-11", date, $"Za {D(date)} je upisano više od 24 sata ({minutes / 60m:0.##} h).");
+            Add("V-11", date, ("date", date), ("minutes", minutes));
 
         // V-21: the monthly fund is lower than expected (a higher fund is fine, Q-36)
         var summary = MonthlySummaryCalculator.Compute(data.Entries, allocations, wt, data.Calendar);
         var expected = MonthlySummaryCalculator.ExpectedFundMinutes(data.Year, data.Month, wt, employee.ActiveFrom, employee.ActiveTo);
         if (employee.IsKnown && summary.FundMinutes < expected)
-            Add("V-21", null, $"Mjesečni fond sati ({summary.FundHours:0.##} h) manji je od očekivanog ({expected / 60m:0.##} h).");
+            Add("V-21", null, ("fundMinutes", summary.FundMinutes), ("expectedMinutes", expected));
 
         return issues.OrderBy(i => i.Date ?? DateOnly.MinValue).ThenBy(i => i.RuleId, StringComparer.Ordinal).ToList();
     }

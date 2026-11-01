@@ -15,13 +15,10 @@ public static class EmployeeFormat
         try { return new CultureInfo("bs-Latn-BA"); } catch (CultureNotFoundException) { return new CultureInfo("hr-HR"); }
     }
 
-    public static readonly string[] MonthNames =
-        { "Januar", "Februar", "Mart", "April", "Maj", "Juni", "Juli", "August", "Septembar", "Oktobar", "Novembar", "Decembar" };
-
     public static readonly string[] WeekdayNames =
         { "nedjelja", "ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota" };
 
-    public static string Month(int year, int month) => $"{MonthNames[month - 1]} {year}.";
+    public static string Month(int year, int month) => BosnianTexts.Month(year, month);
 
     public static string Date(DateOnly date) => date.ToString("dd.MM.yyyy.", CultureInfo.InvariantCulture);
 
@@ -32,14 +29,7 @@ public static class EmployeeFormat
     /// <summary>"8 h", "2,5 h", "0,5 h"</summary>
     public static string Hours(int minutes) => (minutes / 60m).ToString("0.##", Bosnian) + " h";
 
-    public static string Status(string status) => status switch
-    {
-        "Draft" => "U pripremi",
-        "Submitted" => "Predano na odobravanje",
-        "Returned" => "Vraćeno na ispravku",
-        "Approved" => "Odobreno",
-        _ => status
-    };
+    public static string Status(SheetStatus status) => BosnianTexts.Status(status);
 
     /// <summary>The title and the text of one due item, in the words of the employee</summary>
     public static (string Title, string Message) Reminder(ReminderDto item)
@@ -48,47 +38,34 @@ public static class EmployeeFormat
         var deadline = Date(item.Deadline);
         return item.Kind switch
         {
-            "SubmitSoon" => ("Predajte šihtaricu", $"Šihtarica za {month} se predaje do {deadline}"),
-            "SubmitOverdue" => ("Šihtarica kasni", $"Šihtarica za {month} je trebala biti predana do {deadline}"),
-            "FixReturned" => ("Šihtarica je vraćena na ispravku", $"Šihtarica za {month} je vraćena. Pročitajte poruku, ispravite unos i predajte je ponovo."),
-            "ApproveWaiting" => ("Šihtarice čekaju odobrenje", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je {deadline}"),
-            "ApproveOverdue" => ("Odobravanje kasni", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je bio {deadline}"),
-            _ => (item.Kind, month)
+            ReminderType.SubmitSoon => ("Predajte šihtaricu", $"Šihtarica za {month} se predaje do {deadline}"),
+            ReminderType.SubmitOverdue => ("Šihtarica kasni", $"Šihtarica za {month} je trebala biti predana do {deadline}"),
+            ReminderType.FixReturned => ("Šihtarica je vraćena na ispravku", $"Šihtarica za {month} je vraćena. Pročitajte poruku, ispravite unos i predajte je ponovo."),
+            ReminderType.ApproveWaiting => ("Šihtarice čekaju odobrenje", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je {deadline}"),
+            ReminderType.ApproveOverdue => ("Odobravanje kasni", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je bio {deadline}"),
+            _ => (item.Kind.ToString(), month)
         };
     }
 
     /// <summary>The most urgent first: what blocks others, then what is late, then what is coming</summary>
-    public static int ReminderOrder(string kind) => kind switch
+    public static int ReminderOrder(ReminderType kind) => kind switch
     {
-        "FixReturned" => 0,
-        "SubmitOverdue" => 1,
-        "ApproveOverdue" => 2,
-        "SubmitSoon" => 3,
-        "ApproveWaiting" => 4,
+        ReminderType.FixReturned => 0,
+        ReminderType.SubmitOverdue => 1,
+        ReminderType.ApproveOverdue => 2,
+        ReminderType.SubmitSoon => 3,
+        ReminderType.ApproveWaiting => 4,
         _ => 9
     };
 
-    public static string HistoryKind(string kind) => kind switch
-    {
-        "Submitted" => "Predano na odobravanje",
-        "StepApproved" => "Odobreno, ide dalje",
-        "Approved" => "Odobreno",
-        "Returned" => "Vraćeno na ispravku",
-        "Answered" => "Odgovor zaposlenika",
-        _ => kind
-    };
+    public static string HistoryKind(HistoryKind kind) => BosnianTexts.History(kind);
 
-    public static string DayType(string type) => type switch
-    {
-        "Weekend" => "vikend",
-        "Holiday" => "praznik",
-        _ => "radni dan"
-    };
+    public static string DayType(DayKind type) => BosnianTexts.DayKind(type);
 
     public static string Entry(EntryDto entry)
     {
         var code = TimeCodes.Get(entry.Code);
-        return code.Unit == CodeUnit.Hours ? $"{code.Code} {code.NameBs}: {Hours(entry.Minutes)}" : $"{code.Code} {code.NameBs}";
+        return code.Unit == CodeUnit.Hours ? $"{code.Code} {TimeCodeNames.Bs(code.Code)}: {Hours(entry.Minutes)}" : $"{code.Code} {TimeCodeNames.Bs(code.Code)}";
     }
 
     /// <summary>

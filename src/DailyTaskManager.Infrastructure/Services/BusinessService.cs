@@ -134,12 +134,19 @@ public class BusinessService : IBusinessService
         DeleteQuietly(previous);
     }
 
+    /// <summary>True when the path really lies inside the folder (not merely starts with its name, and not through "..")</summary>
+    public static bool IsInside(string folder, string path)
+    {
+        var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return Path.GetFullPath(path).StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
     private void DeleteQuietly(string path)
     {
         try
         {
             // Only files this service created are removed
-            if (!string.IsNullOrEmpty(path) && path.StartsWith(ImagesFolder, StringComparison.OrdinalIgnoreCase) && File.Exists(path))
+            if (!string.IsNullOrEmpty(path) && IsInside(ImagesFolder, path) && File.Exists(path))
             {
                 File.Delete(path);
             }
@@ -376,7 +383,7 @@ public class BusinessService : IBusinessService
 
         try
         {
-            if (stored.TemplatePath.StartsWith(TemplatesFolder, StringComparison.OrdinalIgnoreCase) && File.Exists(stored.TemplatePath))
+            if (IsInside(TemplatesFolder, stored.TemplatePath) && File.Exists(stored.TemplatePath))
                 File.Delete(stored.TemplatePath);
         }
         catch (Exception ex)

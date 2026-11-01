@@ -261,12 +261,20 @@ public class ValidationTests
     }
 
     [TestMethod]
-    public void Messages_ShouldCarryTheRuleIdAndBeInBosnian()
+    public void AFinding_SaysWhatWasFound_NotHowToWordIt()
     {
         var entries = Clean();
         entries.Add(DayEntry.Absence(T.Sep(5), Codes.AnnualLeaveA));
         var issue = TimesheetValidator.Validate(T.Data(entries)).First(i => i.RuleId == "V-02");
-        StringAssert.Contains(issue.Message, "05.09.2026.");
-        StringAssert.Contains(issue.Message, "Godišnji odmor");
+        Assert.AreEqual("V-02", issue.Key);
+        Assert.AreEqual(T.Sep(5), issue.Values["date"]);
+        Assert.AreEqual(Codes.AnnualLeaveA, issue.Values["code"]);
+    }
+
+    [TestMethod]
+    public void ARuleThatFindsTwoKindsOfThings_NamesWhichOne()
+    {
+        var unknown = TimesheetValidator.Validate(T.Data(Clean(), employee: new EmployeeStatus(IsKnown: false))).First(i => i.RuleId == "V-08");
+        Assert.AreEqual("V-08.unknown", unknown.Key);
     }
 }

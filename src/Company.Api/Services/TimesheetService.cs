@@ -1,24 +1,9 @@
 using Company.Api.Contracts;
 using Company.Api.Data;
-using Company.Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using Timesheet.Domain;
 
 namespace Company.Api.Services;
-
-/// <summary>A refusal the desktop app can show as it is</summary>
-public sealed class SheetException : Exception
-{
-    public SheetException(int status, string code, string message) : base(message)
-    {
-        Status = status;
-        Code = code;
-    }
-
-    public int Status { get; }
-
-    public string Code { get; }
-}
 
 /// <summary>
 /// An employee's own month: entries, absence ranges and overtime, with everything derived (overtime split, totals, the fund
@@ -29,11 +14,15 @@ public sealed class TimesheetService
 {
     private readonly CompanyDbContext _db;
     private readonly AuditService _audit;
+    private readonly SheetDtoBuilder _builder;
+    private readonly TimeProvider _time;
 
-    public TimesheetService(CompanyDbContext db, AuditService audit)
+    public TimesheetService(CompanyDbContext db, AuditService audit, SheetDtoBuilder builder, TimeProvider time)
     {
         _db = db;
         _audit = audit;
+        _builder = builder;
+        _time = time;
     }
 
     // ---- Reading ---------------------------------------------------------------------------------------------------
@@ -42,7 +31,7 @@ public sealed class TimesheetService
     {
         CheckMonth(year, month);
         var sheet = await LoadOrCreateAsync(employeeCode, year, month);
-        return await BuildAsync(sheet);
+        return await _builder.BuildAsync(sheet);
     }
 
     // ---- Entries ---------------------------------------------------------------------------------------------------
@@ -54,6 +43,7 @@ public sealed class TimesheetService
 
         if (!TimeCodes.TryGet(request.Code, out var code)) throw new SheetException(400, "unknown-code", $"The code {request.Code} does not exist.");
         if (code.IsOvertime) throw new SheetException(400, "overtime-derived", "Overtime is entered as an interval, not as a code on a day.");
+        await CheckEmploymentAsync(employeeCode, year, date);
 
         var minutes = request.Minutes;
         if (code.Unit == CodeUnit.Hours)
@@ -73,8 +63,8 @@ public sealed class TimesheetService
         sheet.Entries.Add(new SheetEntry { Date = date, Code = code.Code, Minutes = minutes });
 
         Touch(sheet, "EntrySet", $"{date:yyyy-MM-dd} {code.Code} {minutes}");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     public async Task<SheetDto> ClearEntryAsync(string employeeCode, int year, int month, DateOnly date, int code)
@@ -86,15 +76,15 @@ public sealed class TimesheetService
         _db.SheetEntries.Remove(entry);
         sheet.Entries.Remove(entry);
         Touch(sheet, "EntryCleared", $"{date:yyyy-MM-dd} {code}");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     /// <summary>Regular hours (the daily norm) on every working day that has no base entry. The employee triggers it explicitly.</summary>
     public async Task<SheetDto> FillStandardDaysAsync(string employeeCode, int year, int month)
     {
         var sheet = await EditableAsync(employeeCode, year, month);
-        var context = await ContextAsync(employeeCode, year);
+        var context = await _builder.ContextAsync(employeeCode, year);
         var added = 0;
 
         foreach (var date in WorkCalendar.DaysOf(year, month))
@@ -108,8 +98,8 @@ public sealed class TimesheetService
         }
 
         Touch(sheet, "StandardDaysFilled", $"{year}-{month:00}: {added} days");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     // ---- Absence ranges ----------------------------------------------------------------------------------------------
@@ -121,7 +111,7 @@ public sealed class TimesheetService
         return new AbsencePreviewDto(
             request.Code,
             expansion.Days,
-            expansion.Skipped.Select(s => new SkippedDayDto(s.Date, s.Reason.ToString())).ToList());
+            expansion.Skipped.Select(s => new SkippedDayDto(s.Date, s.Reason.ToDto())).ToList());
     }
 
     public async Task<SheetDto> ApplyAbsenceAsync(string employeeCode, int year, int month, AbsenceRangeRequest request)
@@ -138,8 +128,8 @@ public sealed class TimesheetService
         }
 
         Touch(sheet, "AbsenceRangeApplied", $"{request.Code} {request.From:yyyy-MM-dd}..{request.To:yyyy-MM-dd}: {expansion.Days.Count} days");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     private async Task<AbsenceExpansion> ExpandAsync(string employeeCode, int year, int month, AbsenceRangeRequest request)
@@ -148,7 +138,7 @@ public sealed class TimesheetService
         CheckDate(request.From, year, month);
         CheckDate(request.To, year, month);
 
-        var context = await ContextAsync(employeeCode, year);
+        var context = await _builder.ContextAsync(employeeCode, year);
         try
         {
             return AbsenceRanges.Expand(request.Code, request.From, request.To, context.Calendar, context.Religious);
@@ -165,11 +155,12 @@ public sealed class TimesheetService
     {
         var sheet = await EditableAsync(employeeCode, year, month);
         Check(request, year, month);
+        await CheckEmploymentAsync(employeeCode, year, request.Date);
 
-        sheet.Overtime.Add(new SheetOvertime { Date = request.Date, Start = request.Start, End = request.End, Description = request.Description?.Trim() ?? "" });
+        sheet.Overtime.Add(new SheetOvertime { Date = request.Date, Start = request.Start, End = request.End, Description = Limits.Check(request.Description, Limits.OvertimeDescription, "The description") });
         Touch(sheet, "OvertimeAdded", $"{request.Date:yyyy-MM-dd} {request.Start:HH\\:mm}-{request.End:HH\\:mm}");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     public async Task<SheetDto> UpdateOvertimeAsync(string employeeCode, int year, int month, int id, OvertimeRequest request)
@@ -181,10 +172,11 @@ public sealed class TimesheetService
         record.Date = request.Date;
         record.Start = request.Start;
         record.End = request.End;
-        record.Description = request.Description?.Trim() ?? "";
+        await CheckEmploymentAsync(employeeCode, year, request.Date);
+        record.Description = Limits.Check(request.Description, Limits.OvertimeDescription, "The description");
         Touch(sheet, "OvertimeChanged", $"{id}: {request.Date:yyyy-MM-dd} {request.Start:HH\\:mm}-{request.End:HH\\:mm}");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     public async Task<SheetDto> DeleteOvertimeAsync(string employeeCode, int year, int month, int id)
@@ -195,8 +187,16 @@ public sealed class TimesheetService
         _db.SheetOvertime.Remove(record);
         sheet.Overtime.Remove(record);
         Touch(sheet, "OvertimeDeleted", $"{id}: {record.Date:yyyy-MM-dd}");
-        await _db.SaveChangesAsync();
-        return await BuildAsync(sheet);
+        await SaveAsync();
+        return await _builder.BuildAsync(sheet);
+    }
+
+    /// <summary>Nothing is entered for a day before the employment began or after it ended</summary>
+    private async Task CheckEmploymentAsync(string employeeCode, int year, DateOnly date)
+    {
+        var context = await _builder.ContextAsync(employeeCode, year);
+        if (!context.Employee.IsActiveOn(date))
+            throw new SheetException(400, "outside-employment", "This date is outside your employment.");
     }
 
     private static void Check(OvertimeRequest request, int year, int month)
@@ -206,120 +206,60 @@ public sealed class TimesheetService
             throw new SheetException(400, "invalid-interval", "The start and the end must differ.");
     }
 
-    // ---- Building the answer -------------------------------------------------------------------------------------------
-
-    private sealed record Context(WorkCalendar Calendar, HashSet<DateOnly> Religious, EmployeeStatus Employee);
-
-    private async Task<Context> ContextAsync(string employeeCode, int year)
-    {
-        var calendar = await Reference.CalendarAsync(_db, year);
-        var religious = (await _db.ReligiousHolidays.AsNoTracking().Where(h => h.EmployeeCode == employeeCode).Select(h => h.Date).ToListAsync()).ToHashSet();
-        var employee = await _db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Code == employeeCode)
-                       ?? throw new SheetException(404, "not-found", "The employee was not found.");
-        return new Context(calendar, religious, new EmployeeStatus(true, employee.ActiveFrom, employee.ActiveTo));
-    }
-
-    /// <summary>The month as <paramref name="viewer"/> sees it (the owner when null): only the owner may edit</summary>
-    internal async Task<SheetDto> BuildAsync(MonthSheet sheet, string? viewer = null)
-    {
-        var context = await ContextAsync(sheet.EmployeeCode, sheet.Year);
-        var settings = WorkingTimeSettings.Default;
-        var inMonth = (DateOnly d) => d.Year == sheet.Year && d.Month == sheet.Month;
-
-        var entries = sheet.Entries.Select(e => new DayEntry(e.Date, e.Code, e.Minutes)).ToList();
-        var records = sheet.Overtime.OrderBy(o => o.Date).ThenBy(o => o.Start).ToList();
-
-        var classified = records.ToDictionary(
-            r => r.Id,
-            r => OvertimeClassifier.Classify(new OvertimeInterval(r.Date, r.Start, r.End), d => context.Calendar.DayTypeOf(d, context.Religious), settings));
-        var allocations = classified.Values.SelectMany(c => c.Allocations).ToList();
-        var monthAllocations = allocations.Where(a => inMonth(a.Date)).ToList();
-
-        var summary = MonthlySummaryCalculator.Compute(entries, monthAllocations, settings, context.Calendar);
-        var expected = MonthlySummaryCalculator.ExpectedFundMinutes(sheet.Year, sheet.Month, settings, context.Employee.ActiveFrom, context.Employee.ActiveTo);
-
-        var data = new TimesheetData(
-            sheet.EmployeeCode, sheet.Year, sheet.Month, entries,
-            records.Select(r => new OvertimeRecord(r.Date, r.Start, r.End, r.Description)).ToList(),
-            context.Calendar, context.Religious, settings, context.Employee);
-        var issues = TimesheetValidator.Validate(data);
-
-        var days = WorkCalendar.DaysOf(sheet.Year, sheet.Month).Select(date =>
-        {
-            var info = context.Calendar.Resolve(date, context.Religious);
-            return new DayDto(
-                date,
-                WorkCalendar.WeekdayInitial(date),
-                info.Type.ToString(),
-                info.HolidayName,
-                sheet.Entries.Where(e => e.Date == date).OrderBy(e => e.Code).Select(e => new EntryDto(e.Code, e.Minutes)).ToList(),
-                monthAllocations.Where(a => a.Date == date).Select(a => new AllocationDto(a.Date, a.Code, a.Minutes)).ToList());
-        }).ToList();
-
-        var overtime = records.Select(r =>
-        {
-            var c = classified[r.Id];
-            return new OvertimeDto(
-                r.Id, r.Date, r.Start, r.End, r.Description, c.TotalMinutes,
-                c.Allocations.Select(a => new AllocationDto(a.Date, a.Code, a.Minutes)).ToList(),
-                c.Conflicts.Count > 0);
-        }).ToList();
-
-        return new SheetDto(
-            sheet.Year, sheet.Month, sheet.Status.ToString(), sheet.Revision, IsEditable(sheet) && Same(viewer ?? sheet.EmployeeCode, sheet.EmployeeCode), days, overtime,
-            new SummaryDto(summary.MinutesByCode, summary.DaysByCode, summary.FundMinutes, expected, summary.OvertimeMinutes),
-            issues.Select(i => new IssueDto(i.RuleId, i.Severity.ToString(), i.Date, i.Message)).ToList(),
-            await WorkflowOfAsync(sheet, viewer ?? sheet.EmployeeCode, issues.Any(i => i.Severity == Severity.Blocking)));
-    }
-
-    private async Task<WorkflowDto> WorkflowOfAsync(MonthSheet sheet, string viewer, bool hasBlocking)
-    {
-        var chain = sheet.ChainCodes;
-        var codes = chain.Append(sheet.EmployeeCode)
-            .Concat(sheet.Messages.Select(m => m.FromCode))
-            .Concat(sheet.Events.Select(e => e.ActorCode))
-            .Concat(sheet.Events.Where(e => e.OnBehalfOf != null).Select(e => e.OnBehalfOf!))
-            .Distinct().ToList();
-        var names = await _db.Employees.AsNoTracking().Where(e => codes.Contains(e.Code)).ToDictionaryAsync(e => e.Code, e => e.Name);
-        string Name(string code) => names.GetValueOrDefault(code, code);
-
-        var isOwner = Same(viewer, sheet.EmployeeCode);
-        var current = sheet.Status == TimesheetStatus.Submitted && sheet.Step < chain.Count ? chain[sheet.Step] : null;
-        var revisions = await _db.SheetRevisions.AsNoTracking().Where(r => r.SheetId == sheet.Id).OrderBy(r => r.Revision)
-            .Select(r => new RevisionDto(r.Revision, r.SubmittedUtc)).ToListAsync();
-
-        return new WorkflowDto(
-            sheet.EmployeeCode,
-            Name(sheet.EmployeeCode),
-            chain.Select(c => new ChainStepDto(c, Name(c))).ToList(),
-            sheet.Step,
-            current,
-            current == null ? null : Name(current),
-            sheet.Messages.OrderBy(m => m.Position).Select(m => new MessageDto(m.Position, m.FromCode, Name(m.FromCode), m.Text, m.Revision, m.Answer)).ToList(),
-            sheet.Events.OrderBy(e => e.AtUtc).ThenBy(e => e.Id)
-                .Select(e => new HistoryDto(DateTime.SpecifyKind(e.AtUtc, DateTimeKind.Utc), e.Kind, e.ActorCode, Name(e.ActorCode), e.OnBehalfOf, e.Revision, e.Step, e.Text)).ToList(),
-            revisions,
-            isOwner && IsEditable(sheet) && !hasBlocking && sheet.Messages.All(m => !string.IsNullOrWhiteSpace(m.Answer)),
-            // The owner decides on their own timesheet only when nobody is above them (the chain is themselves alone)
-            current != null && Same(viewer, current) && (!isOwner || (chain.Count == 1 && Same(chain[0], sheet.EmployeeCode))));
-    }
-
-    internal static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
-
     // ---- Helpers ---------------------------------------------------------------------------------------------------
 
-    internal static bool IsEditable(MonthSheet sheet) => sheet.Status is TimesheetStatus.Draft or TimesheetStatus.Returned;
+    private static bool IsEditable(MonthSheet sheet) => SheetDtoBuilder.IsEditable(sheet);
+
+    private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
+
+    /// <summary>
+    /// Saves, and turns what a busy server can run into into a message the app can show: someone changed the sheet a moment
+    /// ago (the version token), or the same row was created twice.
+    /// </summary>
+    internal async Task SaveAsync()
+    {
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new SheetException(409, "changed", "The timesheet was changed a moment ago. Open it again.");
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            throw new SheetException(409, "changed", "The same thing was entered twice at once. Open the timesheet again.");
+        }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        // SQLite: 19 (constraint); PostgreSQL: SQLSTATE 23505. Anything else is not ours to hide.
+        var text = ex.InnerException?.Message ?? ex.Message;
+        return text.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase) || text.Contains("23505", StringComparison.Ordinal)
+               || text.Contains("duplicate key", StringComparison.OrdinalIgnoreCase);
+    }
 
     internal async Task<MonthSheet> LoadOrCreateAsync(string employeeCode, int year, int month)
     {
-        var sheet = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
-            .FirstOrDefaultAsync(s => s.EmployeeCode == employeeCode && s.Year == year && s.Month == month);
+        async Task<MonthSheet?> Load() => await _db.Sheets.WithDetails().FirstOrDefaultAsync(s => s.EmployeeCode == employeeCode && s.Year == year && s.Month == month);
+
+        var sheet = await Load();
         if (sheet != null) return sheet;
 
-        sheet = new MonthSheet { EmployeeCode = employeeCode, Year = year, Month = month, CreatedUtc = DateTime.UtcNow, UpdatedUtc = DateTime.UtcNow };
-        _db.Sheets.Add(sheet);
-        await _db.SaveChangesAsync();
-        return sheet;
+        var created = new MonthSheet { EmployeeCode = employeeCode, Year = year, Month = month, CreatedUtc = UtcNow, UpdatedUtc = UtcNow };
+        _db.Sheets.Add(created);
+        try
+        {
+            await _db.SaveChangesAsync();
+            return created;
+        }
+        catch (DbUpdateException)
+        {
+            // A second request opened the same new month first: take its sheet
+            _db.Entry(created).State = EntityState.Detached;
+            return await Load() ?? throw new SheetException(409, "changed", "The timesheet could not be opened. Try again.");
+        }
     }
 
     private async Task<MonthSheet> EditableAsync(string employeeCode, int year, int month)
@@ -333,8 +273,7 @@ public sealed class TimesheetService
 
     internal void Touch(MonthSheet sheet, string action, string details)
     {
-        sheet.UpdatedUtc = DateTime.UtcNow;
-        sheet.Version++;
+        sheet.UpdatedUtc = UtcNow;
         _audit.Record(action, "MonthSheet", $"{sheet.EmployeeCode}/{sheet.Year}-{sheet.Month:00}", details);
     }
 

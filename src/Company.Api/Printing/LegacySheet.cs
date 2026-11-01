@@ -25,18 +25,38 @@ public static class LegacySheet
 {
     public const string WeekendColour = "#C00000";
 
-    /// <summary>The built-in font of the PDF library has no č and Č; Arial is on every Windows server and has all letters of the language</summary>
-    private const string PdfFont = "Arial";
+    /// <summary>
+    /// The built-in font of the PDF library has no č and Č. Arial is on every Windows server and has all letters of the language;
+    /// the others are what a Linux server usually has, so the sheet reads the same wherever it is drawn.
+    /// </summary>
+    private static readonly string PdfFont = ChooseFont();
+
+    /// <summary>The first of these that the computer has; without any, the library's own font (which lacks č and Č)</summary>
+    private static string ChooseFont()
+    {
+        try
+        {
+            var fonts = new List<string> { Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "/usr/share/fonts", "/usr/local/share/fonts" };
+            foreach (var (family, file) in new[] { ("Arial", "arial.ttf"), ("Liberation Sans", "LiberationSans-Regular.ttf"), ("DejaVu Sans", "DejaVuSans.ttf") })
+            {
+                foreach (var folder in fonts.Where(f => !string.IsNullOrEmpty(f) && Directory.Exists(f)))
+                {
+                    if (Directory.EnumerateFiles(folder, file, SearchOption.AllDirectories).Any()) return family;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // An unreadable fonts folder only means the library's own font is used
+        }
+
+        return "Lato";
+    }
 
     private static readonly int[] StandardRows =
     {
         Codes.RegularWork, Codes.StateHoliday, Codes.HolidayWork, Codes.Overtime, Codes.NightOvertime,
         Codes.HolidayOvertime, Codes.WeekendOvertime, Codes.NightWeekendOvertime, Codes.NightHolidayOvertime
-    };
-
-    private static readonly string[] MonthNames =
-    {
-        "Januar", "Februar", "Mart", "April", "Maj", "Juni", "Juli", "August", "Septembar", "Oktobar", "Novembar", "Decembar"
     };
 
     public static string Colour(CodeColour colour) => colour switch
@@ -47,16 +67,9 @@ public static class LegacySheet
         _ => "#E6B8B7"
     };
 
-    public static string MonthTitle(int year, int month) => $"{MonthNames[month - 1]} {year}.";
+    public static string MonthTitle(int year, int month) => BosnianTexts.Month(year, month);
 
-    public static string StatusText(string status) => status switch
-    {
-        "Draft" => "U pripremi",
-        "Submitted" => "Predano na odobravanje",
-        "Returned" => "Vraćeno na ispravku",
-        "Approved" => "Odobreno",
-        _ => status
-    };
+    public static string StatusText(SheetStatus status) => BosnianTexts.Status(status);
 
     /// <summary>The rows of one employee's block, in the order of the current sheet; the night-work rows only when they are used</summary>
     public static IReadOnlyList<PrintedRow> Rows(SheetDto sheet)
@@ -96,7 +109,7 @@ public static class LegacySheet
 
     public static string Format(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
-    private static bool IsOff(DayDto day) => day.Type != "Working";
+    private static bool IsOff(DayDto day) => day.Type != DayKind.Working;
 
     // ---- Excel ---------------------------------------------------------------------------------------------------------
 
@@ -141,7 +154,7 @@ public static class LegacySheet
             range.Merge();
             range.Style.Fill.BackgroundColor = XLColor.FromHtml(Colour(legend[i].Colour));
             range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            sheet.Cell(row + i % perColumn, from).Value = $"{legend[i].Code}  {legend[i].NameBs}";
+            sheet.Cell(row + i % perColumn, from).Value = $"{legend[i].Code}  {TimeCodeNames.Bs(legend[i].Code)}";
         }
 
         row += perColumn + 1;
@@ -161,7 +174,7 @@ public static class LegacySheet
         {
             var date = new DateOnly(year, month, d);
             var info = template.Count >= d ? template[d - 1] : null;
-            sheet.Cell(row, fixedColumns + d).Value = info?.Weekday ?? WorkCalendar.WeekdayInitial(date);
+            sheet.Cell(row, fixedColumns + d).Value = info?.Weekday ?? BosnianTexts.WeekdayInitial(date);
             sheet.Cell(row + 1, fixedColumns + d).Value = d;
             foreach (var r in new[] { row, row + 1 })
             {
@@ -193,7 +206,7 @@ public static class LegacySheet
             {
                 var printed = rows[r];
                 sheet.Cell(row, 3).Value = printed.Code.Code;
-                sheet.Cell(row, 4).Value = printed.Code.NameBs;
+                sheet.Cell(row, 4).Value = TimeCodeNames.Bs(printed.Code.Code);
                 sheet.Range(row, 3, row, 4).Style.Fill.BackgroundColor = XLColor.FromHtml(Colour(printed.Code.Colour));
                 sheet.Cell(row, 3).Style.Font.Bold = true;
                 sheet.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -320,7 +333,7 @@ public static class LegacySheet
                             row.RelativeItem().Border(0.5f).Column(legendColumn =>
                             {
                                 foreach (var code in legend.Skip(c * perColumn).Take(perColumn))
-                                    legendColumn.Item().Background(Colour(code.Colour)).PaddingHorizontal(3).Text($"{code.Code}  {code.NameBs}");
+                                    legendColumn.Item().Background(Colour(code.Colour)).PaddingHorizontal(3).Text($"{code.Code}  {TimeCodeNames.Bs(code.Code)}");
                             });
                         }
                     });
@@ -398,7 +411,7 @@ public static class LegacySheet
                     var off = info != null ? IsOff(info) : WorkCalendar.IsWeekend(date);
                     IContainer cell = table.Cell().Row((uint)(line + 1)).Column((uint)(4 + d));
                     if (off) cell = cell.Background(WeekendColour);
-                    cell.Border(0.3f).AlignCenter().Text(line == 0 ? info?.Weekday ?? WorkCalendar.WeekdayInitial(date) : d.ToString(CultureInfo.InvariantCulture));
+                    cell.Border(0.3f).AlignCenter().Text(line == 0 ? info?.Weekday ?? BosnianTexts.WeekdayInitial(date) : d.ToString(CultureInfo.InvariantCulture));
                 }
             }
 
@@ -408,7 +421,7 @@ public static class LegacySheet
                 var printed = rows[r];
                 var colour = Colour(printed.Code.Colour);
                 table.Cell().Row(rowNumber).Column(3).Background(colour).Border(0.3f).AlignCenter().Text(printed.Code.Code.ToString(CultureInfo.InvariantCulture)).Bold();
-                table.Cell().Row(rowNumber).Column(4).Background(colour).Border(0.3f).PaddingLeft(2).Text(printed.Code.NameBs);
+                table.Cell().Row(rowNumber).Column(4).Background(colour).Border(0.3f).PaddingLeft(2).Text(TimeCodeNames.Bs(printed.Code.Code));
 
                 for (var d = 1; d <= days; d++)
                 {

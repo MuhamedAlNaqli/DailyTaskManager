@@ -517,3 +517,56 @@ Checked in the real app: sign-in screen to the employee window (title bar and it
 calendar, the three forms, a person with nobody above them filling, submitting and approving their own month, the print menu with
 the team entries, sign-out back to the sign-in screen. API: 3 new tests (own approval, a person with a supervisor still cannot,
 the team sheet), domain: 1 new test and 2 changed rules.
+
+## 19. Code review of the employee side and what was done about it
+
+A reviewer who specialises in C#, .NET and architecture went through the whole employee side (domain library, API, client,
+desktop employee mode, reminders, printed sheet, tests, the lab script) and a part of the earlier consultant work. Every finding
+was checked against the code before it was acted on; one turned out to be the intended design.
+
+| Id | Finding | What was done |
+| --- | --- | --- |
+| F-01 | Overtime across midnight on the last day of a month was counted in no month after the first | The part before midnight stays in the month where the work began; the part after midnight is added to the next month. The next month shows it ("iz prethodnog mjeseca"), the record in the first month says how much of it belongs to the next. Works across New Year, with the holiday type of the new year. |
+| F-02 | A web page could submit or approve in the name of the employee (Windows sign-in is sent automatically by the browser) | Every request that changes data needs the header `X-Requested-With: CompanyTimesheet` (the app sends it, a page of another site cannot add it) and a request that names another origin is refused. |
+| F-03 | In Entra mode the account was found by e-mail, `preferred_username` or display name, which a user can change | An Entra caller is known by the immutable object id (`entra:tenant/object`, shown by `/api/auth/diagnostics`) and the user principal name only. Names that lead to two different employees sign nobody in. |
+| F-04 | Long texts passed on SQLite and failed with a server error on PostgreSQL; no limit on the size of a request | Lengths are checked (description 500, messages and answers 2000, names 150) with a clear answer; a request may be 2 MB. |
+| F-05 | Reading all submitted sheets of the company for every "waiting for me" and every reminder poll, with four joined collections | One indexed column (`CurrentApproverCode`) answers "waiting for me"; the collections are read in separate queries; read-only paths do not track; the calendar of a year is read once per request; the lookup of who an account is kept for 30 seconds (emptied by every change of the administrator). |
+| F-06 | Two requests at once gave a server error | One save routine turns a conflict into "open it again"; two first openings of the same new month both succeed; an unexpected error is logged and answered in the normal form. |
+| F-07 | A sheet waiting for somebody who left could never move on | A person with people or sheets waiting cannot be deactivated; the administrator can hand a waiting step to somebody else (`POST /api/admin/sheets/{code}/{y}/{m}/reassign`, with a reason, in the history and the audit log). |
+| F-08 | The audit log is append-only only in this program | `Database:MigrateOnStart=false` and `Company.Api.dll --migrate` let the service account have no right to change the schema; `docs/API_IT_GUIDE.md` says how to give it insert and select only on the audit table. A hash chain was not added. |
+| F-09 | Opening a colleague's sheet left no trace | Viewing, printing and opening a revision of somebody else's sheet are audited. |
+| F-10 | A former supervisor kept access for good | Access: the owner; the people the sheet was submitted to while it is in the chain; anybody who took part in it; the supervisors the owner has today (once it was submitted). A draft is never seen. |
+| F-11 | A failed month change left the selected month different from the one on screen; "Odobreno." after a call that never happened | The month changes only when it loaded; messages appear only when the server did it; the standard-days question names the month. |
+| F-12 | Everything ran on SQLite only | `PostgresTests` run the migrations and the workflow on a real PostgreSQL (set `COMPANY_API_TEST_POSTGRES`); moments leave the server as UTC. They include an upgrade of a database of the first release. |
+| F-13 | A garbled answer could end the app | Every command shows a message instead; an unknown day type is read as a working day. |
+| F-14 | The reminder task could skip its fallback, wrote its state non-atomically, and notified at night | Any failure uses the last known deadlines; files are replaced in one step; no notification before 07:00, after 20:00 or on Saturday and Sunday. |
+| F-15 | Services depended on a type in an endpoint file and on each other | `SheetDtoBuilder` is the one place that turns a sheet into what is shown; `Reference` and `SheetException` have files of their own; the endpoints share one way to answer; time comes from `TimeProvider`. |
+| F-16 | An answer could be written over | Refused (`already-answered`). |
+| F-17 | Only the last two months were reminded about | Every month from the start month (or six back) to this one. |
+| F-18 | Employment dates could not be cleared; the last administrator could be removed; entries before the employment were accepted | Clear flags; the last administrator is protected; nothing is entered outside the employment. |
+| F-19 | "A top person and their designated approver can approve each other" | **Not a defect.** Somebody has to approve the top person, and that is normally someone who reports to them (the lawyer, finance); what is forbidden is approving one's own month. The rule is now stated in the code and in a test. |
+| F-20 | A Test server and a plain-HTTP server on the network | A Test server refuses to listen on anything but this computer; a plain-HTTP address that is not local is logged as a warning at start. |
+| F-21 | The PDF font depended on the server; renders could pile up | The font is chosen by what the computer has (Arial, Liberation Sans, DejaVu Sans); two renders at a time; the app waits two minutes for a file. Note: QuestPDF's Community licence is free only below a revenue limit; the company has to check that it qualifies. |
+| F-22 | The editor of clients could show the contracts of another client | Late answers for an earlier selection are dropped. |
+| F-23 | A regenerated document replaced one that was corrected by hand; a folder test by prefix | The new one gets " (2)"; a path is inside a folder only if it really is. |
+| F-24 | The lab script lost the user's mode choice and used fixed months | It restores both; months follow today; it waits for the servers instead of sleeping. |
+| F-25 | Daylight saving time and a holiday on a weekend in the overtime rules | Not changed: hours are counted on the clock, as the sheet does, and the overtime rules follow the instruction (S6). To be confirmed with the company (Q-03) if night work on the two nights of the time change occurs. |
+
+The restructurings that were first left for later were done afterwards; see section 20.
+
+## 20. The restructurings of the review
+
+| What | Before | Now |
+| --- | --- | --- |
+| Status, kinds of history, severity, day type, kind of reminder, reason for skipping | Strings compared with literals in the app, the service and the tests | Enums in the contracts (`SheetStatus`, `HistoryKind`, `IssueSeverity`, `DayKind`, `ReminderType`, `SkippedBecause`). They travel as their names, so the traffic and the stored revisions stay readable. `DtoMapping` is the one place that maps the domain's enums to them; a test fails if a member has no counterpart. The history kind is an enum in the domain and in the database too (stored as its name). |
+| Bosnian text in the domain library | Messages of the rules, names of the codes, weekday letters, wording of the import | The domain says what was found: a rule key (`V-08.inactive`) and the values (dates, codes, minutes); the import says a kind. The wording is in `ValidationTexts` and `ImportTexts` (API), the names of the codes in `TimeCodeNames` and the shared texts (months, statuses, weekday letters, kinds of history) in `BosnianTexts` (contracts). Numbers are written the same on every server. A test fails if the domain gets text for people again. |
+| Approval chain | Employee codes in one text separated by commas, 400 characters at most | A table `sheet_chain_steps` (sheet, position, employee) with a foreign key to the employee; `month_sheets` has a foreign key to the employee too. The upgrade moves the chains of sheets that were already submitted. |
+| Version counted by hand | Every method had to remember `Touch` | The database context counts the version of a sheet once per save when anything of it changes (entries, overtime, messages, events, chain). A test changes a sheet without any service and gets the conflict. PostgreSQL's own row version (`xmin`) was not used: the tests run on SQLite, which has none, and one rule for both is worth more than the saving. |
+| Stored revisions | The layout of the data transfer object was the layout of the archive | Every revision has a `SchemaVersion`; one from a newer server, or a damaged one, is refused with a clear message (`revision-too-new`, `revision-unreadable`). Raise `SnapshotSchema.Current` when the layout changes in a way an old revision cannot be read. |
+| Audit log | Append-only only inside the program | Also a chain: each event carries the hash of the one before and its own. `GET /api/admin/audit/verify` walks the log and names the first event that was changed, removed or inserted. Events written before the chain existed stay as they are. It proves a change, it does not prevent it (database rights, see the IT guide). A unique index on the previous hash stops a second server from forking the chain. |
+| Services | `TimesheetService` read, edited, built the answer and held the loading | `SheetDtoBuilder` builds the answer; `SheetQueries.WithDetails()` is the one way to read a sheet with everything; `EmployeeAdminService` holds the rules of changing an employee; `EndpointResults` is the one way to answer. |
+| Endpoints | The sheet of the employee was in two files, exports in the approvals file | `TimesheetEndpoints` (the own month, from reading to printing), `ApprovalEndpoints` (what waits for the approver), `ExportEndpoints` (team and finance), reminders with `MeEndpoints`. |
+| Employee view model (800 lines, with windows, files and the App inside) | One class | The client has an interface (`ICompanyApiClient`); the dialogs, the saving of files and the leaving of the window are services behind interfaces; the month on screen is `SheetViewModel`; the reminders and the waiting list are small view models; the rows are in their own file. The view model is now about 480 lines and has no window in it. 13 tests run it against a server of a few lines. |
+
+Still open: the printed sheet styles each cell separately (fine for the size of the company; apply styles to ranges if a sheet of many hundreds of employees is ever printed), and two servers writing the same audit log would block each other's events through the unique index (the design is one server).
+

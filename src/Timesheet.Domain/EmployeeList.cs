@@ -21,7 +21,25 @@ public enum ImportSeverity
     Error
 }
 
-public sealed record ImportIssue(ImportSeverity Severity, string Message);
+/// <summary>What was found in a line of the list; the wording is for the program that shows it</summary>
+public enum ImportIssueKind
+{
+    /// <summary>The code is not of the form Z-NNN (Value: the text as written)</summary>
+    BadCode,
+
+    MissingName,
+
+    /// <summary>Extra spaces in the name were removed</summary>
+    ExtraSpaces,
+
+    /// <summary>The code appears twice (Value: the line of the first appearance)</summary>
+    DuplicateCode,
+
+    /// <summary>The code exists already, with another name (Value: that name)</summary>
+    NameDiffers
+}
+
+public sealed record ImportIssue(ImportSeverity Severity, ImportIssueKind Kind, string Code = "", string Value = "");
 
 public sealed record EmployeeImportRow(int Line, string Code, string Name, IReadOnlyList<ImportIssue> Issues)
 {
@@ -70,23 +88,23 @@ public static class EmployeeListImporter
 
             var codeOk = EmployeeCode.TryParse(rawCode, out var code);
             if (!codeOk)
-                issues.Add(new ImportIssue(ImportSeverity.Error, $"Šifra \"{rawCode.Trim()}\" nije u obliku Z-NNN."));
+                issues.Add(new ImportIssue(ImportSeverity.Error, ImportIssueKind.BadCode, Value: rawCode.Trim()));
 
             var name = Regex.Replace(rawName.Trim(), @"\s+", " ");
             if (name.Length == 0)
-                issues.Add(new ImportIssue(ImportSeverity.Error, "Ime i prezime nedostaje."));
+                issues.Add(new ImportIssue(ImportSeverity.Error, ImportIssueKind.MissingName));
             else if (name != rawName)
-                issues.Add(new ImportIssue(ImportSeverity.Warning, "Suvišni razmaci u imenu su uklonjeni."));
+                issues.Add(new ImportIssue(ImportSeverity.Warning, ImportIssueKind.ExtraSpaces));
 
             if (codeOk)
             {
                 if (seen.TryGetValue(code, out var firstLine))
-                    issues.Add(new ImportIssue(ImportSeverity.Error, $"Šifra {code} se već pojavljuje u redu {firstLine}."));
+                    issues.Add(new ImportIssue(ImportSeverity.Error, ImportIssueKind.DuplicateCode, code, firstLine.ToString()));
                 else
                     seen[code] = lineNumber;
 
                 if (existing != null && existing.TryGetValue(code, out var existingName) && !string.Equals(existingName, name, StringComparison.Ordinal))
-                    issues.Add(new ImportIssue(ImportSeverity.Warning, $"Šifra {code} već postoji s imenom \"{existingName}\"."));
+                    issues.Add(new ImportIssue(ImportSeverity.Warning, ImportIssueKind.NameDiffers, code, existingName));
             }
 
             rows.Add(new EmployeeImportRow(lineNumber, code, name, issues));

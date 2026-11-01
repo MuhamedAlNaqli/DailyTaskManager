@@ -26,7 +26,7 @@ public enum CodeUnit
 }
 
 /// <summary>One category of the legend of the sheet</summary>
-public sealed record TimeCode(int Code, string NameBs, string NameEn, CodeColour Colour, CodeUnit Unit)
+public sealed record TimeCode(int Code, CodeColour Colour, CodeUnit Unit)
 {
     public bool IsOvertime => Colour == CodeColour.Red;
 
@@ -42,7 +42,7 @@ public sealed record TimeCode(int Code, string NameBs, string NameEn, CodeColour
     /// </summary>
     public bool IsBaseEntry => Code == Codes.RegularWork || IsAbsence;
 
-    public override string ToString() => $"{Code} {NameBs}";
+    public override string ToString() => Code.ToString();
 }
 
 /// <summary>The numbers of the legend, so that rules read as words</summary>
@@ -83,28 +83,28 @@ public static class TimeCodes
 {
     public static IReadOnlyList<TimeCode> All { get; } = new[]
     {
-        new TimeCode(Codes.RegularWork, "Redovan rad", "Regular work", CodeColour.Green, CodeUnit.Hours),
-        new TimeCode(Codes.PaidLeave, "Plaćeno odsustvo", "Paid leave", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.UnpaidLeave, "Neplaćeno odsustvo", "Unpaid leave", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.AnnualLeaveA, "Godišnji odmor A", "Annual leave A", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.AnnualLeaveB, "Godišnji odmor B", "Annual leave B", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.StateHoliday, "Državni praznik", "State holiday (not worked)", CodeColour.Blue, CodeUnit.Hours),
-        new TimeCode(Codes.ReligiousHoliday, "Vjerski praznik", "Religious holiday", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.BusinessTripDomestic, "Službeni put – u zemlji", "Business trip, domestic", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.BusinessTripAbroad, "Službeni put – izvan zemlje", "Business trip, abroad", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.BusinessTripNoPerDiem, "Službeni put – bez isplate dnevnice", "Business trip without per diem", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.SickUpTo42Days, "Bolovanje do 42 dana", "Sick leave up to 42 days", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.SickOver42Days, "Bolovanje preko 42 dana", "Sick leave over 42 days", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.MaternityLeave, "Porodiljsko odsustvo", "Maternity leave", CodeColour.Green, CodeUnit.Day),
-        new TimeCode(Codes.HolidayWork, "Rad praznikom", "Work on a holiday", CodeColour.Orange, CodeUnit.Hours),
-        new TimeCode(Codes.RegularNightWork, "Redovan noćni rad", "Regular night work", CodeColour.Orange, CodeUnit.Hours),
-        new TimeCode(Codes.HolidayNightWork, "Rad praznikom noćni", "Night work on a holiday", CodeColour.Orange, CodeUnit.Hours),
-        new TimeCode(Codes.Overtime, "Prekovremeni rad", "Overtime", CodeColour.Red, CodeUnit.Hours),
-        new TimeCode(Codes.NightOvertime, "Prekovremeni noćni rad", "Night overtime", CodeColour.Red, CodeUnit.Hours),
-        new TimeCode(Codes.HolidayOvertime, "Prekovremeni rad praznikom", "Overtime on a holiday", CodeColour.Red, CodeUnit.Hours),
-        new TimeCode(Codes.WeekendOvertime, "Prekovremeni rad vikendom", "Weekend overtime", CodeColour.Red, CodeUnit.Hours),
-        new TimeCode(Codes.NightWeekendOvertime, "Prekovremeni noćni rad vikendom", "Night weekend overtime", CodeColour.Red, CodeUnit.Hours),
-        new TimeCode(Codes.NightHolidayOvertime, "Prekovremeni noćni rad praznikom", "Night holiday overtime", CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.RegularWork, CodeColour.Green, CodeUnit.Hours),
+        new TimeCode(Codes.PaidLeave, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.UnpaidLeave, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.AnnualLeaveA, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.AnnualLeaveB, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.StateHoliday, CodeColour.Blue, CodeUnit.Hours),
+        new TimeCode(Codes.ReligiousHoliday, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.BusinessTripDomestic, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.BusinessTripAbroad, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.BusinessTripNoPerDiem, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.SickUpTo42Days, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.SickOver42Days, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.MaternityLeave, CodeColour.Green, CodeUnit.Day),
+        new TimeCode(Codes.HolidayWork, CodeColour.Orange, CodeUnit.Hours),
+        new TimeCode(Codes.RegularNightWork, CodeColour.Orange, CodeUnit.Hours),
+        new TimeCode(Codes.HolidayNightWork, CodeColour.Orange, CodeUnit.Hours),
+        new TimeCode(Codes.Overtime, CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.NightOvertime, CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.HolidayOvertime, CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.WeekendOvertime, CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.NightWeekendOvertime, CodeColour.Red, CodeUnit.Hours),
+        new TimeCode(Codes.NightHolidayOvertime, CodeColour.Red, CodeUnit.Hours),
     };
 
     private static readonly Dictionary<int, TimeCode> ByCode = All.ToDictionary(c => c.Code);

@@ -25,6 +25,10 @@ public static class EmployeeReminders
 
     private static string CachePath => Path.Combine(ReminderState.FolderPath, "employee-reminders.json");
 
+    /// <summary>Nobody wants a notification at night or on a day off: the task reminds on working days from 07:00 to 20:00</summary>
+    public static bool IsQuiet(DateTime now) =>
+        now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday || now.Hour < 7 || now.Hour >= 20;
+
     /// <summary>What to tell the user now, or nothing</summary>
     public static async Task<IReadOnlyList<ReminderDto>> DueAsync(IServiceProvider services, ILogger logger, DateOnly today)
     {
@@ -35,9 +39,11 @@ public static class EmployeeReminders
             Save(answer);
             return answer.Items;
         }
-        catch (Exception ex) when (ex is ApiException or OperationCanceledException or InvalidOperationException)
+        catch (Exception ex)
         {
-            logger.LogInformation("The company server was not available for the reminder ({Reason}); using the last known deadlines", ex.Message);
+            // Out of reach, a login page of a proxy instead of the answer, a refused sign-in: all the same to the user, who
+            // is still reminded of the submission deadline from the last answer
+            logger.LogInformation("The company server was not available for the reminder ({Type}: {Reason}); using the last known deadlines", ex.GetType().Name, ex.Message);
             return Offline(Load(), today);
         }
     }
@@ -48,10 +54,10 @@ public static class EmployeeReminders
         if (last == null) return Array.Empty<ReminderDto>();
 
         var result = new List<ReminderDto>();
-        foreach (var item in last.Items.Where(i => i.Kind is nameof(ReminderKind.SubmitSoon) or nameof(ReminderKind.SubmitOverdue)))
+        foreach (var item in last.Items.Where(i => i.Kind is ReminderType.SubmitSoon or ReminderType.SubmitOverdue))
         {
             var kind = ReminderRules.ForEmployee(today, TimesheetStatus.Draft, item.Deadline);
-            if (kind != null) result.Add(item with { Kind = kind.Value.ToString() });
+            if (kind != null) result.Add(item with { Kind = Enum.Parse<ReminderType>(kind.Value.ToString()) });
         }
 
         return result;
@@ -84,7 +90,7 @@ public static class EmployeeReminders
         try
         {
             Directory.CreateDirectory(ReminderState.FolderPath);
-            File.WriteAllText(CachePath, JsonSerializer.Serialize(answer));
+            ReminderState.WriteAtomically(CachePath, JsonSerializer.Serialize(answer));
         }
         catch
         {

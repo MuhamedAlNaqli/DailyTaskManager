@@ -3,15 +3,18 @@ using Company.Api.Auth;
 using Company.Api.Contracts;
 using Company.Api.Services;
 
+using static Company.Api.Endpoints.EndpointResults;
+
 namespace Company.Api.Endpoints;
 
-/// <summary>The caller's own timesheet. Other people's timesheets (approvers, legal) come with the approval workflow.</summary>
+/// <summary>The caller's own month: reading it, filling it in, submitting it, answering the approvers, looking at what was submitted, printing it</summary>
 public static class TimesheetEndpoints
 {
     public static void MapTimesheetEndpoints(this IEndpointRouteBuilder app)
     {
         var sheet = app.MapGroup("/api/timesheet/{year:int}/{month:int}").RequireAuthorization(Identities.RegisteredPolicy);
 
+        // Reading and filling in
         sheet.MapGet("", (int year, int month, ClaimsPrincipal user, TimesheetService service) =>
             Run(() => service.GetAsync(Identities.EmployeeCode(user)!, year, month)));
 
@@ -38,18 +41,18 @@ public static class TimesheetEndpoints
 
         sheet.MapDelete("/overtime/{id:int}", (int year, int month, int id, ClaimsPrincipal user, TimesheetService service) =>
             Run(() => service.DeleteOvertimeAsync(Identities.EmployeeCode(user)!, year, month, id)));
-    }
 
-    /// <summary>Turns a refusal of the service into the error body the desktop app shows</summary>
-    private static async Task<IResult> Run<T>(Func<Task<T>> action)
-    {
-        try
-        {
-            return Results.Ok(await action());
-        }
-        catch (SheetException ex)
-        {
-            return Results.Json(new ApiErrorDto(ex.Code, ex.Message), statusCode: ex.Status);
-        }
+        // Submitting, and the conversation with the approvers
+        sheet.MapPost("/submit", (int year, int month, ClaimsPrincipal user, WorkflowService service) =>
+            Run(() => service.SubmitAsync(Identities.EmployeeCode(user)!, year, month)));
+
+        sheet.MapPost("/messages/{index:int}/answer", (int year, int month, int index, AnswerRequest request, ClaimsPrincipal user, WorkflowService service) =>
+            Run(() => service.AnswerAsync(Identities.EmployeeCode(user)!, year, month, index, request.Answer)));
+
+        sheet.MapGet("/revisions/{revision:int}", (int year, int month, int revision, ClaimsPrincipal user, WorkflowService service) =>
+            Run(() => service.RevisionAsync(Identities.EmployeeCode(user)!, Identities.EmployeeCode(user)!, year, month, revision)));
+
+        sheet.MapGet("/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
+            File(() => service.OwnAsync(Identities.EmployeeCode(user)!, year, month, format)));
     }
 }

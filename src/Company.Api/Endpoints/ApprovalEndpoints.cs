@@ -3,36 +3,15 @@ using Company.Api.Auth;
 using Company.Api.Contracts;
 using Company.Api.Services;
 
+using static Company.Api.Endpoints.EndpointResults;
+
 namespace Company.Api.Endpoints;
 
-/// <summary>Submitting the caller's own month, and the approvers' work on other people's months</summary>
+/// <summary>The approvers' work on other people's months: what waits for them, looking at it, deciding on it</summary>
 public static class ApprovalEndpoints
 {
     public static void MapApprovalEndpoints(this IEndpointRouteBuilder app)
     {
-        var own = app.MapGroup("/api/timesheet/{year:int}/{month:int}").RequireAuthorization(Identities.RegisteredPolicy);
-
-        own.MapPost("/submit", (int year, int month, ClaimsPrincipal user, WorkflowService service) =>
-            Run(() => service.SubmitAsync(Identities.EmployeeCode(user)!, year, month)));
-
-        own.MapPost("/messages/{index:int}/answer", (int year, int month, int index, AnswerRequest request, ClaimsPrincipal user, WorkflowService service) =>
-            Run(() => service.AnswerAsync(Identities.EmployeeCode(user)!, year, month, index, request.Answer)));
-
-        own.MapGet("/revisions/{revision:int}", (int year, int month, int revision, ClaimsPrincipal user, WorkflowService service) =>
-            Run(() => service.RevisionAsync(Identities.EmployeeCode(user)!, Identities.EmployeeCode(user)!, year, month, revision)));
-
-        own.MapGet("/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
-            File(() => service.OwnAsync(Identities.EmployeeCode(user)!, year, month, format)));
-
-        app.MapGet("/api/team/{year:int}/{month:int}/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
-            File(() => service.TeamAsync(Identities.EmployeeCode(user)!, year, month, format))).RequireAuthorization(Identities.RegisteredPolicy);
-
-        app.MapGet("/api/export/{year:int}/{month:int}/{format}", (int year, int month, string format, PrintService service) =>
-            File(() => service.ApprovedAsync(year, month, format))).RequireAuthorization(Identities.FinancePolicy);
-
-        app.MapGet("/api/reminders", (ClaimsPrincipal user, ReminderService service) => service.ForAsync(Identities.EmployeeCode(user)!))
-            .RequireAuthorization(Identities.RegisteredPolicy);
-
         var approvals = app.MapGroup("/api/approvals").RequireAuthorization(Identities.RegisteredPolicy);
 
         approvals.MapGet("", (ClaimsPrincipal user, WorkflowService service) =>
@@ -52,30 +31,5 @@ public static class ApprovalEndpoints
 
         approvals.MapPost("/{code}/{year:int}/{month:int}/return", (string code, int year, int month, ReturnRequest request, ClaimsPrincipal user, WorkflowService service) =>
             Run(() => service.ReturnAsync(Identities.EmployeeCode(user)!, code, year, month, request.Message)));
-    }
-
-    private static async Task<IResult> File(Func<Task<PrintedFile>> action)
-    {
-        try
-        {
-            var file = await action();
-            return Results.File(file.Bytes, file.ContentType, file.FileName);
-        }
-        catch (SheetException ex)
-        {
-            return Results.Json(new ApiErrorDto(ex.Code, ex.Message), statusCode: ex.Status);
-        }
-    }
-
-    private static async Task<IResult> Run<T>(Func<Task<T>> action)
-    {
-        try
-        {
-            return Results.Ok(await action());
-        }
-        catch (SheetException ex)
-        {
-            return Results.Json(new ApiErrorDto(ex.Code, ex.Message), statusCode: ex.Status);
-        }
     }
 }

@@ -53,11 +53,27 @@ public enum WorkflowError
     UnansweredMessages,
     MessageRequired,
     EmptyChain,
-    UnknownMessage
+    UnknownMessage,
+
+    /// <summary>The message already has an answer; what was answered stays as it was</summary>
+    AlreadyAnswered
+}
+
+/// <summary>What can happen to a timesheet</summary>
+public enum WorkflowEventKind
+{
+    Submitted,
+    StepApproved,
+    Approved,
+    Returned,
+    Answered,
+
+    /// <summary>The administrator handed the waiting step to somebody else (not a transition of the state machine)</summary>
+    Reassigned
 }
 
 /// <summary>What happened, for the audit log and the notifications</summary>
-public sealed record WorkflowEvent(string Kind, string Actor, string? OnBehalfOf, int Revision, int Step, string? Text);
+public sealed record WorkflowEvent(WorkflowEventKind Kind, string Actor, string? OnBehalfOf, int Revision, int Step, string? Text);
 
 public sealed record Transition(TimesheetState State, WorkflowError Error, WorkflowEvent? Event)
 {
@@ -85,7 +101,7 @@ public static class TimesheetWorkflow
         if (state.MessagesOrEmpty.Any(m => !m.IsAnswered)) return Fail(state, WorkflowError.UnansweredMessages);
 
         var next = state with { Status = TimesheetStatus.Submitted, Revision = state.Revision + 1, Chain = chain.Approvers.ToList(), Step = 0 };
-        return new Transition(next, WorkflowError.None, new WorkflowEvent("Submitted", actor, null, next.Revision, 0, null));
+        return new Transition(next, WorkflowError.None, new WorkflowEvent(WorkflowEventKind.Submitted, actor, null, next.Revision, 0, null));
     }
 
     /// <summary>
@@ -100,7 +116,7 @@ public static class TimesheetWorkflow
         var step = state.Step;
         var last = step >= state.ChainOrEmpty.Count - 1;
         var next = last ? state with { Status = TimesheetStatus.Approved } : state with { Step = step + 1 };
-        return new Transition(next, WorkflowError.None, new WorkflowEvent(last ? "Approved" : "StepApproved", actor, onBehalfOf, state.Revision, step, null));
+        return new Transition(next, WorkflowError.None, new WorkflowEvent(last ? WorkflowEventKind.Approved : WorkflowEventKind.StepApproved, actor, onBehalfOf, state.Revision, step, null));
     }
 
     /// <summary>The current approver returns the timesheet to the employee. The message is mandatory.</summary>
@@ -112,7 +128,7 @@ public static class TimesheetWorkflow
 
         var messages = state.MessagesOrEmpty.Append(new ReturnMessage(onBehalfOf ?? actor, message.Trim(), state.Revision)).ToList();
         var next = state with { Status = TimesheetStatus.Returned, Messages = messages, Step = 0 };
-        return new Transition(next, WorkflowError.None, new WorkflowEvent("Returned", actor, onBehalfOf, state.Revision, state.Step, message.Trim()));
+        return new Transition(next, WorkflowError.None, new WorkflowEvent(WorkflowEventKind.Returned, actor, onBehalfOf, state.Revision, state.Step, message.Trim()));
     }
 
     /// <summary>The employee answers one return message; resubmission needs every message answered.</summary>
@@ -122,10 +138,11 @@ public static class TimesheetWorkflow
         if (!Same(actor, state.OwnerCode)) return Fail(state, WorkflowError.NotTheOwner);
         var messages = state.MessagesOrEmpty.ToList();
         if (messageIndex < 0 || messageIndex >= messages.Count) return Fail(state, WorkflowError.UnknownMessage);
+        if (messages[messageIndex].IsAnswered) return Fail(state, WorkflowError.AlreadyAnswered);
         if (string.IsNullOrWhiteSpace(answer)) return Fail(state, WorkflowError.MessageRequired);
 
         messages[messageIndex] = messages[messageIndex] with { Answer = answer.Trim() };
-        return new Transition(state with { Messages = messages }, WorkflowError.None, new WorkflowEvent("Answered", actor, null, state.Revision, state.Step, answer.Trim()));
+        return new Transition(state with { Messages = messages }, WorkflowError.None, new WorkflowEvent(WorkflowEventKind.Answered, actor, null, state.Revision, state.Step, answer.Trim()));
     }
 
     private static WorkflowError CheckApprover(TimesheetState state, string actor, Func<string, string, bool>? isDeputyFor, out string? onBehalfOf)

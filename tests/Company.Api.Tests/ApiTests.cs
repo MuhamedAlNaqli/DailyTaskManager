@@ -315,11 +315,11 @@ public class ReferenceDataTests
 
         var days = await factory.Admin.GetFromJsonAsync<List<CalendarDayDto>>("/api/calendar/2026/9");
         Assert.AreEqual(30, days!.Count);
-        Assert.AreEqual("Holiday", days.Single(d => d.Date.Day == 9).Type);
+        Assert.AreEqual(DayKind.Holiday, days.Single(d => d.Date.Day == 9).Type);
         Assert.AreEqual("Test praznik", days.Single(d => d.Date.Day == 9).HolidayName);
-        Assert.AreEqual("Weekend", days.Single(d => d.Date.Day == 5).Type);
+        Assert.AreEqual(DayKind.Weekend, days.Single(d => d.Date.Day == 5).Type);
         Assert.AreEqual("N", days.Single(d => d.Date.Day == 27).Weekday, "27 September 2026 is a Sunday");
-        Assert.AreEqual(22, days.Count(d => d.Type == "Working") + 1, "21 working days and the holiday make 22 weekdays");
+        Assert.AreEqual(22, days.Count(d => d.Type == DayKind.Working) + 1, "21 working days and the holiday make 22 weekdays");
 
         Assert.AreEqual(HttpStatusCode.NoContent, (await factory.Admin.DeleteAsync("/api/admin/holidays/2026-09-09")).StatusCode);
         Assert.AreEqual(HttpStatusCode.NotFound, (await factory.Admin.DeleteAsync("/api/admin/holidays/2026-09-09")).StatusCode);
@@ -339,8 +339,8 @@ public class ReferenceDataTests
 
         var mine = await factory.As(@"corp\amra").GetFromJsonAsync<List<CalendarDayDto>>("/api/calendar/2026/9");
         var theirs = await factory.As(@"corp\benjamin").GetFromJsonAsync<List<CalendarDayDto>>("/api/calendar/2026/9");
-        Assert.AreEqual("Holiday", mine!.Single(d => d.Date.Day == 16).Type);
-        Assert.AreEqual("Working", theirs!.Single(d => d.Date.Day == 16).Type, "a colleague works that day");
+        Assert.AreEqual(DayKind.Holiday, mine!.Single(d => d.Date.Day == 16).Type);
+        Assert.AreEqual(DayKind.Working, theirs!.Single(d => d.Date.Day == 16).Type, "a colleague works that day");
 
         Assert.AreEqual(HttpStatusCode.NotFound, (await factory.Admin.PutAsJsonAsync("/api/admin/employees/Z-999/religious-holidays", new List<HolidayDto>())).StatusCode);
     }

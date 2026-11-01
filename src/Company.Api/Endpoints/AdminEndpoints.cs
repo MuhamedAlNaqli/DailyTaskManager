@@ -1,9 +1,13 @@
+using System.Security.Claims;
 using Company.Api.Auth;
 using Company.Api.Contracts;
 using Company.Api.Data;
 using Company.Api.Services;
+using Company.Api.Texts;
 using Microsoft.EntityFrameworkCore;
 using Timesheet.Domain;
+
+using static Company.Api.Endpoints.EndpointResults;
 
 namespace Company.Api.Endpoints;
 
@@ -25,41 +29,8 @@ public static class AdminEndpoints
             return employee == null ? NotFound("employee") : Results.Ok(ToDto(employee));
         });
 
-        admin.MapPut("/employees/{code}", async (string code, UpdateEmployeeRequest request, CompanyDbContext db, ChartService chart, AuditService audit) =>
-        {
-            var employee = await db.Employees.Include(e => e.Accounts).FirstOrDefaultAsync(e => e.Code == code);
-            if (employee == null) return NotFound("employee");
-
-            var before = Describe(employee);
-            if (request.Name != null)
-            {
-                var name = request.Name.Trim();
-                if (name.Length == 0) return Results.BadRequest(new ApiErrorDto("name-required", "The name cannot be empty."));
-                employee.Name = name;
-            }
-
-            if (request.IsActive.HasValue) employee.IsActive = request.IsActive.Value;
-            if (request.IsFinalApprover.HasValue) employee.IsFinalApprover = request.IsFinalApprover.Value;
-            if (request.IsAdmin.HasValue) employee.IsAdmin = request.IsAdmin.Value;
-            if (request.IsFinance.HasValue) employee.IsFinance = request.IsFinance.Value;
-            if (request.ActiveFrom.HasValue) employee.ActiveFrom = request.ActiveFrom;
-            if (request.ActiveTo.HasValue) employee.ActiveTo = request.ActiveTo;
-            if (request.SupervisorCode != null) employee.SupervisorCode = Clear(request.SupervisorCode);
-            if (request.DesignatedApproverCode != null) employee.DesignatedApproverCode = Clear(request.DesignatedApproverCode);
-
-            if (!await db.Employees.AnyAsync(e => e.Code == employee.SupervisorCode) && employee.SupervisorCode != null
-                || employee.DesignatedApproverCode != null && !await db.Employees.AnyAsync(e => e.Code == employee.DesignatedApproverCode))
-                return Results.BadRequest(new ApiErrorDto("unknown-person", "The supervisor or the designated approver is not an employee."));
-
-            var problem = await chart.CheckWithAsync(ChartService.ToPerson(employee));
-            if (problem != ChainProblem.None)
-                return Results.Conflict(new ApiErrorDto(problem == ChainProblem.Cycle ? "chart-cycle" : "chart-invalid",
-                    problem == ChainProblem.Cycle ? "This would make someone their own supervisor." : "The chart would be invalid."));
-
-            audit.Record("EmployeeUpdated", "Employee", employee.Code, $"{before} -> {Describe(employee)}");
-            await db.SaveChangesAsync();
-            return Results.Ok(ToDto(employee));
-        });
+        admin.MapPut("/employees/{code}", (string code, UpdateEmployeeRequest request, EmployeeAdminService service) =>
+            Run(async () => ToDto(await service.UpdateAsync(code, request))));
 
         admin.MapPost("/employees/import/preview", async (CsvRequest request, CompanyDbContext db) =>
         {
@@ -68,7 +39,7 @@ public static class AdminEndpoints
             return Results.Ok(ToDto(preview));
         });
 
-        admin.MapPost("/employees/import", async (CsvRequest request, CompanyDbContext db, AuditService audit) =>
+        admin.MapPost("/employees/import", async (CsvRequest request, CompanyDbContext db, AuditService audit, EmployeeLookupCache cache) =>
         {
             var existing = await db.Employees.ToDictionaryAsync(e => e.Code);
             var preview = EmployeeListImporter.Preview(request.Csv ?? "", existing.ToDictionary(p => p.Key, p => p.Value.Name));
@@ -95,12 +66,13 @@ public static class AdminEndpoints
 
             audit.Record("EmployeesImported", "Employee", "*", $"created {created}, updated {updated}, skipped {preview.ErrorCount}");
             await db.SaveChangesAsync();
+            cache.Clear();
             return Results.Ok(new ImportResultDto(created, updated, preview.ErrorCount));
         });
 
         // ---- Accounts ----------------------------------------------------------------------------------------------
 
-        admin.MapPost("/employees/{code}/accounts", async (string code, AccountRequest request, CompanyDbContext db, AuditService audit) =>
+        admin.MapPost("/employees/{code}/accounts", async (string code, AccountRequest request, CompanyDbContext db, AuditService audit, EmployeeLookupCache cache) =>
         {
             var account = AccountNormalizer.Normalize(request.Account);
             if (account.Length == 0) return Results.BadRequest(new ApiErrorDto("account-required", "The account cannot be empty."));
@@ -115,10 +87,11 @@ public static class AdminEndpoints
             db.Accounts.Add(new EmployeeAccount { EmployeeCode = code, Account = account });
             audit.Record("AccountLinked", "Employee", code, account);
             await db.SaveChangesAsync();
+            cache.Clear();
             return Results.Ok();
         });
 
-        admin.MapDelete("/employees/{code}/accounts", async (string code, string account, CompanyDbContext db, AuditService audit) =>
+        admin.MapDelete("/employees/{code}/accounts", async (string code, string account, CompanyDbContext db, AuditService audit, EmployeeLookupCache cache) =>
         {
             var normalized = AccountNormalizer.Normalize(account);
             var link = await db.Accounts.FirstOrDefaultAsync(a => a.EmployeeCode == code && a.Account == normalized);
@@ -127,6 +100,7 @@ public static class AdminEndpoints
             db.Accounts.Remove(link);
             audit.Record("AccountUnlinked", "Employee", code, normalized);
             await db.SaveChangesAsync();
+            cache.Clear();
             return Results.NoContent();
         });
 
@@ -148,6 +122,7 @@ public static class AdminEndpoints
         {
             var name = holiday.Name?.Trim() ?? "";
             if (name.Length == 0) return Results.BadRequest(new ApiErrorDto("name-required", "The holiday needs a name."));
+            if (TooLong(name, Limits.Name, "The name") is { } tooLong) return tooLong;
 
             var existing = await db.StateHolidays.FirstOrDefaultAsync(h => h.Date == holiday.Date);
             if (existing != null) existing.Name = name;
@@ -179,6 +154,8 @@ public static class AdminEndpoints
             if (!await db.Employees.AnyAsync(e => e.Code == code)) return NotFound("employee");
 
             var list = (holidays ?? new List<HolidayDto>()).GroupBy(h => h.Date).Select(g => g.First()).ToList();
+            var longest = list.Select(h => h.Name?.Trim() ?? "").OrderByDescending(n => n.Length).FirstOrDefault() ?? "";
+            if (TooLong(longest, Limits.Name, "The name") is { } tooLong) return tooLong;
             db.ReligiousHolidays.RemoveRange(db.ReligiousHolidays.Where(h => h.EmployeeCode == code));
             db.ReligiousHolidays.AddRange(list.Select(h => new ReligiousHoliday { EmployeeCode = code, Date = h.Date, Name = h.Name?.Trim() ?? "" }));
             audit.Record("ReligiousHolidaysSet", "Employee", code, string.Join(", ", list.Select(h => h.Date.ToString("yyyy-MM-dd"))));
@@ -186,7 +163,29 @@ public static class AdminEndpoints
             return Results.Ok(list);
         });
 
+        // ---- Timesheets --------------------------------------------------------------------------------------------
+
+        // Hands the step a submitted timesheet waits at to somebody else (the approver left, or is away for long)
+        admin.MapPost("/sheets/{code}/{year:int}/{month:int}/reassign", async (string code, int year, int month, ReassignRequest request, ClaimsPrincipal user, WorkflowService workflow) =>
+        {
+            try
+            {
+                return Results.Ok(await workflow.ReassignAsync(Identities.EmployeeCode(user)!, code, year, month, request.ToCode, request.Reason));
+            }
+            catch (SheetException ex)
+            {
+                return Results.Json(new ApiErrorDto(ex.Code, ex.Message), statusCode: ex.Status);
+            }
+        });
+
         // ---- Audit -------------------------------------------------------------------------------------------------
+
+        // Checks that nothing of the log was changed, removed or inserted after it was written
+        admin.MapGet("/audit/verify", async (CompanyDbContext db) =>
+        {
+            var result = await AuditChain.VerifyAsync(db);
+            return Results.Ok(new AuditVerificationDto(result.IsIntact, result.Checked, result.Unchained, result.FirstBrokenId, result.Problem));
+        });
 
         admin.MapGet("/audit", async (CompanyDbContext db, int? take) =>
         {
@@ -195,13 +194,10 @@ public static class AdminEndpoints
         });
     }
 
+    private static IResult? TooLong(string text, int max, string what) =>
+        text.Length > max ? Results.BadRequest(new ApiErrorDto("too-long", $"{what} can have at most {max} characters; this one has {text.Length}.")) : null;
+
     private static IResult NotFound(string what) => Results.NotFound(new ApiErrorDto("not-found", $"The {what} was not found."));
-
-    /// <summary>An empty string clears a code</summary>
-    private static string? Clear(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static string Describe(Employee e) =>
-        $"name={e.Name}, active={e.IsActive}, supervisor={e.SupervisorCode}, final={e.IsFinalApprover}, designated={e.DesignatedApproverCode}, admin={e.IsAdmin}, finance={e.IsFinance}";
 
     private static EmployeeDto ToDto(Employee e) => new(
         e.Code, e.Name, e.IsActive, e.SupervisorCode, e.IsFinalApprover, e.DesignatedApproverCode, e.IsAdmin, e.ActiveFrom, e.ActiveTo,
@@ -210,7 +206,7 @@ public static class AdminEndpoints
     private static ImportPreviewDto ToDto(EmployeeImportPreview preview) => new(
         preview.Rows.Select(r => new ImportRowDto(
             r.Line, r.Code, r.Name,
-            r.Issues.Where(i => i.Severity == ImportSeverity.Error).Select(i => i.Message).ToList(),
-            r.Issues.Where(i => i.Severity == ImportSeverity.Warning).Select(i => i.Message).ToList())).ToList(),
+            r.Issues.Where(i => i.Severity == ImportSeverity.Error).Select(ImportTexts.Message).ToList(),
+            r.Issues.Where(i => i.Severity == ImportSeverity.Warning).Select(ImportTexts.Message).ToList())).ToList(),
         preview.ErrorCount, preview.WarningCount);
 }

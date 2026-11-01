@@ -17,97 +17,109 @@ public sealed class WorkflowService
 
     private readonly CompanyDbContext _db;
     private readonly TimesheetService _sheets;
+    private readonly SheetDtoBuilder _builder;
     private readonly ChartService _chart;
     private readonly AuditService _audit;
+    private readonly TimeProvider _time;
 
-    public WorkflowService(CompanyDbContext db, TimesheetService sheets, ChartService chart, AuditService audit)
+    public WorkflowService(CompanyDbContext db, TimesheetService sheets, SheetDtoBuilder builder, ChartService chart, AuditService audit, TimeProvider time)
     {
         _db = db;
         _sheets = sheets;
+        _builder = builder;
         _chart = chart;
         _audit = audit;
+        _time = time;
     }
+
+    private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
+
+    private static bool Same(string a, string b) => SheetDtoBuilder.Same(a, b);
 
     // ---- The employee ----------------------------------------------------------------------------------------------
 
     public async Task<SheetDto> SubmitAsync(string employeeCode, int year, int month)
     {
         var sheet = await _sheets.LoadOrCreateAsync(employeeCode, year, month);
-        var current = await _sheets.BuildAsync(sheet);
+        var current = await _builder.BuildAsync(sheet);
 
         var outcome = await _chart.ChainOfAsync(employeeCode);
         if (outcome.Chain == null)
             throw new SheetException(409, "no-chain", "The administrator has not set who approves your timesheet yet.");
 
-        var result = TimesheetWorkflow.Submit(ToState(sheet), employeeCode, outcome.Chain, current.Issues.Any(i => i.Severity == nameof(Severity.Blocking)));
+        var result = TimesheetWorkflow.Submit(ToState(sheet), employeeCode, outcome.Chain, current.Issues.Any(i => i.Severity == IssueSeverity.Blocking));
         Apply(sheet, result);
 
         // What was submitted is kept, so a later correction can be compared with it
-        var frozen = await _sheets.BuildAsync(sheet);
+        var frozen = await _builder.BuildAsync(sheet);
         _db.SheetRevisions.Add(new SheetRevision
         {
             SheetId = sheet.Id,
             Revision = sheet.Revision,
-            SubmittedUtc = DateTime.UtcNow,
+            SubmittedUtc = UtcNow,
+            SchemaVersion = SnapshotSchema.Current,
             Json = JsonSerializer.Serialize(frozen with { Workflow = null }, Json)
         });
 
-        await SaveAsync();
-        return await _sheets.BuildAsync(sheet);
+        await _sheets.SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     public async Task<SheetDto> AnswerAsync(string employeeCode, int year, int month, int index, string answer)
     {
+        var text = Limits.Check(answer, Limits.Message, "The answer");
         var sheet = await _sheets.LoadOrCreateAsync(employeeCode, year, month);
-        Apply(sheet, TimesheetWorkflow.Answer(ToState(sheet), employeeCode, index, answer));
-        await SaveAsync();
-        return await _sheets.BuildAsync(sheet);
+        Apply(sheet, TimesheetWorkflow.Answer(ToState(sheet), employeeCode, index, text));
+        await _sheets.SaveAsync();
+        return await _builder.BuildAsync(sheet);
     }
 
     // ---- The approvers ---------------------------------------------------------------------------------------------
 
-    /// <summary>The submitted timesheets that are waiting for this person right now</summary>
+    /// <summary>The submitted timesheets that are waiting for this person right now (one indexed query on the current approver)</summary>
     public async Task<List<PendingApprovalDto>> PendingAsync(string approverCode)
     {
-        var submitted = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
-            .Where(s => s.Status == TimesheetStatus.Submitted).ToListAsync();
+        var waiting = await _db.Sheets.AsNoTracking().WithDetails()
+            .Where(s => s.Status == TimesheetStatus.Submitted && s.CurrentApproverCode == approverCode).ToListAsync();
 
         var result = new List<PendingApprovalDto>();
-        foreach (var sheet in submitted.Where(s => s.Step < s.ChainCodes.Count && TimesheetService.Same(s.ChainCodes[s.Step], approverCode)))
+        foreach (var sheet in waiting)
         {
-            var dto = await _sheets.BuildAsync(sheet, approverCode);
-            var sent = sheet.Events.Where(e => e.Kind == "Submitted" && e.Revision == sheet.Revision).Select(e => e.AtUtc).DefaultIfEmpty(sheet.UpdatedUtc).Max();
+            var dto = await _builder.BuildAsync(sheet, approverCode);
+            var sent = sheet.Events.Where(e => e.Kind == WorkflowEventKind.Submitted && e.Revision == sheet.Revision).Select(e => e.AtUtc).DefaultIfEmpty(sheet.UpdatedUtc).Max();
             result.Add(new PendingApprovalDto(
                 sheet.EmployeeCode, dto.Workflow!.OwnerName, sheet.Year, sheet.Month, sheet.Revision, sheet.Step,
                 DateTime.SpecifyKind(sent, DateTimeKind.Utc),
-                dto.Issues.Count(i => i.Severity == nameof(Severity.Blocking)),
-                dto.Issues.Count(i => i.Severity != nameof(Severity.Blocking))));
+                dto.Issues.Count(i => i.Severity == IssueSeverity.Blocking),
+                dto.Issues.Count(i => i.Severity != IssueSeverity.Blocking)));
         }
 
         return result.OrderBy(p => p.SubmittedUtc).ThenBy(p => p.EmployeeName).ToList();
     }
 
-    /// <summary>Someone else's sheet, read only. Only the owner and the people of its approval chain may look at it.</summary>
+    /// <summary>Someone else's sheet, read only. Opening it is written to the audit log.</summary>
     public async Task<SheetDto> ReviewAsync(string viewerCode, string ownerCode, int year, int month)
     {
         var sheet = await FindForReviewAsync(viewerCode, ownerCode, year, month);
-        return await _sheets.BuildAsync(sheet, viewerCode);
+        await AuditViewAsync(sheet, viewerCode, "SheetViewed");
+        return await _builder.BuildAsync(sheet, viewerCode);
     }
 
     public async Task<SheetDto> ApproveAsync(string approverCode, string ownerCode, int year, int month)
     {
         var sheet = await FindForReviewAsync(approverCode, ownerCode, year, month);
         Apply(sheet, TimesheetWorkflow.Approve(ToState(sheet), approverCode));
-        await SaveAsync();
-        return await _sheets.BuildAsync(sheet, approverCode);
+        await _sheets.SaveAsync();
+        return await _builder.BuildAsync(sheet, approverCode);
     }
 
     public async Task<SheetDto> ReturnAsync(string approverCode, string ownerCode, int year, int month, string message)
     {
+        var text = Limits.Check(message, Limits.Message, "The message");
         var sheet = await FindForReviewAsync(approverCode, ownerCode, year, month);
-        Apply(sheet, TimesheetWorkflow.Return(ToState(sheet), approverCode, message));
-        await SaveAsync();
-        return await _sheets.BuildAsync(sheet, approverCode);
+        Apply(sheet, TimesheetWorkflow.Return(ToState(sheet), approverCode, text));
+        await _sheets.SaveAsync();
+        return await _builder.BuildAsync(sheet, approverCode);
     }
 
     /// <summary>The sheet exactly as it was submitted in the given revision</summary>
@@ -116,20 +128,96 @@ public sealed class WorkflowService
         var sheet = await FindForReviewAsync(viewerCode, ownerCode, year, month);
         var stored = await _db.SheetRevisions.AsNoTracking().FirstOrDefaultAsync(r => r.SheetId == sheet.Id && r.Revision == revision)
                      ?? throw new SheetException(404, "not-found", "There is no such revision.");
-        var dto = JsonSerializer.Deserialize<SheetDto>(stored.Json, Json)!;
-        return dto with { Editable = false, Workflow = (await _sheets.BuildAsync(sheet, viewerCode)).Workflow };
+        await AuditViewAsync(sheet, viewerCode, "RevisionViewed", $"revision {revision}");
+        var dto = ReadRevision(stored);
+        return dto with { Editable = false, Workflow = (await _builder.BuildAsync(sheet, viewerCode)).Workflow };
+    }
+
+    /// <summary>A stored revision is read by the layout it was written in; one from a newer version, or a damaged one, is refused clearly</summary>
+    private static SheetDto ReadRevision(SheetRevision stored)
+    {
+        if (stored.SchemaVersion > SnapshotSchema.Current)
+            throw new SheetException(409, "revision-too-new", "This revision was written by a newer version of the server.");
+
+        try
+        {
+            return JsonSerializer.Deserialize<SheetDto>(stored.Json, Json) ?? throw new JsonException("empty");
+        }
+        catch (JsonException)
+        {
+            throw new SheetException(409, "revision-unreadable", "This revision cannot be read any more.");
+        }
+    }
+
+    // ---- The administrator -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Hands the step a submitted timesheet is waiting at to somebody else, for example when the approver has left. The change
+    /// is in the history of the sheet and in the audit log, with the reason.
+    /// </summary>
+    public async Task<SheetDto> ReassignAsync(string adminCode, string ownerCode, int year, int month, string toCode, string reason)
+    {
+        var why = Limits.Check(reason, Limits.Message, "The reason");
+        if (why.Length == 0) throw new SheetException(400, "message-required", "Write why the step is handed to somebody else.");
+
+        var sheet = await _sheets.LoadOrCreateAsync(ownerCode, year, month);
+        if (sheet.Status != TimesheetStatus.Submitted || sheet.Step >= sheet.ChainCodes.Count)
+            throw new SheetException(409, "wrong-status", "Only a submitted timesheet has a step that can be handed on.");
+
+        var target = await _db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Code == toCode && e.IsActive)
+                     ?? throw new SheetException(404, "not-found", "The new approver is not an active employee.");
+        if (Same(target.Code, ownerCode) && sheet.ChainCodes.Count > 1)
+            throw new SheetException(409, "self-approval", "Nobody approves their own timesheet.");
+
+        var chain = sheet.ChainCodes;
+        var from = chain[sheet.Step];
+        chain[sheet.Step] = target.Code;
+        sheet.SetChain(chain);
+        sheet.CurrentApproverCode = target.Code;
+
+        sheet.Events.Add(new SheetEvent
+        {
+            AtUtc = UtcNow, Kind = WorkflowEventKind.Reassigned, ActorCode = adminCode, Revision = sheet.Revision, Step = sheet.Step, Text = $"{from} -> {target.Code}: {why}"
+        });
+        _sheets.Touch(sheet, nameof(WorkflowEventKind.Reassigned), $"step {sheet.Step}: {from} -> {target.Code}: {why}");
+        await _sheets.SaveAsync();
+        return await _builder.BuildAsync(sheet, adminCode);
     }
 
     // ---- Helpers ---------------------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Who may look at somebody else's sheet: the people it was submitted to while it is in the chain, anybody who took part in
+    /// it, and the supervisors the owner has today (once it was submitted at all). A person who has been moved away from the
+    /// owner, and never took part, no longer sees it.
+    /// </summary>
     internal async Task<MonthSheet> FindForReviewAsync(string viewerCode, string ownerCode, int year, int month)
     {
-        var sheet = await _db.Sheets.Include(s => s.Entries).Include(s => s.Overtime).Include(s => s.Messages).Include(s => s.Events)
-            .FirstOrDefaultAsync(s => s.EmployeeCode == ownerCode && s.Year == year && s.Month == month);
+        var sheet = await _db.Sheets.WithDetails().FirstOrDefaultAsync(s => s.EmployeeCode == ownerCode && s.Year == year && s.Month == month);
 
-        var allowed = sheet != null && (TimesheetService.Same(viewerCode, ownerCode) || sheet.ChainCodes.Any(c => TimesheetService.Same(c, viewerCode)));
-        if (!allowed) throw new SheetException(403, "forbidden", "You are not allowed to see this timesheet.");
-        return sheet!;
+        if (sheet == null || !await MayViewAsync(sheet, viewerCode))
+            throw new SheetException(403, "forbidden", "You are not allowed to see this timesheet.");
+        return sheet;
+    }
+
+    private async Task<bool> MayViewAsync(MonthSheet sheet, string viewer)
+    {
+        if (Same(viewer, sheet.EmployeeCode)) return true;
+        if (sheet.Status == TimesheetStatus.Submitted && sheet.ChainCodes.Any(c => Same(c, viewer))) return true;
+        if (sheet.Events.Any(e => Same(e.ActorCode, viewer) || (e.OnBehalfOf != null && Same(e.OnBehalfOf, viewer)))) return true;
+        if (sheet.Revision == 0) return false;
+
+        var today = await _chart.ChainOfAsync(sheet.EmployeeCode);
+        return today.Chain?.Approvers.Any(c => Same(c, viewer)) == true;
+    }
+
+    /// <summary>Opening a colleague's sheet leaves a trace; the owner looking at their own does not</summary>
+    internal async Task AuditViewAsync(MonthSheet sheet, string viewerCode, string action, string? details = null)
+    {
+        if (Same(viewerCode, sheet.EmployeeCode)) return;
+
+        _audit.Record(action, "MonthSheet", $"{sheet.EmployeeCode}/{sheet.Year}-{sheet.Month:00}", $"viewed by {viewerCode}" + (details == null ? "" : ", " + details), viewerCode);
+        await _sheets.SaveAsync();
     }
 
     private static TimesheetState ToState(MonthSheet sheet) => new(
@@ -151,7 +239,8 @@ public sealed class WorkflowService
         sheet.Status = state.Status;
         sheet.Revision = state.Revision;
         sheet.Step = state.Step;
-        sheet.Chain = string.Join(',', state.ChainOrEmpty);
+        sheet.SetChain(state.ChainOrEmpty.ToList());
+        sheet.CurrentApproverCode = state.CurrentApprover;
 
         // Messages: a return adds one, an answer fills one
         var messages = state.MessagesOrEmpty;
@@ -162,7 +251,7 @@ public sealed class WorkflowService
             {
                 sheet.Messages.Add(new SheetMessage
                 {
-                    Position = i, FromCode = messages[i].From, Text = messages[i].Text, Revision = messages[i].Revision, Answer = messages[i].Answer, CreatedUtc = DateTime.UtcNow
+                    Position = i, FromCode = messages[i].From, Text = messages[i].Text, Revision = messages[i].Revision, Answer = messages[i].Answer, CreatedUtc = UtcNow
                 });
             }
             else
@@ -173,22 +262,10 @@ public sealed class WorkflowService
 
         sheet.Events.Add(new SheetEvent
         {
-            AtUtc = DateTime.UtcNow, Kind = ev.Kind, ActorCode = ev.Actor, OnBehalfOf = ev.OnBehalfOf, Revision = ev.Revision, Step = ev.Step, Text = ev.Text
+            AtUtc = UtcNow, Kind = ev.Kind, ActorCode = ev.Actor, OnBehalfOf = ev.OnBehalfOf, Revision = ev.Revision, Step = ev.Step, Text = ev.Text
         });
 
-        _sheets.Touch(sheet, ev.Kind, $"revision {ev.Revision}, step {ev.Step}" + (ev.Text == null ? "" : ": " + ev.Text));
-    }
-
-    private async Task SaveAsync()
-    {
-        try
-        {
-            await _db.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new SheetException(409, "changed", "The timesheet was changed by someone else a moment ago. Open it again.");
-        }
+        _sheets.Touch(sheet, ev.Kind.ToString(), $"revision {ev.Revision}, step {ev.Step}" + (ev.Text == null ? "" : ": " + ev.Text));
     }
 
     private static SheetException Refusal(WorkflowError error) => error switch
@@ -202,6 +279,7 @@ public sealed class WorkflowService
         WorkflowError.MessageRequired => new(400, "message-required", "A text is required."),
         WorkflowError.EmptyChain => new(409, "no-chain", "The administrator has not set who approves your timesheet yet."),
         WorkflowError.UnknownMessage => new(404, "not-found", "There is no such message."),
+        WorkflowError.AlreadyAnswered => new(409, "already-answered", "This message has been answered already."),
         _ => new(400, "invalid", "The request is not valid.")
     };
 }

@@ -14,11 +14,13 @@ public sealed class AuditService
 {
     private readonly CompanyDbContext _db;
     private readonly IHttpContextAccessor _http;
+    private readonly TimeProvider _time;
 
-    public AuditService(CompanyDbContext db, IHttpContextAccessor http)
+    public AuditService(CompanyDbContext db, IHttpContextAccessor http, TimeProvider time)
     {
         _db = db;
         _http = http;
+        _time = time;
     }
 
     public void Record(string action, string entityType, string entityId, string? details = null, string? actor = null)
@@ -26,7 +28,7 @@ public sealed class AuditService
         var user = _http.HttpContext?.User ?? new ClaimsPrincipal();
         _db.AuditEvents.Add(new AuditEvent
         {
-            AtUtc = DateTime.UtcNow,
+            AtUtc = new DateTime(_time.GetUtcNow().UtcDateTime.Ticks / 10 * 10, DateTimeKind.Utc),
             Actor = actor ?? Identities.Actor(user),
             Action = action,
             EntityType = entityType,

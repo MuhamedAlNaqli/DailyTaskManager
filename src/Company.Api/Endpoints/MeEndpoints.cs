@@ -49,8 +49,11 @@ public static class MeEndpoints
                 employee.IsFinance));
         });
 
+        // What is due for the caller today: the rules are the domain library's, this only gathers the facts
+        registered.MapGet("/reminders", (ClaimsPrincipal user, ReminderService service) => service.ForAsync(Identities.EmployeeCode(user)!));
+
         registered.MapGet("/timecodes", () => Results.Ok(TimeCodes.All.Select(c => new TimeCodeDto(
-            c.Code, c.NameBs, c.NameEn, c.Colour.ToString(), c.Unit.ToString(), c.InMonthlyFund, c.IsOvertime))));
+            c.Code, TimeCodeNames.Bs(c.Code), TimeCodeNames.En(c.Code), c.Colour.ToString(), c.Unit.ToString(), c.InMonthlyFund, c.IsOvertime))));
 
         // The days of a month for the caller: weekends, state holidays and the caller's own religious holidays
         registered.MapGet("/calendar/{year:int}/{month:int}", async (int year, int month, ClaimsPrincipal user, CompanyDbContext db) =>
@@ -67,19 +70,9 @@ public static class MeEndpoints
             {
                 var info = calendar.Resolve(date, religiousDates);
                 var name = info.HolidayName ?? religious.FirstOrDefault(h => h.Date == date)?.Name;
-                return new CalendarDayDto(date, WorkCalendar.WeekdayInitial(date), info.Type.ToString(), name);
+                return new CalendarDayDto(date, BosnianTexts.WeekdayInitial(date), info.Type.ToDto(), name);
             }).ToList();
             return Results.Ok(days);
         });
-    }
-}
-
-public static class Reference
-{
-    public static async Task<WorkCalendar> CalendarAsync(CompanyDbContext db, int year)
-    {
-        var holidays = await db.StateHolidays.AsNoTracking()
-            .Where(h => h.Date.Year == year || h.Date.Year == year + 1 || h.Date.Year == year - 1).ToListAsync();
-        return new WorkCalendar(holidays.Select(h => new Holiday(h.Date, h.Name)));
     }
 }

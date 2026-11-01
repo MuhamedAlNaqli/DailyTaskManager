@@ -46,7 +46,7 @@ public class ReminderTests
         using (soon)
         {
             var item = (await Due(amraSoon)).Single();
-            Assert.AreEqual("SubmitSoon", item.Kind);
+            Assert.AreEqual(ReminderType.SubmitSoon, item.Kind);
             Assert.AreEqual(new DateOnly(2026, 9, 25), item.Deadline);
             Assert.AreEqual(9, item.Month);
         }
@@ -58,14 +58,14 @@ public class ReminderTests
         var (factory, amra, benjamin) = await StartAsync(2026, 9, 26);
         using (factory)
         {
-            Assert.AreEqual("SubmitOverdue", (await Due(amra)).Single().Kind);
+            Assert.AreEqual(ReminderType.SubmitOverdue, (await Due(amra)).Single().Kind);
 
             await amra.PostAsync("/api/timesheet/2026/9/fill-standard-days", null);
             await amra.PostAsync("/api/timesheet/2026/9/submit", null);
             Assert.AreEqual(0, (await Due(amra)).Count, "a submitted sheet needs nothing from the employee");
 
-            var approver = (await Due(benjamin)).Single(i => i.Kind.StartsWith("Approve"));
-            Assert.AreEqual("ApproveWaiting", approver.Kind);
+            var approver = (await Due(benjamin)).Single(i => i.Kind is ReminderType.ApproveWaiting or ReminderType.ApproveOverdue);
+            Assert.AreEqual(ReminderType.ApproveWaiting, approver.Kind);
             Assert.AreEqual(1, approver.Count);
             Assert.AreEqual(new DateOnly(2026, 9, 30), approver.Deadline);
         }
@@ -80,9 +80,9 @@ public class ReminderTests
             await amra.PostAsync("/api/timesheet/2026/9/fill-standard-days", null);
             await amra.PostAsync("/api/timesheet/2026/9/submit", null);
 
-            Assert.AreEqual("ApproveOverdue", (await Due(benjamin)).Single(i => i.Kind.StartsWith("Approve")).Kind);
-            Assert.IsTrue((await Due(benjamin)).Any(i => i.Kind == "SubmitOverdue"), "Benjamin has his own timesheet to submit as well");
-            Assert.IsFalse((await Due(factory.As(@"corp\emir"))).Any(i => i.Kind.StartsWith("Approve")), "the lawyer's turn has not come");
+            Assert.AreEqual(ReminderType.ApproveOverdue, (await Due(benjamin)).Single(i => i.Kind is ReminderType.ApproveWaiting or ReminderType.ApproveOverdue).Kind);
+            Assert.IsTrue((await Due(benjamin)).Any(i => i.Kind == ReminderType.SubmitOverdue), "Benjamin has his own timesheet to submit as well");
+            Assert.IsFalse((await Due(factory.As(@"corp\emir"))).Any(i => i.Kind is ReminderType.ApproveWaiting or ReminderType.ApproveOverdue), "the lawyer's turn has not come");
         }
     }
 
@@ -96,13 +96,13 @@ public class ReminderTests
             await amra.PostAsync("/api/timesheet/2026/9/submit", null);
             await benjamin.PostAsJsonAsync("/api/approvals/Z-001/2026/9/return", new ReturnRequest("Ispravi"));
 
-            Assert.AreEqual("FixReturned", (await Due(amra)).Single().Kind);
+            Assert.AreEqual(ReminderType.FixReturned, (await Due(amra)).Single().Kind);
             Assert.AreEqual(0, (await Due(benjamin)).Count);
 
             await amra.PostAsJsonAsync("/api/timesheet/2026/9/messages/0/answer", new AnswerRequest("Gotovo"));
             await amra.PostAsync("/api/timesheet/2026/9/submit", null);
             Assert.AreEqual(0, (await Due(amra)).Count);
-            Assert.AreEqual("ApproveWaiting", (await Due(benjamin)).Single().Kind);
+            Assert.AreEqual(ReminderType.ApproveWaiting, (await Due(benjamin)).Single().Kind);
         }
     }
 
@@ -114,12 +114,12 @@ public class ReminderTests
         using (sunday)
         {
             var item = (await Due(amraSunday)).Single(i => i.Month == 10);
-            Assert.AreEqual("SubmitSoon", item.Kind);
+            Assert.AreEqual(ReminderType.SubmitSoon, item.Kind);
             Assert.AreEqual(new DateOnly(2026, 10, 26), item.Deadline);
         }
 
         var (tuesday, amraTuesday, _) = await StartAsync(2026, 10, 27);
-        using (tuesday) Assert.AreEqual("SubmitOverdue", (await Due(amraTuesday)).Single(i => i.Month == 10).Kind);
+        using (tuesday) Assert.AreEqual(ReminderType.SubmitOverdue, (await Due(amraTuesday)).Single(i => i.Month == 10).Kind);
     }
 
     [TestMethod]
@@ -132,8 +132,8 @@ public class ReminderTests
         using (withoutStart)
         {
             var items = await Due(amraWithout);
-            Assert.AreEqual("SubmitOverdue", items.Single(i => i.Month == 8).Kind, "August was never submitted");
-            Assert.AreEqual("SubmitSoon", items.Single(i => i.Month == 9).Kind);
+            Assert.AreEqual(ReminderType.SubmitOverdue, items.Single(i => i.Month == 8).Kind, "August was never submitted");
+            Assert.AreEqual(ReminderType.SubmitSoon, items.Single(i => i.Month == 9).Kind);
         }
     }
 

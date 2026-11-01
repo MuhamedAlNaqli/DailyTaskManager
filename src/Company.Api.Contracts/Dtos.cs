@@ -1,5 +1,15 @@
 namespace Company.Api.Contracts;
 
+/// <summary>
+/// Every request that changes something carries this header. A browser cannot add a custom header to a request sent from
+/// another site without the server's consent, so a web page the employee visits cannot act with their Windows sign-in.
+/// </summary>
+public static class ApiHeaders
+{
+    public const string RequestedWith = "X-Requested-With";
+    public const string RequestedWithValue = "CompanyTimesheet";
+}
+
 /// <summary>Who the caller is, after sign-in</summary>
 public sealed record MeDto(
     string Code,
@@ -36,7 +46,9 @@ public sealed record UpdateEmployeeRequest(
     bool? IsAdmin,
     DateOnly? ActiveFrom,
     DateOnly? ActiveTo,
-    bool? IsFinance = null);
+    bool? IsFinance = null,
+    bool? ClearActiveFrom = null,
+    bool? ClearActiveTo = null);
 
 public sealed record CsvRequest(string Csv);
 
@@ -56,7 +68,10 @@ public sealed record HolidayDto(DateOnly Date, string Name);
 
 public sealed record TimeCodeDto(int Code, string NameBs, string NameEn, string Colour, string Unit, bool InMonthlyFund, bool IsOvertime);
 
-public sealed record CalendarDayDto(DateOnly Date, string Weekday, string Type, string? HolidayName);
+public sealed record CalendarDayDto(DateOnly Date, string Weekday, DayKind Type, string? HolidayName);
+
+/// <summary>The result of checking the chain of hashes of the audit log</summary>
+public sealed record AuditVerificationDto(bool IsIntact, long Checked, long BeforeTheChain, long? FirstBrokenId, string? Problem);
 
 public sealed record AuditEventDto(long Id, DateTime AtUtc, string Actor, string Action, string EntityType, string EntityId, string? Details);
 
@@ -84,7 +99,7 @@ public sealed record AllocationDto(DateOnly Date, int Code, int Minutes);
 public sealed record DayDto(
     DateOnly Date,
     string Weekday,
-    string Type,
+    DayKind Type,
     string? HolidayName,
     IReadOnlyList<EntryDto> Entries,
     IReadOnlyList<AllocationDto> OvertimeAllocations);
@@ -97,7 +112,11 @@ public sealed record OvertimeDto(
     string Description,
     int TotalMinutes,
     IReadOnlyList<AllocationDto> Allocations,
-    bool HasRegularWindowConflict);
+    bool HasRegularWindowConflict,
+    int MinutesInNextMonth = 0);
+
+/// <summary>Overtime of the previous month that goes on after midnight into this one: the part that belongs here</summary>
+public sealed record CarriedOvertimeDto(DateOnly Date, TimeOnly Start, TimeOnly End, string Description, int MinutesInThisMonth);
 
 public sealed record SummaryDto(
     IReadOnlyDictionary<int, int> MinutesByCode,
@@ -106,20 +125,21 @@ public sealed record SummaryDto(
     int ExpectedFundMinutes,
     int OvertimeMinutes);
 
-public sealed record IssueDto(string RuleId, string Severity, DateOnly? Date, string Message);
+public sealed record IssueDto(string RuleId, IssueSeverity Severity, DateOnly? Date, string Message);
 
 /// <summary>One employee's month as the employee sees it while filling it in</summary>
 public sealed record SheetDto(
     int Year,
     int Month,
-    string Status,
+    SheetStatus Status,
     int Revision,
     bool Editable,
     IReadOnlyList<DayDto> Days,
     IReadOnlyList<OvertimeDto> Overtime,
     SummaryDto Summary,
     IReadOnlyList<IssueDto> Issues,
-    WorkflowDto? Workflow = null);
+    WorkflowDto? Workflow = null,
+    IReadOnlyList<CarriedOvertimeDto>? CarriedIn = null);
 
 // ---- Submission and approval ------------------------------------------------------------------------------------------
 
@@ -127,7 +147,7 @@ public sealed record ChainStepDto(string Code, string Name);
 
 public sealed record MessageDto(int Index, string From, string FromName, string Text, int Revision, string? Answer);
 
-public sealed record HistoryDto(DateTime AtUtc, string Kind, string Actor, string ActorName, string? OnBehalfOf, int Revision, int Step, string? Text);
+public sealed record HistoryDto(DateTime AtUtc, HistoryKind Kind, string Actor, string ActorName, string? OnBehalfOf, int Revision, int Step, string? Text);
 
 public sealed record RevisionDto(int Revision, DateTime SubmittedUtc);
 
@@ -149,8 +169,11 @@ public sealed record ReturnRequest(string Message);
 
 public sealed record AnswerRequest(string Answer);
 
+/// <summary>The administrator hands the step a timesheet is waiting at to somebody else (for example when the approver left)</summary>
+public sealed record ReassignRequest(string ToCode, string Reason);
+
 /// <summary>One thing that is due for the caller. Kind is a ReminderKind name; the app words it.</summary>
-public sealed record ReminderDto(string Kind, int Year, int Month, int Count, DateOnly Deadline);
+public sealed record ReminderDto(ReminderType Kind, int Year, int Month, int Count, DateOnly Deadline);
 
 public sealed record RemindersDto(DateOnly Today, IReadOnlyList<ReminderDto> Items);
 
@@ -171,7 +194,7 @@ public sealed record SetEntryRequest(int Code, int Minutes);
 
 public sealed record AbsenceRangeRequest(int Code, DateOnly From, DateOnly To);
 
-public sealed record SkippedDayDto(DateOnly Date, string Reason);
+public sealed record SkippedDayDto(DateOnly Date, SkippedBecause Reason);
 
 public sealed record AbsencePreviewDto(int Code, IReadOnlyList<DateOnly> Days, IReadOnlyList<SkippedDayDto> Skipped);
 

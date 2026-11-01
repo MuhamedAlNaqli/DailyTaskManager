@@ -69,18 +69,6 @@ public sealed class WorkCalendar
         for (var day = 1; day <= days; day++) yield return new DateOnly(year, month, day);
     }
 
-    /// <summary>The weekday letter in the header of the sheet: P U S Č P S N (Ponedjeljak, Utorak, Srijeda, Četvrtak, Petak, Subota, Nedjelja)</summary>
-    public static string WeekdayInitial(DateOnly date) => date.DayOfWeek switch
-    {
-        DayOfWeek.Monday => "P",
-        DayOfWeek.Tuesday => "U",
-        DayOfWeek.Wednesday => "S",
-        DayOfWeek.Thursday => "Č",
-        DayOfWeek.Friday => "P",
-        DayOfWeek.Saturday => "S",
-        _ => "N"
-    };
-
     /// <summary>The first working day on or after the date (used when a deadline falls on a weekend or a state holiday)</summary>
     public DateOnly NextWorkingDay(DateOnly date)
     {

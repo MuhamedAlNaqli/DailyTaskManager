@@ -158,6 +158,10 @@ class Program
                         throw new InvalidOperationException("The company server address is not set. Ask IT for it and set Company:ApiUrl in appsettings.local.json.");
                     return new Company.Api.Client.CompanyApiClient(Company.Api.Client.CompanyApiClient.CreateWindowsHttpClient(new Uri(address)));
                 });
+                services.AddSingleton<Company.Api.Client.ICompanyApiClient>(sp => sp.GetRequiredService<Company.Api.Client.CompanyApiClient>());
+                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.IEmployeeDialogs, DailyTaskManager.Avalonia.EmployeeMode.WindowEmployeeDialogs>();
+                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.ISheetFileSaver, DailyTaskManager.Avalonia.EmployeeMode.SheetFileSaver>();
+                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.IEmployeeShell, DailyTaskManager.Avalonia.EmployeeMode.EmployeeShell>();
                 services.AddTransient<DailyTaskManager.Avalonia.EmployeeMode.EmployeeViewModel>();
                 services.AddSingleton<IDocumentGenerator, DocumentGenerator>();
                 services.AddSingleton<IBackupService, BackupService>();

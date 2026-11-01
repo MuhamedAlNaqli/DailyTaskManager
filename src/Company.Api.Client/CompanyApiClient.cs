@@ -25,7 +25,7 @@ public sealed record DownloadedFile(string FileName, byte[] Bytes);
 /// The company API for the desktop app. It carries no state: sign-in is whatever the <see cref="HttpClient"/> does (for
 /// Windows sign-in, the default credentials of the user).
 /// </summary>
-public sealed class CompanyApiClient
+public sealed class CompanyApiClient : ICompanyApiClient
 {
     private readonly HttpClient _http;
 
@@ -39,7 +39,7 @@ public sealed class CompanyApiClient
     {
         EnsureSecure(baseAddress);
         var handler = new HttpClientHandler { UseDefaultCredentials = true, AllowAutoRedirect = false };
-        return new HttpClient(handler) { BaseAddress = baseAddress, Timeout = TimeSpan.FromSeconds(30) };
+        return new HttpClient(handler) { BaseAddress = baseAddress, Timeout = TimeSpan.FromMinutes(2) };
     }
 
     public static void EnsureSecure(Uri address)
@@ -152,6 +152,7 @@ public sealed class CompanyApiClient
     private async Task<T> SendCoreAsync<T>(HttpMethod method, string url, object? body, Func<HttpResponseMessage, Task<T>> read, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, url);
+        request.Headers.TryAddWithoutValidation(ApiHeaders.RequestedWith, ApiHeaders.RequestedWithValue);
         if (body != null) request.Content = JsonContent.Create(body, body.GetType());
 
         HttpResponseMessage response;

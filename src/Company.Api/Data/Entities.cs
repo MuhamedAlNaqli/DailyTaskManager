@@ -81,6 +81,18 @@ public class AuditEvent
     public string EntityId { get; set; } = "";
 
     public string? Details { get; set; }
+
+    /// <summary>Hash of the event before this one; with <see cref="Hash"/> it links the log into a chain that shows any change afterwards</summary>
+    public string? PreviousHash { get; set; }
+
+    /// <summary>SHA-256 of the previous hash and the fields of this event (null only for events written before the chain existed)</summary>
+    public string? Hash { get; set; }
+}
+
+/// <summary>The layout of the stored revision of a sheet. Raise it when the layout of <c>SheetDto</c> changes in a way an old revision cannot be read.</summary>
+public static class SnapshotSchema
+{
+    public const int Current = 1;
 }
 
 /// <summary>One employee's timesheet for one month</summary>
@@ -105,11 +117,11 @@ public class MonthSheet
     /// <summary>Changes with every save of the sheet, so two people acting at the same moment cannot both win</summary>
     public int Version { get; set; }
 
-    /// <summary>The approvers frozen at the last submission, in order, separated by commas</summary>
-    public string Chain { get; set; } = "";
-
-    /// <summary>Position in <see cref="Chain"/> of the person whose turn it is</summary>
+    /// <summary>Position in <see cref="ChainSteps"/> of the person whose turn it is</summary>
     public int Step { get; set; }
+
+    /// <summary>The person whose turn it is while the sheet is submitted, otherwise null; makes "waiting for me" one indexed query</summary>
+    public string? CurrentApproverCode { get; set; }
 
     public List<SheetEntry> Entries { get; set; } = new();
 
@@ -119,7 +131,40 @@ public class MonthSheet
 
     public List<SheetEvent> Events { get; set; } = new();
 
-    public List<string> ChainCodes => Chain.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    /// <summary>The approvers frozen at the last submission, in the order they decide</summary>
+    public List<SheetChainStep> ChainSteps { get; set; } = new();
+
+    /// <summary>The employee codes of the approvers, in order</summary>
+    public List<string> ChainCodes => ChainSteps.OrderBy(s => s.Position).Select(s => s.EmployeeCode).ToList();
+
+    /// <summary>
+    /// Makes the frozen chain this one. Steps are changed where they are and only added or removed at the end, so that the unique
+    /// order of the steps is never broken in the middle of a save.
+    /// </summary>
+    public void SetChain(IReadOnlyList<string> codes)
+    {
+        var steps = ChainSteps.OrderBy(s => s.Position).ToList();
+        for (var i = 0; i < codes.Count; i++)
+        {
+            if (i < steps.Count) steps[i].EmployeeCode = codes[i];
+            else ChainSteps.Add(new SheetChainStep { Position = i, EmployeeCode = codes[i] });
+        }
+
+        foreach (var surplus in steps.Skip(codes.Count)) ChainSteps.Remove(surplus);
+    }
+}
+
+/// <summary>One approver of the chain a sheet was submitted to</summary>
+public class SheetChainStep
+{
+    public int Id { get; set; }
+
+    public int SheetId { get; set; }
+
+    /// <summary>0 for the first approver</summary>
+    public int Position { get; set; }
+
+    public string EmployeeCode { get; set; } = "";
 }
 
 /// <summary>A message with which an approver returned the sheet, and the employee's answer</summary>
@@ -152,7 +197,7 @@ public class SheetEvent
 
     public DateTime AtUtc { get; set; }
 
-    public string Kind { get; set; } = "";
+    public Timesheet.Domain.WorkflowEventKind Kind { get; set; }
 
     public string ActorCode { get; set; } = "";
 
@@ -175,6 +220,9 @@ public class SheetRevision
     public int Revision { get; set; }
 
     public DateTime SubmittedUtc { get; set; }
+
+    /// <summary>The version of the layout of <see cref="Json"/>; a stored revision is read by the layout it was written in</summary>
+    public int SchemaVersion { get; set; } = SnapshotSchema.Current;
 
     public string Json { get; set; } = "";
 }

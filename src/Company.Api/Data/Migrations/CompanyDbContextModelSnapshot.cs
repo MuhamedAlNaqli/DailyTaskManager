@@ -57,9 +57,20 @@ namespace Company.Api.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Hash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PreviousHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AtUtc");
+
+                    b.HasIndex("PreviousHash")
+                        .IsUnique();
 
                     b.ToTable("audit_events", (string)null);
                 });
@@ -152,13 +163,12 @@ namespace Company.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Chain")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)");
-
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentApproverCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("EmployeeCode")
                         .IsRequired()
@@ -190,6 +200,8 @@ namespace Company.Api.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CurrentApproverCode", "Status");
 
                     b.HasIndex("EmployeeCode", "Year", "Month")
                         .IsUnique();
@@ -224,6 +236,35 @@ namespace Company.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("religious_holidays", (string)null);
+                });
+
+            modelBuilder.Entity("Company.Api.Data.SheetChainStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeCode");
+
+                    b.HasIndex("SheetId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("sheet_chain_steps", (string)null);
                 });
 
             modelBuilder.Entity("Company.Api.Data.SheetEntry", b =>
@@ -388,6 +429,9 @@ namespace Company.Api.Data.Migrations
                     b.Property<int>("Revision")
                         .HasColumnType("integer");
 
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SheetId")
                         .HasColumnType("integer");
 
@@ -432,6 +476,32 @@ namespace Company.Api.Data.Migrations
                         .WithMany("Accounts")
                         .HasForeignKey("EmployeeCode")
                         .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Company.Api.Data.MonthSheet", b =>
+                {
+                    b.HasOne("Company.Api.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Company.Api.Data.SheetChainStep", b =>
+                {
+                    b.HasOne("Company.Api.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Company.Api.Data.MonthSheet", null)
+                        .WithMany("ChainSteps")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -488,6 +558,8 @@ namespace Company.Api.Data.Migrations
 
             modelBuilder.Entity("Company.Api.Data.MonthSheet", b =>
                 {
+                    b.Navigation("ChainSteps");
+
                     b.Navigation("Entries");
 
                     b.Navigation("Events");

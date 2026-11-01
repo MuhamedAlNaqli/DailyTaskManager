@@ -155,9 +155,13 @@ public partial class ClientsViewModel : ObservableObject
 
         IsNewClient = false;
         LoadEditor(value);
-        _ = LoadContractsAsync(value.Id);
-        _ = LoadTemplatesAsync(value.Id);
+        var selection = ++_selectionVersion;
+        _ = LoadContractsAsync(value.Id, selection);
+        _ = LoadTemplatesAsync(value.Id, selection: selection);
     }
+
+    /// <summary>Counts the selections of a client; an answer for an earlier one arrives late and is dropped</summary>
+    private int _selectionVersion;
 
     private void LoadEditor(Client? client)
     {
@@ -184,11 +188,12 @@ public partial class ClientsViewModel : ObservableObject
         }
     }
 
-    private async Task LoadContractsAsync(int clientId)
+    private async Task LoadContractsAsync(int clientId, int? selection = null)
     {
         try
         {
             var contracts = await _business.GetContractsAsync(clientId);
+            if (selection != null && selection != _selectionVersion) return;
             Contracts.Clear();
             foreach (var contract in contracts) Contracts.Add(new ContractRow(contract));
             SelectedContract = Contracts.FirstOrDefault(c => c.Contract.ValidTo == null) ?? Contracts.FirstOrDefault();
@@ -358,11 +363,12 @@ public partial class ClientsViewModel : ObservableObject
         ["Word and Excel files"] = new List<string> { "*.docx", "*.xlsx" }
     };
 
-    private async Task LoadTemplatesAsync(int clientId, int? select = null)
+    private async Task LoadTemplatesAsync(int clientId, int? select = null, int? selection = null)
     {
         try
         {
             var templates = await _business.GetTemplatesAsync(clientId);
+            if (selection != null && selection != _selectionVersion) return;
             Templates.Clear();
             foreach (var template in templates) Templates.Add(template);
             SelectedTemplate = Templates.FirstOrDefault(t => t.Id == select) ?? Templates.FirstOrDefault();
