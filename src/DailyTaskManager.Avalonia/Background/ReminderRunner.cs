@@ -79,27 +79,7 @@ internal static class ReminderRunner
             await CheckForUpdateAsync(services, logger, exePath, state, pretendVersion: null);
         }
 
-        // In employee mode the company server decides what is due; the local database is never touched
-        if (AppMode.IsEmployee) return await RemindEmployeeAsync(services, logger, exePath, state, now);
-
         return await RemindAboutMissingHoursAsync(services, logger, exePath, state, now);
-    }
-
-    private static async Task<int> RemindEmployeeAsync(IServiceProvider services, ILogger logger, string exePath, ReminderState state, DateTime now)
-    {
-        if (EmployeeReminders.IsQuiet(now)) return 0;
-
-        var items = await EmployeeReminders.DueAsync(services, logger, DateOnly.FromDateTime(now));
-        if (!EmployeeReminders.ShouldNotify(state, items, now)) return 0;
-
-        state.Record(now);
-        state.EmployeeSignature = EmployeeReminders.Signature(items);
-        state.Save();
-
-        var (title, message) = EmployeeReminders.Compose(items);
-        logger.LogInformation("Showing the employee reminder: {Message}", message);
-        ShowAndOpenIfClicked(logger, title, message, exePath);
-        return 0;
     }
 
     /// <summary>

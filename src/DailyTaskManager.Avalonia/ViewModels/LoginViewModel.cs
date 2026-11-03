@@ -70,7 +70,6 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Username} logged in successfully", Username);
-                AppMode.Set(Mode.Consultant);
                 await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
@@ -155,7 +154,6 @@ public partial class LoginViewModel : ObservableObject
             else
             {
                 _logger.LogInformation("User {Email} logged in successfully via Google OAuth", oauthResult.Email);
-                AppMode.Set(Mode.Consultant);
                 await ApplyRememberMeAsync();
                 await NavigateToMainWindowAsync();
             }
@@ -180,30 +178,6 @@ public partial class LoginViewModel : ObservableObject
         else
         {
             await _authService.ClearRememberedSessionAsync();
-        }
-    }
-
-    /// <summary>A company employee signs in with the Windows account in a window of their own; nothing local is used.</summary>
-    [RelayCommand]
-    private void OpenEmployeeMode()
-    {
-        try
-        {
-            if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && App.Current is App app)
-            {
-                // The next start goes straight to the employee window only when the user asked to be remembered
-                AppMode.Set(Mode.Employee, persist: RememberMe);
-                var current = desktop.MainWindow;
-                var window = app.CreateEmployeeWindow();
-                desktop.MainWindow = window;
-                window.Show();
-                current?.Close();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error opening employee mode");
-            ErrorMessage = "Failed to open the employee view. Please try again.";
         }
     }
 

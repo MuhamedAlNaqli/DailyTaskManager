@@ -59,13 +59,10 @@ class Program
             App.ServiceProvider = host.Services;
             // Warm up the database (EF model, connection, schema check) on a worker thread while Avalonia
             // initializes the platform and fonts; the app waits for it before it needs data (see App).
-            // Employee mode works against the company API and never touches the local database (an employee's PC has none)
-            _employeeStart = AppMode.IsEmployee;
-            DatabaseReady = AppMode.IsEmployee ? Task.CompletedTask : Task.Run(() => InitializeDatabaseAsync(host.Services));
+            DatabaseReady = Task.Run(() => InitializeDatabaseAsync(host.Services));
             // The update service is not needed to show the first window
             _ = Task.Run(() => InitializeUpdateServiceAsync(host.Services));
-            if (!AppMode.IsEmployee) _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
-            else _ = Task.Run(() => InstallEmployeeReminderAsync(host.Services));
+            _ = Task.Run(() => SyncBackgroundReminderAsync(host.Services));
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
             
@@ -149,20 +146,6 @@ class Program
                 services.AddSingleton<ISettingsService, SettingsService>();
                 services.AddSingleton<IBusinessService, BusinessService>();
 
-                // The company API (employee mode): signs in with the Windows account; created on first use, so a missing address
-                // only matters when someone opens employee mode
-                services.AddSingleton(sp =>
-                {
-                    var address = sp.GetRequiredService<IConfiguration>()["Company:ApiUrl"];
-                    if (string.IsNullOrWhiteSpace(address))
-                        throw new InvalidOperationException("The company server address is not set. Ask IT for it and set Company:ApiUrl in appsettings.local.json.");
-                    return new Company.Api.Client.CompanyApiClient(Company.Api.Client.CompanyApiClient.CreateWindowsHttpClient(new Uri(address)));
-                });
-                services.AddSingleton<Company.Api.Client.ICompanyApiClient>(sp => sp.GetRequiredService<Company.Api.Client.CompanyApiClient>());
-                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.IEmployeeDialogs, DailyTaskManager.Avalonia.EmployeeMode.WindowEmployeeDialogs>();
-                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.ISheetFileSaver, DailyTaskManager.Avalonia.EmployeeMode.SheetFileSaver>();
-                services.AddSingleton<DailyTaskManager.Avalonia.EmployeeMode.IEmployeeShell, DailyTaskManager.Avalonia.EmployeeMode.EmployeeShell>();
-                services.AddTransient<DailyTaskManager.Avalonia.EmployeeMode.EmployeeViewModel>();
                 services.AddSingleton<IDocumentGenerator, DocumentGenerator>();
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<IAutoCompleteService, AutoCompleteService>();
@@ -220,38 +203,6 @@ class Program
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
-        }
-    }
-
-    private static bool _consultantPrepared;
-
-    /// <summary>
-    /// Employee mode starts without the local database. After signing out of it the consultant sign-in needs it, so it is
-    /// prepared then (once), without making the sign-in screen wait.
-    /// </summary>
-    public static void PrepareConsultant(IServiceProvider services)
-    {
-        if (_consultantPrepared || !_employeeStart) return;
-        _consultantPrepared = true;
-        DatabaseReady = Task.Run(() => InitializeDatabaseAsync(services));
-        _ = Task.Run(() => SyncBackgroundReminderAsync(services));
-    }
-
-    private static bool _employeeStart;
-
-    /// <summary>
-    /// Employee mode needs the scheduled task too: it asks the company server what is due and shows it, even when the app is closed.
-    /// The employee has no local settings, so the task is simply installed.
-    /// </summary>
-    private static async Task InstallEmployeeReminderAsync(IServiceProvider services)
-    {
-        try
-        {
-            await services.GetRequiredService<IBackgroundReminderService>().SetInstalledAsync(true);
-        }
-        catch (Exception ex)
-        {
-            services.GetService<ILogger<Program>>()?.LogWarning(ex, "Could not install the employee reminder task");
         }
     }
 

@@ -21,9 +21,6 @@ public class ReminderState
     /// <summary>Whether the background job may tell the user about new versions (mirrors the setting, so no database is needed)</summary>
     public bool UpdateNotifications { get; set; } = true;
 
-    /// <summary>What the employee reminder last told about, so something new is announced at once and the rest only now and then</summary>
-    public string EmployeeSignature { get; set; } = "";
-
     public DateTime LastUpdateCheck { get; set; }
 
     /// <summary>The version the user was last told about, so each release is announced once (then again after a few days)</summary>
