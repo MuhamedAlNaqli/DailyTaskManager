@@ -152,8 +152,7 @@ if (-not $SkipBuild -and -not $SkipPublish) {
         "-r", $RuntimeIdentifier
         "--self-contained", "true"
         "--output", $PublishPath
-        "/p:PublishSingleFile=true"
-        "/p:IncludeNativeLibrariesForSelfExtract=true"
+        "/p:PublishSingleFile=false"
         "/p:PublishTrimmed=false"
         "/p:DebugType=embedded"
         "--verbosity", $(if ($Verbose) { "normal" } else { "quiet" })
@@ -211,6 +210,34 @@ if (-not (Test-Path $licenseFile)) {
     Write-Host ""
 }
 
+# One component per file of the publish folder, folders included (WiX 4 cannot harvest a folder by itself)
+$FilesWxs = Join-Path $OutputPath "AppFiles.wxs"
+$dirLines = New-Object System.Collections.Generic.List[string]
+$compLines = New-Object System.Collections.Generic.List[string]
+$script:fileCount = 0
+$script:dirCount = 0
+function Add-Folder([string]$Path, [string]$DirectoryId, [string]$Relative) {
+    # appsettings.local.json is this PC's own configuration (it may hold keys): never part of the package, and an update keeps it
+    foreach ($f in Get-ChildItem $Path -File | Where-Object { $_.Name -ne 'appsettings.local.json' }) {
+        $script:fileCount++
+        $n = $script:fileCount
+        $name = [System.Security.SecurityElement]::Escape($f.Name)
+        $source = [System.Security.SecurityElement]::Escape($(if ($Relative) { Join-Path $Relative $f.Name } else { $f.Name }))
+        $compLines.Add('<Component Id="c' + $n + '" Guid="*" Directory="' + $DirectoryId + '"><File Id="f' + $n + '" Name="' + $name + '" Source="$(var.PublishDir)\' + $source + '" KeyPath="yes" /></Component>')
+    }
+    # Native libraries of other systems (runtimes\linux-*, osx-*, win-arm64 ...) are of no use on this PC
+    foreach ($d in Get-ChildItem $Path -Directory | Where-Object { $Relative -ne 'runtimes' -or $_.Name -eq 'win-x64' }) {
+        $script:dirCount++
+        $id = "d$($script:dirCount)"
+        $dirLines.Add("<Directory Id=`"$id`" Name=`"$([System.Security.SecurityElement]::Escape($d.Name))`">")
+        Add-Folder $d.FullName $id $(if ($Relative) { Join-Path $Relative $d.Name } else { $d.Name })
+        $dirLines.Add("</Directory>")
+    }
+}
+Add-Folder $PublishPath "INSTALLFOLDER" ""
+Set-Content -Path $FilesWxs -Encoding UTF8 -Value (@('<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"><Fragment><DirectoryRef Id="INSTALLFOLDER">') + $dirLines + @('</DirectoryRef><ComponentGroup Id="AppFiles">') + $compLines + @('</ComponentGroup></Fragment></Wix>'))
+Write-Host "   $($script:fileCount) files listed for the MSI" -ForegroundColor Gray
+
 # Build MSI installer
 Write-Host "Building MSI installer..." -ForegroundColor Yellow
 
@@ -225,6 +252,7 @@ $wixVariables = @(
 $buildArgs = @(
     "build"
     $WxsFile
+    $FilesWxs
     "-out", $MsiOutput
     "-arch", "x64"
     "-dcl", "high"

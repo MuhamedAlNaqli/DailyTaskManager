@@ -27,7 +27,8 @@
     <!-- Feature Definition -->
     <Feature Id="ProductFeature" Title="Daily Task Manager Application" Level="1" Description="Core application files">
       <ComponentGroupRef Id="ProductComponents" />
-      <ComponentGroupRef Id="WhisperRuntime" />
+      <!-- Every file of the publish folder (whisper libraries included), listed by build-installer.ps1 -->
+      <ComponentGroupRef Id="AppFiles" />
       <ComponentGroupRef Id="StartMenuShortcuts" />
     </Feature>
     
@@ -39,10 +40,6 @@
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="CompanyFolder" Name="SmartPoint">
         <Directory Id="INSTALLFOLDER" Name="DailyTaskManager">
-          <!-- Whisper native libraries for dictation; Whisper.net looks for them here -->
-          <Directory Id="RuntimesFolder" Name="runtimes">
-            <Directory Id="RuntimesWin64Folder" Name="win-x64" />
-          </Directory>
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -55,29 +52,6 @@
     
     <!-- Application Components -->
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-      
-      <!-- Main Executable -->
-      <Component Id="MainExecutable" Guid="B1C2D3E4-F5A6-7B8C-9D0E-123456789ABC">
-        <File Id="DailyTaskManagerExe" 
-              Name="DailyTaskManager.Avalonia.exe" 
-              Source="$(var.PublishDir)\DailyTaskManager.Avalonia.exe"
-              KeyPath="yes" />
-      </Component>
-      
-      <!-- Configuration Files -->
-      <Component Id="ConfigurationFiles" Guid="C2D3E4F5-A6B7-8C9D-0E1F-234567890BCD">
-        <File Id="AppSettingsJson" 
-              Name="appsettings.json" 
-              Source="$(var.PublishDir)\appsettings.json"
-              KeyPath="yes" />
-      </Component>
-      
-      <Component Id="DevConfigFiles" Guid="D3E4F5A6-B7C8-9D0E-1F2A-34567890CDEF">
-        <File Id="AppSettingsDevJson" 
-              Name="appsettings.Development.json" 
-              Source="$(var.PublishDir)\appsettings.Development.json"
-              KeyPath="yes" />
-      </Component>
       
       <!-- Installation Registry Information -->
       <Component Id="RegistryEntries" Guid="A1B2C3D4-E5F6-7890-1234-567890ABCDEF">
@@ -102,22 +76,6 @@
       </Component>
     </ComponentGroup>
     
-    <!-- Speech engine used by dictation -->
-    <ComponentGroup Id="WhisperRuntime" Directory="RuntimesWin64Folder">
-      <Component Id="Whisper_ggml_base_whisper_dll">
-        <File Id="Whisper_ggml_base_whisper_dll_File" Name="ggml-base-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-base-whisper.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="Whisper_ggml_cpu_whisper_dll">
-        <File Id="Whisper_ggml_cpu_whisper_dll_File" Name="ggml-cpu-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-cpu-whisper.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="Whisper_ggml_whisper_dll">
-        <File Id="Whisper_ggml_whisper_dll_File" Name="ggml-whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\ggml-whisper.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="Whisper_whisper_dll">
-        <File Id="Whisper_whisper_dll_File" Name="whisper.dll" Source="$(var.PublishDir)\runtimes\win-x64\whisper.dll" KeyPath="yes" />
-      </Component>
-    </ComponentGroup>
-
     <!-- Start Menu Shortcuts -->
     <ComponentGroup Id="StartMenuShortcuts" Directory="ApplicationProgramsFolder">
       <Component Id="ApplicationStartMenuShortcut" Guid="E4F5A6B7-C8D9-0E1F-2A3B-456789CDEF01">

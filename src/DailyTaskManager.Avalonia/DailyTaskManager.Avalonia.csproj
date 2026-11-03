@@ -17,7 +17,8 @@
     <ProductVersion>4.1.0.0</ProductVersion>
     
     <!-- Publishing Properties -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- A folder, not one self-extracting exe: that unpacked 130 MB at the first start and was scanned again by Windows (about 12 s) -->
+    <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <PublishTrimmed>false</PublishTrimmed>
@@ -27,7 +28,6 @@
     <!-- A desktop app with one user needs no background GC thread and no per-language resource folders -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- Application Properties -->
     <!-- <ApplicationIcon>Assets\app.ico</ApplicationIcon> -->

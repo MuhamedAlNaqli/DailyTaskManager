@@ -106,6 +106,9 @@ class Program
                       .AddEnvironmentVariables()
                       .AddCommandLine(args);
             })
+            // The default host also starts console, debug and event-log logging: nobody reads them in a windowed app, and they cost
+            // start-up time. Logs go to the file below.
+            .ConfigureLogging(logging => logging.ClearProviders())
             .UseSerilog((context, configuration) =>
             {
                 // File only (this is a windowed app, nobody reads the console), and no per-SQL-command lines

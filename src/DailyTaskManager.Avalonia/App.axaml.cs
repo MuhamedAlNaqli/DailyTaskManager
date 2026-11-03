@@ -27,24 +27,44 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            
+            // Something is on screen at once; the database, the theme and the remembered session are read behind it
+            var splash = new SplashWindow();
+            desktop.MainWindow = splash;
+            _ = FinishStartupAsync(desktop, splash);
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task FinishStartupAsync(IClassicDesktopStyleApplicationLifetime desktop, SplashWindow splash)
+    {
+        try
+        {
             // Data access needs the schema; it has been initializing in parallel with the UI toolkit startup
-            Program.DatabaseReady.GetAwaiter().GetResult();
+            await Program.DatabaseReady;
 
             // Read the theme and check for a remembered session at the same time
             var themeTask = Task.Run(ReadSavedThemeAsync);
             var sessionTask = Task.Run(TryRestoreSessionAsync);
-            Task.WaitAll(themeTask, sessionTask);
+            await Task.WhenAll(themeTask, sessionTask);
 
             RequestedThemeVariant = string.Equals(themeTask.Result, "Dark", StringComparison.OrdinalIgnoreCase)
                 ? ThemeVariant.Dark
                 : ThemeVariant.Light;
 
             // Skip the login screen when a valid "remember me" session exists on this machine
-            desktop.MainWindow = sessionTask.Result ? CreateMainWindow() : CreateLoginWindow();
-        }
+            Window next = sessionTask.Result ? CreateMainWindow() : CreateLoginWindow();
 
-        base.OnFrameworkInitializationCompleted();
+            // The new window is the main one before the splash closes, so closing the splash does not end the app
+            desktop.MainWindow = next;
+            next.Show();
+            splash.Close();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Fatal(ex, "The app could not start");
+            splash.ShowFailure("The app could not start: " + (ex.InnerException?.Message ?? ex.Message));
+        }
     }
 
     private static async Task<bool> TryRestoreSessionAsync()

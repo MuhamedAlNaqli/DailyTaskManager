@@ -114,7 +114,7 @@ jobs:
           --runtime win-x64 `
           --self-contained true `
           --output publish/win-x64 `
-          -p:PublishSingleFile=true `
+          -p:PublishSingleFile=false `
           -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} `
           -p:FileVersion=${{ steps.gitversion.outputs.assemblySemVer }} `
           -p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
