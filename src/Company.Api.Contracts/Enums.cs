@@ -62,7 +62,10 @@ public enum ReminderType
     SubmitOverdue,
     FixReturned,
     ApproveWaiting,
-    ApproveOverdue
+    ApproveOverdue,
+
+    /// <summary>The supervisor asked the person, by name, to submit the timesheet (not a rule of the domain)</summary>
+    Nudged
 }
 
 /// <summary>Why a day was left out of an absence</summary>

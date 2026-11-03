@@ -77,14 +77,27 @@ public sealed class TimesheetService
         sheet.Entries.Remove(entry);
         Touch(sheet, "EntryCleared", $"{date:yyyy-MM-dd} {code}");
         await SaveAsync();
+
+        // Taking away an absence gives the standard day back
+        await AddStandardDaysAsync(sheet);
         return await _builder.BuildAsync(sheet);
     }
 
-    /// <summary>Regular hours (the daily norm) on every working day that has no base entry. The employee triggers it explicitly.</summary>
+    /// <summary>Regular hours (the daily norm) on every working day that has no base entry. Opening an editable month does the same.</summary>
     public async Task<SheetDto> FillStandardDaysAsync(string employeeCode, int year, int month)
     {
         var sheet = await EditableAsync(employeeCode, year, month);
-        var context = await _builder.ContextAsync(employeeCode, year);
+        return await _builder.BuildAsync(sheet);
+    }
+
+    /// <summary>
+    /// The default of the month: everybody worked the standard day on every working day, so those days are filled in when the month is
+    /// opened. The employee then enters only the exceptions (an absence, overtime, work on a holiday). Returns whether anything was added.
+    /// </summary>
+    private async Task<bool> AddStandardDaysAsync(MonthSheet sheet)
+    {
+        var context = await _builder.ContextAsync(sheet.EmployeeCode, sheet.Year);
+        var (year, month) = (sheet.Year, sheet.Month);
         var added = 0;
 
         foreach (var date in WorkCalendar.DaysOf(year, month))
@@ -97,9 +110,11 @@ public sealed class TimesheetService
             added++;
         }
 
+        if (added == 0) return false;
+
         Touch(sheet, "StandardDaysFilled", $"{year}-{month:00}: {added} days");
         await SaveAsync();
-        return await _builder.BuildAsync(sheet);
+        return true;
     }
 
     // ---- Absence ranges ----------------------------------------------------------------------------------------------
@@ -244,21 +259,36 @@ public sealed class TimesheetService
     {
         async Task<MonthSheet?> Load() => await _db.Sheets.WithDetails().FirstOrDefaultAsync(s => s.EmployeeCode == employeeCode && s.Year == year && s.Month == month);
 
-        var sheet = await Load();
-        if (sheet != null) return sheet;
+        var sheet = await Load() ?? await Create();
+        if (!IsEditable(sheet)) return sheet;
 
-        var created = new MonthSheet { EmployeeCode = employeeCode, Year = year, Month = month, CreatedUtc = UtcNow, UpdatedUtc = UtcNow };
-        _db.Sheets.Add(created);
         try
         {
-            await _db.SaveChangesAsync();
-            return created;
+            await AddStandardDaysAsync(sheet);
+            return sheet;
         }
-        catch (DbUpdateException)
+        catch (SheetException ex) when (ex.Code == "changed")
         {
-            // A second request opened the same new month first: take its sheet
-            _db.Entry(created).State = EntityState.Detached;
-            return await Load() ?? throw new SheetException(409, "changed", "The timesheet could not be opened. Try again.");
+            // A second request filled the same month first: take its sheet
+            _db.ChangeTracker.Clear();
+            return await Load() ?? throw ex;
+        }
+
+        async Task<MonthSheet> Create()
+        {
+            var created = new MonthSheet { EmployeeCode = employeeCode, Year = year, Month = month, CreatedUtc = UtcNow, UpdatedUtc = UtcNow };
+            _db.Sheets.Add(created);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return created;
+            }
+            catch (DbUpdateException)
+            {
+                // A second request opened the same new month first: take its sheet
+                _db.Entry(created).State = EntityState.Detached;
+                return await Load() ?? throw new SheetException(409, "changed", "The timesheet could not be opened. Try again.");
+            }
         }
     }
 

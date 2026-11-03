@@ -41,6 +41,7 @@ public static class EmployeeFormat
             ReminderType.SubmitSoon => ("Predajte šihtaricu", $"Šihtarica za {month} se predaje do {deadline}"),
             ReminderType.SubmitOverdue => ("Šihtarica kasni", $"Šihtarica za {month} je trebala biti predana do {deadline}"),
             ReminderType.FixReturned => ("Šihtarica je vraćena na ispravku", $"Šihtarica za {month} je vraćena. Pročitajte poruku, ispravite unos i predajte je ponovo."),
+            ReminderType.Nudged => ($"Podsjetnik: {item.From}", $"{item.From} vas podsjeća da predate šihtaricu za {month}. Rok je {deadline}"),
             ReminderType.ApproveWaiting => ("Šihtarice čekaju odobrenje", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je {deadline}"),
             ReminderType.ApproveOverdue => ("Odobravanje kasni", $"Broj šihtarica koje čekaju vaše odobrenje: {item.Count}. Rok je bio {deadline}"),
             _ => (item.Kind.ToString(), month)
@@ -51,6 +52,7 @@ public static class EmployeeFormat
     public static int ReminderOrder(ReminderType kind) => kind switch
     {
         ReminderType.FixReturned => 0,
+        ReminderType.Nudged => 1,
         ReminderType.SubmitOverdue => 1,
         ReminderType.ApproveOverdue => 2,
         ReminderType.SubmitSoon => 3,

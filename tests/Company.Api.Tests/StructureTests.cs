@@ -98,11 +98,11 @@ public class StructureTests
             var before = a.Version;
 
             // Directly, the way a future piece of code might do it: no Touch, no call of any service
-            a.Entries.Add(new SheetEntry { Date = new DateOnly(2026, 9, 1), Code = Codes.RegularWork, Minutes = 480 });
+            a.Entries.Add(new SheetEntry { Date = new DateOnly(2026, 9, 5), Code = Codes.RegularWork, Minutes = 480 });
             await first.SaveChangesAsync();
             Assert.AreEqual(before + 1, a.Version);
 
-            b.Entries.Add(new SheetEntry { Date = new DateOnly(2026, 9, 2), Code = Codes.RegularWork, Minutes = 480 });
+            b.Entries.Add(new SheetEntry { Date = new DateOnly(2026, 9, 6), Code = Codes.RegularWork, Minutes = 480 });
             await Assert.ThrowsExceptionAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
         }
     }
@@ -139,10 +139,10 @@ public class StructureTests
         var (factory, amra, _) = await StartAsync();
         using (factory)
         {
-            await amra.PostAsync("/api/timesheet/2026/9/fill-standard-days", null);
-            await amra.PostAsync("/api/timesheet/2026/9/fill-standard-days", null);
+            await amra.PutAsJsonAsync("/api/timesheet/2026/9/days/2026-09-01", new SetEntryRequest(Codes.RegularWork, 240));
+            await amra.PutAsJsonAsync("/api/timesheet/2026/9/days/2026-09-02", new SetEntryRequest(Codes.RegularWork, 240));
 
-            var middle = Scalar(factory, "SELECT Id FROM audit_events WHERE Action = 'StandardDaysFilled' ORDER BY Id LIMIT 1");
+            var middle = Scalar(factory, "SELECT Id FROM audit_events WHERE Action = 'EntrySet' ORDER BY Id LIMIT 1");
             Execute(factory, $"DELETE FROM audit_events WHERE Id = {middle}");
 
             var result = (await factory.Admin.GetFromJsonAsync<AuditVerificationDto>("/api/admin/audit/verify"))!;

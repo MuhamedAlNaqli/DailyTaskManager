@@ -21,7 +21,8 @@ public sealed record MeDto(
     string? SupervisorCode,
     IReadOnlyList<string> ApprovalChain,
     string AuthenticationMode,
-    bool IsFinance = false);
+    bool IsFinance = false,
+    bool SheetExport = false);
 
 public sealed record EmployeeDto(
     string Code,
@@ -173,7 +174,36 @@ public sealed record AnswerRequest(string Answer);
 public sealed record ReassignRequest(string ToCode, string Reason);
 
 /// <summary>One thing that is due for the caller. Kind is a ReminderKind name; the app words it.</summary>
-public sealed record ReminderDto(ReminderType Kind, int Year, int Month, int Count, DateOnly Deadline);
+public sealed record ReminderDto(ReminderType Kind, int Year, int Month, int Count, DateOnly Deadline, string? From = null, DateTime? SentUtc = null);
+
+// ---- The people who report to the caller -----------------------------------------------------------------------------------
+
+/// <summary>One person below the caller. The list is in the order of a tree read from the top: a person comes right before their own reports.</summary>
+public sealed record TeamMemberDto(
+    string Code,
+    string Name,
+    string? ParentCode,
+    int Depth,
+    SheetStatus Status,
+    string? WaitingForName,
+    bool CanRemind,
+    DateTime? RemindedUtc);
+
+public sealed record ReminderSentDto(DateTime SentUtc);
+
+// ---- The summary for the approver ---------------------------------------------------------------------------------------------
+
+/// <summary>What there is to say of one person for the month. Note is for the screen only (the sheet is not approved yet); it is not part of the text.</summary>
+public sealed record SummaryPersonDto(string Name, IReadOnlyList<string> Lines, string? Note);
+
+public sealed record SummaryGroupDto(string? Title, IReadOnlyList<SummaryPersonDto> People);
+
+public sealed record SummaryOvertimeDto(string Name, DateOnly Date, string Interval, string Hours, string Description);
+
+/// <summary>The message that goes to the approver: the groups, the register of overtime, and all of it as text to copy</summary>
+public sealed record TeamSummaryDto(int Year, int Month, IReadOnlyList<SummaryGroupDto> Groups, IReadOnlyList<SummaryOvertimeDto> Overtime, string Text);
+
+public sealed record TeamStatusDto(int Year, int Month, DateOnly Deadline, IReadOnlyList<TeamMemberDto> Members);
 
 public sealed record RemindersDto(DateOnly Today, IReadOnlyList<ReminderDto> Items);
 

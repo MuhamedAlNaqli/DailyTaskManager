@@ -24,6 +24,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             ["Database:Provider"] = "sqlite",
             ["ConnectionStrings:Default"] = $"Data Source={_database}",
             ["Authentication:Mode"] = "Test",
+            ["Features:SheetExport"] = "true", // the file tests; the tests of the switched-off product say "false"
+            ["Features:FinanceAndLegal"] = "true", // the finance and legal tests; the tests of the switched-off product say "false"
             ["Bootstrap:AdminCode"] = "Z-000",
             ["Bootstrap:AdminAccounts:0"] = @"dev\admin"
         };

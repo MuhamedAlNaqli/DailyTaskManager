@@ -104,10 +104,25 @@ public interface IEmployeeShell
 {
     /// <summary>Back to the sign-in screen. The next start shows it too, until the user signs in again with "remember me".</summary>
     void SignOut();
+
+    /// <summary>Puts a text on the clipboard</summary>
+    Task CopyAsync(string text);
 }
 
 public sealed class EmployeeShell : IEmployeeShell
 {
+    public async Task CopyAsync(string text)
+    {
+        if (App.Current is App app && app.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow?.Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(text);
+
+            // Hands the text to Windows itself, so it stays on the clipboard (and other programs can read it) whatever the app does next
+            await clipboard.FlushAsync();
+        }
+    }
+
     public void SignOut()
     {
         AppMode.Set(Mode.Consultant);

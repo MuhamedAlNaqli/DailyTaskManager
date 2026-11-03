@@ -74,7 +74,7 @@ public static class EmployeeReminders
     }
 
     public static string Signature(IReadOnlyList<ReminderDto> items) =>
-        string.Join("|", items.OrderBy(i => i.Kind).ThenBy(i => i.Year).ThenBy(i => i.Month).Select(i => $"{i.Kind}:{i.Year}-{i.Month}:{i.Count}"));
+        string.Join("|", items.OrderBy(i => i.Kind).ThenBy(i => i.Year).ThenBy(i => i.Month).Select(i => $"{i.Kind}:{i.Year}-{i.Month}:{i.Count}:{i.SentUtc:O}"));
 
     /// <summary>The text of one notification for everything that is due</summary>
     public static (string Title, string Message) Compose(IReadOnlyList<ReminderDto> items)

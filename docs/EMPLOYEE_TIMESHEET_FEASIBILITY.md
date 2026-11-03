@@ -570,3 +570,30 @@ The restructurings that were first left for later were done afterwards; see sect
 
 Still open: the printed sheet styles each cell separately (fine for the size of the company; apply styles to ranges if a sheet of many hundreds of employees is ever printed), and two servers writing the same audit log would block each other's events through the unique index (the design is one server).
 
+## 21. Supervisors: reminders, the team tree, the summary; finance and legal switched off
+
+Asked for after the first trial with the colleagues' own monthly message to the legal department.
+
+| Request | What was done |
+| --- | --- |
+| The supervisor sees exactly who has not submitted | A tab "Moj tim" in the employee window: everybody below the supervisor, with the status of the chosen month (not submitted, submitted and who it waits for, returned, approved). `GET /api/team/{y}/{m}/status`. |
+| A reminder to each person that appears as a notification on their computer | `POST /api/team/{y}/{m}/remind/{code}` and a button for each person (and "Podsjeti sve koji nisu predali"). It is stored (`team_nudges`, migration `TeamNudges`) and comes back in that person's `/api/reminders` as `Nudged` with the name of who asked; the banner and the scheduled task (every 30 minutes, working days 07:00–20:00) show it, as a new notification each time (the moment it was sent is part of the signature). It lasts seven days and goes as soon as the month is submitted. Rules: only people below the caller; not for a month that has not begun or one the person was not employed in; once in four hours per person, whoever asks. Audited (`TeamReminderSent`). |
+| The supervisor sees the people below as a tree | The same tab: indented by level, a person right before their own reports (`TeamService.TreeOfAsync`; the designated approver of the top person is never walked into twice). |
+| Finance and legal out for now, behind a feature flag | `Features:FinanceAndLegal` (default off). Off: the lawyer's "final approver" flag is ignored when chains are built (the chain runs to the top, so nothing waits for a person who never opens the app), the finance and final-approver roles are not granted, `/api/me` reports both as false and `/api/export` is not served. The data stays; switching it on restores everything. The tests run with it on, and one test file with it off. |
+| The printout the supervisors send to legal today | "Pregled za odobravanje" (Excel or PDF, from Ispis in the team tab): for each person one statement as in the message ("Nema prekovremenih sati niti izostanaka.", "Prekovremeni sati prikazani u tabeli ispod.", then absences and business trips as periods such as "Službeno putovanje: 21.10.-23.10."; leave across a weekend is one period), grouped by the team lead they report to, and the register of overtime in the five columns of the message (employee, date, start and end, hours with a comma, short description). It covers everybody below, whatever the status; a sheet that is not approved is marked. `AbsencePeriods` (domain) joins the days; `TeamSummary` draws it. |
+
+Left out on purpose: groups named like departments ("CRM", "DEV") because the chart has no department; the groups are named after the team lead. A department field on the employee would give the same headings.
+
+## 22. Entry by exception, and the message as the output
+
+The first version of section 21 made the output right (the message to the legal department) but left the entry as it was: the employee still had to fill the whole month. The change after the discussion with the team:
+
+| Before | Now |
+| --- | --- |
+| The employee fills every working day ("Popuni standardne dane") and then enters the exceptions | Every working day of an editable month is a standard day (8 hours) from the moment the month is opened, for every employee. There is no fill button. The employee enters only what differs: absence (code and period), overtime, work on a holiday. Taking an absence away gives the standard day back. A month with no exceptions can be submitted as it is. Weekends, state holidays and the person's own religious holidays stay empty; days outside the employment are not filled. |
+| A part day could be entered | Not offered: a person works the whole day or has an absence code. |
+| The output was a printed sheet (Excel, PDF) | The output is the message for the approver: "Pregled za odobravanje" in the team tab, shown as text with a "Kopiraj" button (the text goes to the clipboard and stays there, so it can be pasted into a mail). Everybody below the supervisor is listed, also those with nothing to report ("Nema prekovremenih sati niti izostanaka."), as the team writes it today; absences and business trips are periods with the name of the code; the register of overtime is tab separated, so it pastes into a table. Sheets that are not approved yet are named above the text, not inside it. `GET /api/team/{y}/{m}/summary`. |
+| Excel and PDF everywhere | Behind `Features:SheetExport` (default off): the own sheet, the approver's copy, the team sheet and the summary as a file. Off, the routes answer 404 and the menus are not shown; `/api/me` reports the setting. |
+
+A business trip is a period of absence with its own code (domestic, abroad, without per diem), written as "Službeno putovanje: 21.10.-23.10.". The mail of the team names the occasion too ("Network"); the entry has no free text for it. A description on an absence period would add it.
+

@@ -130,6 +130,18 @@ public sealed class CompanyApiClient : ICompanyApiClient
     public Task<DownloadedFile> GetTeamPrintAsync(int year, int month, string format, CancellationToken ct = default) =>
         DownloadAsync($"/api/team/{year}/{month}/print/{format}", ct);
 
+    public Task<DownloadedFile> GetTeamSummaryAsync(int year, int month, string format, CancellationToken ct = default) =>
+        DownloadAsync($"/api/team/{year}/{month}/summary/{format}", ct);
+
+    public Task<TeamSummaryDto> GetTeamSummaryTextAsync(int year, int month, CancellationToken ct = default) =>
+        GetAsync<TeamSummaryDto>($"/api/team/{year}/{month}/summary", ct);
+
+    public Task<TeamStatusDto> GetTeamStatusAsync(int year, int month, CancellationToken ct = default) =>
+        GetAsync<TeamStatusDto>($"/api/team/{year}/{month}/status", ct);
+
+    public Task RemindAsync(string code, int year, int month, CancellationToken ct = default) =>
+        SendAsync<ReminderSentDto>(HttpMethod.Post, $"/api/team/{year}/{month}/remind/{Uri.EscapeDataString(code)}", null, ct);
+
     /// <summary>For finance and the administrator: every approved timesheet of the month on one printed sheet</summary>
     public Task<DownloadedFile> GetApprovedExportAsync(int year, int month, string format, CancellationToken ct = default) =>
         DownloadAsync($"/api/export/{year}/{month}/{format}", ct);

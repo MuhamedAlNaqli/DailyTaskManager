@@ -24,7 +24,7 @@ public static class ApprovalEndpoints
             Run(() => service.RevisionAsync(Identities.EmployeeCode(user)!, code, year, month, revision)));
 
         approvals.MapGet("/{code}/{year:int}/{month:int}/print/{format}", (string code, int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
-            File(() => service.ReviewAsync(Identities.EmployeeCode(user)!, code, year, month, format)));
+            File(() => service.ReviewAsync(Identities.EmployeeCode(user)!, code, year, month, format))).RequireSheetExport();
 
         approvals.MapPost("/{code}/{year:int}/{month:int}/approve", (string code, int year, int month, ClaimsPrincipal user, WorkflowService service) =>
             Run(() => service.ApproveAsync(Identities.EmployeeCode(user)!, code, year, month)));

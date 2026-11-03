@@ -38,8 +38,11 @@ public partial class EmployeeViewModel : ObservableObject
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private string _infoText = "";
 
-    /// <summary>The person has people reporting to them: the sheet of their team can be printed</summary>
+    /// <summary>The person has people reporting to them</summary>
     [ObservableProperty] private bool _isApprover;
+
+    /// <summary>The server gives the timesheet as an Excel or PDF file (switched off for now)</summary>
+    [ObservableProperty] private bool _canExport;
 
     /// <summary>The month as a calendar instead of a list; remembered for the next time</summary>
     [ObservableProperty]
@@ -64,6 +67,9 @@ public partial class EmployeeViewModel : ObservableObject
     /// <summary>The "for approval" part is shown instead of the employee's own month</summary>
     [ObservableProperty] private bool _inApprovals;
 
+    /// <summary>The people below the person are shown as a tree, with who has submitted the month</summary>
+    [ObservableProperty] private bool _inTeam;
+
     /// <summary>Someone else's timesheet is open (read only)</summary>
     [ObservableProperty] private bool _isReviewing;
 
@@ -75,17 +81,24 @@ public partial class EmployeeViewModel : ObservableObject
     /// <summary>The timesheets waiting for this person as an approver</summary>
     public PendingListViewModel PendingApprovals { get; } = new();
 
+    /// <summary>The people below this person, as a tree</summary>
+    public TeamViewModel Team { get; } = new();
+
     /// <summary>What is due for this person (submit, fix, approve)</summary>
     public RemindersViewModel Reminders { get; } = new();
 
     public bool HasInfo => InfoText.Length > 0;
 
-    public bool ShowMineToolbar => IsConnected && !InApprovals;
+    public bool ShowMineToolbar => IsConnected && InMine;
+
+    public bool InMine => !InApprovals && !InTeam;
+
+    public bool ShowTeamToolbar => IsConnected && InTeam;
 
     public bool ShowMonthNav => IsConnected && !IsReviewing;
 
     /// <summary>A person with nobody above them decides on their own timesheet from their own screen</summary>
-    public bool CanApproveOwn => CanAct && !IsReviewing && !InApprovals;
+    public bool CanApproveOwn => CanAct && !IsReviewing && InMine;
 
     public bool ShowApprovalsToolbar => IsConnected && InApprovals && !IsReviewing;
 
@@ -96,6 +109,8 @@ public partial class EmployeeViewModel : ObservableObject
     partial void OnInfoTextChanged(string value) => OnPropertyChanged(nameof(HasInfo));
 
     partial void OnInApprovalsChanged(bool value) => RaiseModeChanged();
+
+    partial void OnInTeamChanged(bool value) => RaiseModeChanged();
 
     partial void OnIsReviewingChanged(bool value) => RaiseModeChanged();
 
@@ -109,6 +124,8 @@ public partial class EmployeeViewModel : ObservableObject
         OnPropertyChanged(nameof(CanApproveOwn));
         OnPropertyChanged(nameof(ShowApprovalsToolbar));
         OnPropertyChanged(nameof(ShowMineToolbar));
+        OnPropertyChanged(nameof(InMine));
+        OnPropertyChanged(nameof(ShowTeamToolbar));
         OnPropertyChanged(nameof(ShowReviewToolbar));
         OnPropertyChanged(nameof(ShowApprovalsHint));
     }
@@ -141,6 +158,7 @@ public partial class EmployeeViewModel : ObservableObject
                 var me = await _client.GetMeAsync();
                 WhoText = $"{me.Name} · {me.Code}";
                 IsApprover = me.IsApprover;
+                CanExport = me.SheetExport;
             }
 
             return await LoadCurrentAsync();
@@ -246,7 +264,8 @@ public partial class EmployeeViewModel : ObservableObject
     {
         Year = DateTime.Today.Year;
         Month = DateTime.Today.Month;
-        return LoadAsync();
+        MonthTitle = EmployeeFormat.Month(Year, Month);
+        return InTeam ? RefreshTeamAsync() : LoadAsync();
     }
 
     private async Task ChangeMonthAsync(int delta)
@@ -256,6 +275,14 @@ public partial class EmployeeViewModel : ObservableObject
         var next = new DateTime(Year, Month, 1).AddMonths(delta);
         Year = next.Year;
         Month = next.Month;
+
+        // In the team the month chooses which month of the people below is shown
+        if (InTeam)
+        {
+            MonthTitle = EmployeeFormat.Month(Year, Month);
+            await RefreshTeamAsync();
+            return;
+        }
 
         // In the list of timesheets for approval the month only chooses the month of the team sheet
         if (InApprovals)
@@ -274,15 +301,6 @@ public partial class EmployeeViewModel : ObservableObject
     }
 
     // ---- Editing ---------------------------------------------------------------------------------------------------
-
-    [RelayCommand]
-    private async Task FillStandardDaysAsync()
-    {
-        if (!IsEditable) return;
-        var confirmed = await _dialogs.ConfirmAsync("Popuni standardne dane",
-            $"Svaki radni dan bez unosa u mjesecu {MonthTitle} dobit će redovan rad od 8 sati. Praznici i vaši vjerski praznici se preskaču. Nastaviti?");
-        if (confirmed) await RunAsync(() => _client.FillStandardDaysAsync(Year, Month));
-    }
 
     /// <summary>A new entry: the form changes with the code (hours, absence over several days, or overtime)</summary>
     [RelayCommand]
@@ -356,6 +374,10 @@ public partial class EmployeeViewModel : ObservableObject
         ? _client.GetPrintAsync(Year, Month, f)
         : _client.GetReviewPrintAsync(_reviewCode, Year, Month, f));
 
+    /// <summary>The message for the approver: what there is to report for everybody below, and the overtime register</summary>
+    [RelayCommand]
+    private Task PrintSummaryAsync(string? format) => SaveFileAsync(format, f => _client.GetTeamSummaryAsync(Year, Month, f));
+
     /// <summary>The month of everybody who reports to the signed-in person, on one sheet, whatever the status of each</summary>
     [RelayCommand]
     private Task PrintTeamAsync(string? format) => SaveFileAsync(format, f => _client.GetTeamPrintAsync(Year, Month, f));
@@ -406,6 +428,7 @@ public partial class EmployeeViewModel : ObservableObject
     private async Task ShowMineAsync()
     {
         InApprovals = false;
+        InTeam = false;
         IsReviewing = false;
         _reviewCode = null;
         await LoadAsync();
@@ -414,6 +437,7 @@ public partial class EmployeeViewModel : ObservableObject
     [RelayCommand]
     private async Task ShowApprovalsAsync()
     {
+        InTeam = false;
         InApprovals = true;
         IsReviewing = false;
         _reviewCode = null;
@@ -466,6 +490,122 @@ public partial class EmployeeViewModel : ObservableObject
         if (message == null) return;
 
         if (await RunAsync(() => _client.ReturnAsync(code, Year, Month, message), refreshPending: true)) InfoText = "Šihtarica je vraćena zaposleniku.";
+    }
+
+    // ---- The team --------------------------------------------------------------------------------------------------
+
+    [RelayCommand]
+    private async Task ShowTeamAsync()
+    {
+        InApprovals = false;
+        InTeam = true;
+        Team.ShowSummary = false;
+        IsReviewing = false;
+        _reviewCode = null;
+        ClearSheet();
+        InfoText = "";
+        await RefreshTeamAsync();
+    }
+
+    private Task RefreshTeamAsync() => RunTeamAsync(async () =>
+    {
+        await Team.RefreshAsync(_client, Year, Month);
+        if (Team.ShowSummary) await Team.LoadSummaryAsync(_client, Year, Month);
+    });
+
+    /// <summary>The message for the approver: what there is to report for everybody below, as text to read and copy</summary>
+    [RelayCommand]
+    private async Task ShowSummaryAsync()
+    {
+        await RunTeamAsync(async () =>
+        {
+            await Team.LoadSummaryAsync(_client, Year, Month);
+            Team.ShowSummary = true;
+        });
+    }
+
+    [RelayCommand]
+    private void ShowTree() => Team.ShowSummary = false;
+
+    [RelayCommand]
+    private async Task CopySummaryAsync()
+    {
+        if (Team.SummaryBody.Length == 0) return;
+        await _shell.CopyAsync(Team.SummaryBody);
+        InfoText = "Kopirano. Zalijepite u mail.";
+    }
+
+    /// <summary>One person of the team: asks them, by name, to submit the month. Their computer shows a notification.</summary>
+    [RelayCommand]
+    private async Task RemindAsync(TeamRow? row)
+    {
+        if (row == null || !row.CanRemind) return;
+
+        await RunTeamAsync(async () =>
+        {
+            try
+            {
+                await _client.RemindAsync(row.Code, Year, Month);
+                row.MarkReminded(DateTime.UtcNow);
+                InfoText = $"Podsjetnik je poslan: {row.Name}.";
+            }
+            catch (ApiException ex) when (ex.Code is "already-reminded" or "nothing-to-remind" or "not-in-team")
+            {
+                ErrorText = TeamViewModel.ReminderRefusal(ex, row.Name);
+            }
+        });
+    }
+
+    /// <summary>Everybody who has not submitted, except those who were reminded a moment ago</summary>
+    [RelayCommand]
+    private async Task RemindAllAsync()
+    {
+        await RunTeamAsync(async () =>
+        {
+            var sent = 0;
+            foreach (var row in Team.Rows.Where(r => r.CanRemind).ToList())
+            {
+                try
+                {
+                    await _client.RemindAsync(row.Code, Year, Month);
+                    row.MarkReminded(DateTime.UtcNow);
+                    sent++;
+                }
+                catch (ApiException ex) when (ex.Code is "already-reminded" or "nothing-to-remind")
+                {
+                    // Reminded a moment ago, or nothing left to ask for: leave this one out
+                }
+            }
+
+            InfoText = sent == 0 ? "Svi koji nisu predali su već podsjećeni." : $"Podsjetnik je poslan: {sent}.";
+        });
+    }
+
+    /// <summary>Runs one action of the team tab with the same error handling as the month</summary>
+    private async Task RunTeamAsync(Func<Task> action)
+    {
+        if (IsBusy) return;
+        try
+        {
+            IsBusy = true;
+            ErrorText = "";
+            InfoText = "";
+            await action();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(ex, "The team could not be read or reminded ({Code})", ex.Code);
+            ErrorText = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "The team tab failed");
+            ErrorText = "Došlo je do greške: " + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     // ---- Sign-out ----------------------------------------------------------------------------------------------------

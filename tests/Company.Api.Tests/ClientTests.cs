@@ -49,7 +49,7 @@ public class ClientTests
             sheet = await client.SetEntryAsync(2026, 9, new DateOnly(2026, 9, 16), new SetEntryRequest(Codes.RegularWork, 360));
             Assert.AreEqual(360, sheet.Days.Single(d => d.Date.Day == 16).Entries.Single().Minutes);
             sheet = await client.ClearEntryAsync(2026, 9, new DateOnly(2026, 9, 16), Codes.RegularWork);
-            Assert.AreEqual(0, sheet.Days.Single(d => d.Date.Day == 16).Entries.Count);
+            Assert.AreEqual(480, sheet.Days.Single(d => d.Date.Day == 16).Entries.Single().Minutes, "the standard day comes back");
 
             Assert.AreEqual(2026, (await client.GetSheetAsync(2026, 9)).Year);
         }

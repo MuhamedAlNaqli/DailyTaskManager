@@ -29,7 +29,7 @@ public class TimesheetTests
     }
 
     [TestMethod]
-    public async Task ANewMonth_ShouldBeAnEmptyDraftWithTheCalendarOfTheMonth()
+    public async Task ANewMonth_ShouldBeADraftWithTheStandardDaysAlreadyFilledIn()
     {
         var (factory, amra) = await StartAsync();
         using (factory)
@@ -42,8 +42,10 @@ public class TimesheetTests
             Assert.AreEqual("U", sheet.Days[0].Weekday, "1 September 2026 is a Tuesday");
             Assert.AreEqual(DayKind.Weekend, sheet.Days.Single(d => d.Date.Day == 5).Type);
             Assert.AreEqual(176 * 60, sheet.Summary.ExpectedFundMinutes);
-            Assert.AreEqual(0, sheet.Summary.FundMinutes);
-            Assert.AreEqual(22, sheet.Issues.Count(i => i.RuleId == "V-04"), "every working day is missing");
+            Assert.AreEqual(176 * 60, sheet.Summary.FundMinutes, "everybody worked the standard day unless they say otherwise");
+            Assert.AreEqual(0, sheet.Issues.Count);
+            Assert.AreEqual(22, sheet.Days.Count(d => d.Entries.Any(e => e.Code == Codes.RegularWork && e.Minutes == 480)));
+            Assert.IsTrue(sheet.Days.Where(d => d.Type != DayKind.Working).All(d => d.Entries.Count == 0), "weekends and holidays stay empty");
         }
     }
 
@@ -153,10 +155,10 @@ public class TimesheetTests
         var (factory, amra) = await StartAsync();
         using (factory)
         {
-            await Read(await amra.PutAsJsonAsync(Url + "/days/2026-09-01", new SetEntryRequest(Codes.RegularWork, 480)));
-            var sheet = await Read(await amra.DeleteAsync(Url + "/days/2026-09-01/1010"));
-            Assert.AreEqual(0, sheet.Days[0].Entries.Count);
-            Assert.AreEqual(HttpStatusCode.NotFound, (await amra.DeleteAsync(Url + "/days/2026-09-01/1010")).StatusCode);
+            await Read(await amra.PutAsJsonAsync(Url + "/days/2026-09-01", new SetEntryRequest(Codes.AnnualLeaveA, 0)));
+            var sheet = await Read(await amra.DeleteAsync(Url + "/days/2026-09-01/1022"));
+            CollectionAssert.AreEqual(new[] { Codes.RegularWork }, sheet.Days[0].Entries.Select(e => e.Code).ToArray(), "without the leave the day is a standard day again");
+            Assert.AreEqual(HttpStatusCode.NotFound, (await amra.DeleteAsync(Url + "/days/2026-09-01/1022")).StatusCode);
         }
     }
 
@@ -294,11 +296,11 @@ public class TimesheetTests
         var (factory, amra) = await StartAsync();
         using (factory)
         {
-            await Read(await amra.PostAsync(Url + "/fill-standard-days", null));
+            await Read(await amra.PutAsJsonAsync(Url + "/days/2026-09-01", new SetEntryRequest(Codes.AnnualLeaveA, 0)));
 
             var benjamin = factory.As(@"corp\benjamin");
             var theirs = await benjamin.GetFromJsonAsync<SheetDto>(Url);
-            Assert.AreEqual(0, theirs!.Summary.FundMinutes, "a colleague's month starts empty");
+            CollectionAssert.AreEqual(new[] { Codes.RegularWork }, theirs!.Days[0].Entries.Select(e => e.Code).ToArray(), "a colleague's leave is not theirs");
         }
     }
 

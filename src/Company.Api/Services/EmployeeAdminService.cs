@@ -71,7 +71,7 @@ public sealed class EmployeeAdminService
             || employee.DesignatedApproverCode != null && !await _db.Employees.AnyAsync(e => e.Code == employee.DesignatedApproverCode))
             throw new SheetException(400, "unknown-person", "The supervisor or the designated approver is not an employee.");
 
-        var problem = await _chart.CheckWithAsync(ChartService.ToPerson(employee));
+        var problem = await _chart.CheckWithAsync(_chart.ToPerson(employee));
         if (problem != ChainProblem.None)
             throw new SheetException(409, problem == ChainProblem.Cycle ? "chart-cycle" : "chart-invalid",
                 problem == ChainProblem.Cycle ? "This would make someone their own supervisor." : "The chart would be invalid.");

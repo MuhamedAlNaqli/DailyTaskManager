@@ -51,7 +51,7 @@
 
         <!-- Own timesheet or timesheets waiting for approval -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsConnected}">
-            <Button Name="EmpMineTab" Command="{Binding ShowMineCommand}" Classes.secondary="{Binding InApprovals}" Classes.primary="{Binding !InApprovals}" Padding="16,8">
+            <Button Name="EmpMineTab" Command="{Binding ShowMineCommand}" Classes.secondary="{Binding !InMine}" Classes.primary="{Binding InMine}" Padding="16,8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <materialIcons:MaterialIcon Kind="AccountClock" Width="18" Height="18"/>
                     <TextBlock Text="Moja šihtarica"/>
@@ -61,6 +61,12 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <materialIcons:MaterialIcon Kind="AccountGroup" Width="18" Height="18"/>
                     <TextBlock Name="EmpApprovalsTabText" Text="{Binding PendingApprovals.TabText}"/>
+                </StackPanel>
+            </Button>
+            <Button Name="EmpTeamTab" Command="{Binding ShowTeamCommand}" IsVisible="{Binding IsApprover}" Classes.secondary="{Binding !InTeam}" Classes.primary="{Binding InTeam}" Padding="16,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="FileTree" Width="18" Height="18"/>
+                    <TextBlock Text="Moj tim"/>
                 </StackPanel>
             </Button>
         </StackPanel>
@@ -111,7 +117,7 @@
                         <TextBlock Text="Vrati na ispravku…"/>
                     </StackPanel>
                 </Button>
-                <DropDownButton Name="EmpReviewPrintButton" Classes="secondary" Padding="14,9">
+                <DropDownButton Name="EmpReviewPrintButton" Classes="secondary" Padding="14,9" IsVisible="{Binding CanExport}">
                     <DropDownButton.Content>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="Printer" Width="18" Height="18"/>
@@ -138,28 +144,62 @@
             </Button>
         </Grid>
 
-        <!-- Toolbar of the list of timesheets for approval -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowApprovalsToolbar}">
-            <DropDownButton Name="EmpTeamPrintButton" Classes="secondary" Padding="14,9" IsVisible="{Binding IsApprover}">
+        <!-- Toolbar of the team -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowTeamToolbar}">
+            <Button Name="EmpRemindAllButton" Command="{Binding RemindAllCommand}" IsEnabled="{Binding Team.HasPeopleToRemind}" Classes="primary" Padding="14,9"
+                    ToolTip.Tip="Svima koji nisu predali šihtaricu šalje obavijest na računar">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="BellRing" Width="18" Height="18"/>
+                    <TextBlock Text="Podsjeti sve koji nisu predali"/>
+                </StackPanel>
+            </Button>
+            <Button Name="EmpSummaryButton" Command="{Binding ShowSummaryCommand}" Classes="secondary" Padding="14,9" IsVisible="{Binding Team.ShowTree}"
+                    ToolTip.Tip="Poruka za odobravatelja: ko je radio prekovremeno, ko je bio odsutan">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="TextBoxOutline" Width="18" Height="18"/>
+                    <TextBlock Text="Pregled za odobravanje"/>
+                </StackPanel>
+            </Button>
+            <Button Name="EmpCopySummaryButton" Command="{Binding CopySummaryCommand}" Classes="primary" Padding="14,9" IsVisible="{Binding Team.ShowSummary}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="18" Height="18"/>
+                    <TextBlock Text="Kopiraj"/>
+                </StackPanel>
+            </Button>
+            <Button Name="EmpTreeButton" Command="{Binding ShowTreeCommand}" Classes="secondary" Padding="14,9" IsVisible="{Binding Team.ShowSummary}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="FileTree" Width="18" Height="18"/>
+                    <TextBlock Text="Nazad na stablo"/>
+                </StackPanel>
+            </Button>
+            <DropDownButton Name="EmpTeamPrintButton" Classes="secondary" Padding="14,9" IsVisible="{Binding CanExport}">
                 <DropDownButton.Content>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <materialIcons:MaterialIcon Kind="Printer" Width="18" Height="18"/>
-                        <TextBlock Text="Šihtarica tima"/>
+                        <TextBlock Text="Ispis"/>
                     </StackPanel>
                 </DropDownButton.Content>
                 <DropDownButton.Flyout>
                     <MenuFlyout>
-                        <MenuItem Header="Excel" Command="{Binding PrintTeamCommand}" CommandParameter="xlsx">
+                        <MenuItem Header="Pregled za odobravanje (Excel)" Command="{Binding PrintSummaryCommand}" CommandParameter="xlsx">
                             <MenuItem.Icon><materialIcons:MaterialIcon Kind="FileExcelOutline" Width="16" Height="16"/></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="PDF" Command="{Binding PrintTeamCommand}" CommandParameter="pdf">
+                        <MenuItem Header="Pregled za odobravanje (PDF)" Command="{Binding PrintSummaryCommand}" CommandParameter="pdf">
+                            <MenuItem.Icon><materialIcons:MaterialIcon Kind="FilePdfBox" Width="16" Height="16"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="Šihtarice tima (Excel)" Command="{Binding PrintTeamCommand}" CommandParameter="xlsx">
+                            <MenuItem.Icon><materialIcons:MaterialIcon Kind="FileExcelOutline" Width="16" Height="16"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Šihtarice tima (PDF)" Command="{Binding PrintTeamCommand}" CommandParameter="pdf">
                             <MenuItem.Icon><materialIcons:MaterialIcon Kind="FilePdfBox" Width="16" Height="16"/></MenuItem.Icon>
                         </MenuItem>
                     </MenuFlyout>
                 </DropDownButton.Flyout>
             </DropDownButton>
-            <TextBlock Text="Izaberite mjesec gore: šihtarica tima sadrži sve koji vam se javljaju, sa statusom svake šihtarice." VerticalAlignment="Center"
-                       IsVisible="{Binding IsApprover}" Foreground="{DynamicResource AppTextMuted}"/>
+            <Button Name="EmpTeamRefreshButton" Command="{Binding ShowTeamCommand}" Classes="secondary" Padding="10,9" ToolTip.Tip="Osvježi">
+                <materialIcons:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
+            </Button>
         </StackPanel>
 
         <!-- Toolbar of the own month -->
@@ -169,12 +209,6 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <materialIcons:MaterialIcon Kind="Plus" Width="18" Height="18"/>
                         <TextBlock Text="Novi unos"/>
-                    </StackPanel>
-                </Button>
-                <Button Name="EmpFillButton" Command="{Binding FillStandardDaysCommand}" IsEnabled="{Binding IsEditable}" Classes="secondary" Padding="14,9">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <materialIcons:MaterialIcon Kind="CalendarCheck" Width="18" Height="18"/>
-                        <TextBlock Text="Popuni standardne dane"/>
                     </StackPanel>
                 </Button>
                 <Button Name="EmpSubmitButton" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" Classes="primary" Padding="14,9">
@@ -194,7 +228,7 @@
             </WrapPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                <DropDownButton Name="EmpPrintButton" Classes="secondary" Padding="14,9">
+                <DropDownButton Name="EmpPrintButton" Classes="secondary" Padding="14,9" IsVisible="{Binding CanExport}">
                     <DropDownButton.Content>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="Printer" Width="18" Height="18"/>
@@ -207,13 +241,6 @@
                                 <MenuItem.Icon><materialIcons:MaterialIcon Kind="FileExcelOutline" Width="16" Height="16"/></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Moja šihtarica (PDF)" Command="{Binding PrintCommand}" CommandParameter="pdf">
-                                <MenuItem.Icon><materialIcons:MaterialIcon Kind="FilePdfBox" Width="16" Height="16"/></MenuItem.Icon>
-                            </MenuItem>
-                            <Separator IsVisible="{Binding IsApprover}"/>
-                            <MenuItem Header="Šihtarica tima (Excel)" Command="{Binding PrintTeamCommand}" CommandParameter="xlsx" IsVisible="{Binding IsApprover}">
-                                <MenuItem.Icon><materialIcons:MaterialIcon Kind="FileExcelOutline" Width="16" Height="16"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Šihtarica tima (PDF)" Command="{Binding PrintTeamCommand}" CommandParameter="pdf" IsVisible="{Binding IsApprover}">
                                 <MenuItem.Icon><materialIcons:MaterialIcon Kind="FilePdfBox" Width="16" Height="16"/></MenuItem.Icon>
                             </MenuItem>
                         </MenuFlyout>
@@ -236,8 +263,54 @@
         <!-- Body -->
         <Grid Grid.Row="4" ColumnDefinitions="*,16,380" IsVisible="{Binding IsConnected}">
 
+            <!-- The team as a tree -->
+            <Border Grid.ColumnSpan="3" IsVisible="{Binding InTeam}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12">
+                <Grid RowDefinitions="Auto,*">
+                    <StackPanel Margin="20,16,20,8" Spacing="2">
+                        <TextBlock Text="Moj tim" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                        <TextBlock Name="EmpTeamSummary" Text="{Binding Team.SummaryText}" IsVisible="{Binding Team.ShowTree}" Foreground="{DynamicResource AppTextMuted}"/>
+                    </StackPanel>
+                    <TextBlock Name="EmpTeamEmpty" Grid.Row="1" IsVisible="{Binding Team.IsEmpty}" Text="Niko se ne javlja vama." Margin="20" Foreground="{DynamicResource AppTextMuted}"/>
+                    <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding Team.ShowSummary}" Margin="20,0,20,16">
+                        <TextBlock Name="EmpSummaryNote" Text="{Binding Team.SummaryNote}" IsVisible="{Binding Team.HasSummaryNote}" TextWrapping="Wrap"
+                                   Foreground="#B45309" Margin="0,0,0,8"/>
+                        <TextBox Name="EmpSummaryText" Grid.Row="1" Text="{Binding Team.SummaryBody}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 FontFamily="Consolas,Menlo,monospace" FontSize="13"/>
+                    </Grid>
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding Team.ShowTree}">
+                        <ItemsControl Name="EmpTeamList" ItemsSource="{Binding Team.Rows}" Margin="12,0,12,12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="em:TeamRow">
+                                    <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1" Padding="0,8">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{Binding Indent}">
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,10,0">
+                                                <materialIcons:MaterialIcon Kind="SubdirectoryArrowRight" Width="16" Height="16" IsVisible="{Binding IsBelow}" Foreground="{DynamicResource AppTextMuted}"/>
+                                                <materialIcons:MaterialIcon Kind="AccountOutline" Width="20" Height="20" Foreground="{DynamicResource AppTextStrong}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrong}"/>
+                                                <TextBlock Text="{Binding ReminderText}" IsVisible="{Binding HasReminder}" FontSize="11" Foreground="{DynamicResource AppTextMuted}"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0"/>
+                                            <Button Grid.Column="3" Classes="secondary" Padding="10,5" FontSize="12" IsVisible="{Binding CanRemind}"
+                                                    Command="{Binding $parent[Window].DataContext.RemindCommand}" CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Šalje obavijest na računar ove osobe">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <materialIcons:MaterialIcon Kind="BellRing" Width="14" Height="14"/>
+                                                    <TextBlock Text="Podsjeti"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
             <!-- The month: a list or a calendar -->
-            <Border Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12">
+            <Border IsVisible="{Binding !InTeam}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12">
                 <Grid>
                     <TextBlock Name="EmpApprovalsHint" IsVisible="{Binding ShowApprovalsHint}" Text="Izaberite šihtaricu iz liste desno da je pregledate." Margin="24"
                                Foreground="{DynamicResource AppTextMuted}"/>
@@ -335,7 +408,7 @@
             </Border>
 
             <!-- Pending approvals, workflow, summary, overtime, findings -->
-            <ScrollViewer Grid.Column="2">
+            <ScrollViewer Grid.Column="2" IsVisible="{Binding !InTeam}">
                 <StackPanel Spacing="14">
                     <Border IsVisible="{Binding InApprovals}" Background="{DynamicResource AppSurface}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16">
                         <StackPanel Spacing="8">

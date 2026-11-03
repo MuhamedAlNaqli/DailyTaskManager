@@ -53,5 +53,16 @@ public interface ICompanyApiClient
 
     Task<DownloadedFile> GetTeamPrintAsync(int year, int month, string format, CancellationToken ct = default);
 
+    /// <summary>The message for the approver: what there is to report for everybody below the caller, and the register of overtime</summary>
+    Task<DownloadedFile> GetTeamSummaryAsync(int year, int month, string format, CancellationToken ct = default);
+
+    /// <summary>The same message as text, for the screen and for copying into a mail</summary>
+    Task<TeamSummaryDto> GetTeamSummaryTextAsync(int year, int month, CancellationToken ct = default);
+
+    Task<TeamStatusDto> GetTeamStatusAsync(int year, int month, CancellationToken ct = default);
+
+    /// <summary>Asks one person below the caller to submit the month; their computer shows a notification</summary>
+    Task RemindAsync(string code, int year, int month, CancellationToken ct = default);
+
     Task<DownloadedFile> GetApprovedExportAsync(int year, int month, string format, CancellationToken ct = default);
 }

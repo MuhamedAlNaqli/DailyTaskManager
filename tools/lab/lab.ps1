@@ -72,6 +72,8 @@ $common = @{
     Bootstrap__AdminAccounts__0 = 'lab\admin'
     Reminders__StartFrom = $two.ToString('yyyy-MM')
 }
+# The finance role of the lab needs the part of the product that is switched off by default
+if ($Role -eq 'finance') { $common.Features__FinanceAndLegal = 'true' }
 function Start-Api($port, $mode, $environment) {
     foreach ($k in $common.Keys) { Set-Item "Env:$k" $common[$k] }
     $env:Authentication__Mode = $mode

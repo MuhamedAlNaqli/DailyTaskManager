@@ -470,6 +470,42 @@ namespace Company.Api.Data.Migrations
                     b.ToTable("state_holidays", (string)null);
                 });
 
+            modelBuilder.Entity("Company.Api.Data.TeamNudge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("FromCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromCode");
+
+                    b.HasIndex("EmployeeCode", "Year", "Month");
+
+                    b.ToTable("team_nudges", (string)null);
+                });
+
             modelBuilder.Entity("Company.Api.Data.EmployeeAccount", b =>
                 {
                     b.HasOne("Company.Api.Data.Employee", null)
@@ -548,6 +584,23 @@ namespace Company.Api.Data.Migrations
                         .WithMany()
                         .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Company.Api.Data.TeamNudge", b =>
+                {
+                    b.HasOne("Company.Api.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Company.Api.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("FromCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

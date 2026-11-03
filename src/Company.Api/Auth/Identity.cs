@@ -107,12 +107,14 @@ public sealed class EmployeeClaimsTransformation : IClaimsTransformation
     private readonly CompanyDbContext _db;
     private readonly EmployeeLookupCache _cache;
     private readonly ILogger<EmployeeClaimsTransformation> _logger;
+    private readonly CompanyFeatures _features;
 
-    public EmployeeClaimsTransformation(CompanyDbContext db, EmployeeLookupCache cache, ILogger<EmployeeClaimsTransformation> logger)
+    public EmployeeClaimsTransformation(CompanyDbContext db, EmployeeLookupCache cache, ILogger<EmployeeClaimsTransformation> logger, CompanyFeatures features)
     {
         _db = db;
         _cache = cache;
         _logger = logger;
+        _features = features;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -128,8 +130,8 @@ public sealed class EmployeeClaimsTransformation : IClaimsTransformation
         {
             identity.AddClaim(new Claim(Identities.EmployeeCodeClaim, found.Code));
             if (found.IsAdmin) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Admin));
-            if (found.IsFinalApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.FinalApprover));
-            if (found.IsFinance) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Finance));
+            if (_features.FinanceAndLegal && found.IsFinalApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.FinalApprover));
+            if (_features.FinanceAndLegal && found.IsFinance) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Finance));
             if (found.IsApprover) identity.AddClaim(new Claim(ClaimTypes.Role, Roles.Approver));
         }
 

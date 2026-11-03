@@ -24,6 +24,8 @@ holidays and audit are implemented; month entry, submission, approval, reminders
 | `Authentication:Entra:TenantId`, `ClientId`, `Audience` | Needed for `Entra` and `Both`; the server refuses to start without them |
 | `Bootstrap:AdminAccounts` | Sign-in names of the first administrators, for example `["CORP\\jane.admin"]`. Used once, while no employee exists. |
 | `Bootstrap:AdminCode` | Employee code given to that first administrator (default `Z-000`) |
+| `Features:SheetExport` | `false` by default. Off: the timesheet is not offered as an Excel or PDF file (own sheet, approver's copy, team sheet, summary file); the summary for the approver is read and copied as text. |
+| `Features:FinanceAndLegal` | `false` by default. Off: the legal department does not end the approval chain (it runs to the top of the chart), the legal and finance roles are ignored and `/api/export` is not served. Switch on when finance and legal start to use the app. |
 | `Reminders:StartFrom` | The first month that is reminded about, as `yyyy-MM` (for example the go-live month). Earlier months are ignored. Without it, last month counts as overdue on the first day. |
 | `Kestrel:Endpoints:Https:Url` / certificate | The HTTPS address and certificate of the server |
 
@@ -124,6 +126,13 @@ variable `Company__ApiUrl`):
 
 The employee chooses "Employee sign-in (company account)" on the first screen; the choice is remembered. In employee mode the app also registers a Windows scheduled task for the signed-in user (no administrator rights, no password) that asks the server every 30 minutes what is due and shows a notification. Plain `http://`
 is refused except for the local computer.
+
+A supervisor (anybody with people reporting to them) has a third tab, "Moj tim": everybody below them as a tree with the status of the
+month, a "Podsjeti" button for each person who has not submitted (and one for all of them) and the printouts. A reminder is written to
+the table `team_nudges` and reaches the person on their next check (the scheduled task runs every 30 minutes, on working days from 07:00
+to 20:00; the open app shows it at once). The same person is reminded at most once in four hours, whoever asks, and a reminder goes away
+when the month is submitted. The summary for approval (`/api/team/{year}/{month}/summary/{xlsx|pdf}`) lists, for everybody below, what
+there is to report (overtime, absences and business trips as periods) and the register of overtime.
 
 ## 8. Not yet implemented
 

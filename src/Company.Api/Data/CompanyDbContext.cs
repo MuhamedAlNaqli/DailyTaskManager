@@ -32,6 +32,8 @@ public class CompanyDbContext : DbContext
 
     public DbSet<SheetRevision> SheetRevisions => Set<SheetRevision>();
 
+    public DbSet<TeamNudge> TeamNudges => Set<TeamNudge>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Employee>(e =>
@@ -111,6 +113,16 @@ public class CompanyDbContext : DbContext
             e.Property(x => x.ActorCode).HasMaxLength(10).IsRequired();
             e.Property(x => x.OnBehalfOf).HasMaxLength(10);
             e.Property(x => x.Text).HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<TeamNudge>(e =>
+        {
+            e.ToTable("team_nudges");
+            e.HasIndex(x => new { x.EmployeeCode, x.Year, x.Month });
+            e.Property(x => x.EmployeeCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.FromCode).HasMaxLength(10).IsRequired();
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeCode).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.FromCode).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SheetRevision>(e =>

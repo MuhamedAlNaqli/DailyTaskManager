@@ -32,6 +32,8 @@ var mode = builder.AddCompanyAuthentication();
 builder.Services.AddCompanyAuthorization();
 
 builder.Services.AddHttpContextAccessor();
+var features = Company.Api.CompanyFeatures.From(builder.Configuration);
+builder.Services.AddSingleton(features);
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ChartService>();
 builder.Services.AddScoped<EmployeeAdminService>();
@@ -40,6 +42,7 @@ builder.Services.AddScoped<TimesheetService>();
 builder.Services.AddScoped<WorkflowService>();
 builder.Services.AddScoped<ReminderService>();
 builder.Services.AddScoped<PrintService>();
+builder.Services.AddScoped<TeamService>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<EmployeeLookupCache>();
 
@@ -119,7 +122,8 @@ app.MapMeEndpoints(mode);
 app.MapAdminEndpoints();
 app.MapTimesheetEndpoints();
 app.MapApprovalEndpoints();
-app.MapExportEndpoints();
+app.MapTeamEndpoints();
+app.MapExportEndpoints(features);
 
 app.Run();
 

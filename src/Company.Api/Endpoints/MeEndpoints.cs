@@ -30,7 +30,7 @@ public static class MeEndpoints
 
         var registered = app.MapGroup("/api").RequireAuthorization(Identities.RegisteredPolicy);
 
-        registered.MapGet("/me", async (ClaimsPrincipal user, CompanyDbContext db, ChartService chart) =>
+        registered.MapGet("/me", async (ClaimsPrincipal user, CompanyDbContext db, ChartService chart, CompanyFeatures features) =>
         {
             var code = Identities.EmployeeCode(user)!;
             var employee = await db.Employees.AsNoTracking().Include(e => e.Accounts).FirstAsync(e => e.Code == code);
@@ -42,11 +42,12 @@ public static class MeEndpoints
                 user.Identity?.Name ?? "",
                 employee.IsAdmin,
                 user.IsInRole(Roles.Approver),
-                employee.IsFinalApprover,
+                features.FinanceAndLegal && employee.IsFinalApprover,
                 employee.SupervisorCode,
                 outcome.Chain?.Approvers ?? Array.Empty<string>(),
                 mode.ToString(),
-                employee.IsFinance));
+                features.FinanceAndLegal && employee.IsFinance,
+                features.SheetExport));
         });
 
         // What is due for the caller today: the rules are the domain library's, this only gathers the facts

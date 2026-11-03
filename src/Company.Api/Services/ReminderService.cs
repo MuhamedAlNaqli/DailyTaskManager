@@ -17,6 +17,7 @@ public sealed class ReminderService
     private readonly WorkflowService _workflow;
     private readonly TimeProvider _time;
     private const int MonthsLookedBack = 6;
+    private const int NudgeLifetimeDays = 7;
     private readonly DateOnly? _startFrom;
 
     public ReminderService(CompanyDbContext db, WorkflowService workflow, TimeProvider time, IConfiguration configuration)
@@ -82,7 +83,28 @@ public sealed class ReminderService
             if (kind != null) items.Add(new ReminderDto(kind.Value.ToDto(), oldest.Year, oldest.Month, waiting.Count, deadline));
         }
 
+        await AddNudgesAsync(employeeCode, items);
         return new RemindersDto(today, items);
+    }
+
+    /// <summary>
+    /// A supervisor's request to submit a month, as long as it is recent and the month is still not submitted. It is the supervisor's
+    /// word, not a rule: the app shows who asked, and the notification is new each time (it carries the moment it was sent).
+    /// </summary>
+    private async Task AddNudgesAsync(string employeeCode, List<ReminderDto> items)
+    {
+        var since = _time.GetUtcNow().UtcDateTime.AddDays(-NudgeLifetimeDays);
+        var recent = await _db.TeamNudges.AsNoTracking().Where(n => n.EmployeeCode == employeeCode && n.CreatedUtc >= since).ToListAsync();
+        foreach (var latest in recent.GroupBy(n => (n.Year, n.Month)).Select(g => g.OrderByDescending(n => n.CreatedUtc).First()))
+        {
+            var status = await _db.Sheets.AsNoTracking().Where(s => s.EmployeeCode == employeeCode && s.Year == latest.Year && s.Month == latest.Month)
+                .Select(s => (TimesheetStatus?)s.Status).FirstOrDefaultAsync() ?? TimesheetStatus.Draft;
+            if (status is not (TimesheetStatus.Draft or TimesheetStatus.Returned)) continue;
+
+            var from = await _db.Employees.AsNoTracking().Where(e => e.Code == latest.FromCode).Select(e => e.Name).FirstOrDefaultAsync() ?? latest.FromCode;
+            var deadline = await SubmissionDeadlineAsync(latest.Year, latest.Month);
+            items.Add(new ReminderDto(ReminderType.Nudged, latest.Year, latest.Month, 1, deadline, from, DateTime.SpecifyKind(latest.CreatedUtc, DateTimeKind.Utc)));
+        }
     }
 
     private async Task<DateOnly> SubmissionDeadlineAsync(int year, int month) =>

@@ -43,9 +43,16 @@ public sealed class ChartService
 {
     private readonly CompanyDbContext _db;
 
-    public ChartService(CompanyDbContext db) => _db = db;
+    private readonly CompanyFeatures _features;
 
-    public static Person ToPerson(Employee e) => new(e.Code, e.SupervisorCode, e.IsFinalApprover, e.DesignatedApproverCode);
+    public ChartService(CompanyDbContext db, CompanyFeatures features)
+    {
+        _db = db;
+        _features = features;
+    }
+
+    /// <summary>Without the legal department in use nobody ends a chain: a timesheet would wait for a person who never opens the app</summary>
+    public Person ToPerson(Employee e) => new(e.Code, e.SupervisorCode, _features.FinanceAndLegal && e.IsFinalApprover, e.DesignatedApproverCode);
 
     public async Task<List<Person>> LoadAsync() =>
         (await _db.Employees.AsNoTracking().ToListAsync()).Select(ToPerson).ToList();

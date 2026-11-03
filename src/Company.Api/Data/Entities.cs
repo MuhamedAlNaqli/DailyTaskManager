@@ -210,6 +210,22 @@ public class SheetEvent
     public string? Text { get; set; }
 }
 
+/// <summary>A supervisor asked a person to submit the timesheet of a month; the person's computer shows it as a notification</summary>
+public class TeamNudge
+{
+    public int Id { get; set; }
+
+    public string EmployeeCode { get; set; } = "";
+
+    public string FromCode { get; set; } = "";
+
+    public int Year { get; set; }
+
+    public int Month { get; set; }
+
+    public DateTime CreatedUtc { get; set; }
+}
+
 /// <summary>What the sheet looked like when it was submitted, so a later correction can be compared with it</summary>
 public class SheetRevision
 {

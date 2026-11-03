@@ -159,7 +159,7 @@ public class ReviewFixesTests
         db.Accounts.AddRange(new EmployeeAccount { EmployeeCode = "Z-001", Account = @"corp\ena" }, new EmployeeAccount { EmployeeCode = "Z-002", Account = "ena@corp.com" });
         await db.SaveChangesAsync();
 
-        var transformation = new EmployeeClaimsTransformation(db, new EmployeeLookupCache(), NullLogger<EmployeeClaimsTransformation>.Instance);
+        var transformation = new EmployeeClaimsTransformation(db, new EmployeeLookupCache(), NullLogger<EmployeeClaimsTransformation>.Instance, new CompanyFeatures(true));
         var both = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, @"CORP\ena"), new Claim(ClaimTypes.Upn, "ena@corp.com") }, "Negotiate"));
         Assert.IsNull((await transformation.TransformAsync(both)).FindFirst(Identities.EmployeeCodeClaim), "two different employees: refused");
 

@@ -30,6 +30,7 @@ public class TextsAndEnumsTests
         {
             await factory.ImportAsync(ApiFactory.SmallList);
             await factory.LinkAsync("Z-001", @"corp\amra");
+            await factory.As(@"corp\amra").PutAsJsonAsync("/api/timesheet/2026/9/days/2026-09-01", new SetEntryRequest(Codes.RegularWork, 240));
             var json = await factory.As(@"corp\amra").GetStringAsync("/api/timesheet/2026/9");
             StringAssert.Contains(json, "\"status\":\"Draft\"");
             StringAssert.Contains(json, "\"type\":\"Working\"");

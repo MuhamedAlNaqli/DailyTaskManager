@@ -29,7 +29,7 @@ public static class LegacySheet
     /// The built-in font of the PDF library has no č and Č. Arial is on every Windows server and has all letters of the language;
     /// the others are what a Linux server usually has, so the sheet reads the same wherever it is drawn.
     /// </summary>
-    private static readonly string PdfFont = ChooseFont();
+    internal static readonly string PdfFont = ChooseFont();
 
     /// <summary>The first of these that the computer has; without any, the library's own font (which lacks č and Č)</summary>
     private static string ChooseFont()

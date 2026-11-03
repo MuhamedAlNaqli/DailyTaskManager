@@ -21,11 +21,12 @@ public class EmployeeViewModelTests
         public List<PendingApprovalDto> Pending { get; set; } = new();
         public List<ReminderDto> Reminders { get; set; } = new();
         public bool IsApprover { get; set; }
+        public bool SheetExport { get; set; }
 
         private Task<T> Record<T>(string call, T value) { Calls.Add(call); return Task.FromResult(value); }
 
         public Task<MeDto> GetMeAsync(CancellationToken ct = default) =>
-            Record("me", new MeDto("Z-001", "Amra Adžamija", @"corp\amra", false, IsApprover, false, "Z-002", new[] { "Z-002" }, "Test"));
+            Record("me", new MeDto("Z-001", "Amra Adžamija", @"corp\amra", false, IsApprover, false, "Z-002", new[] { "Z-002" }, "Test", false, SheetExport));
 
         public Task<SheetDto> GetSheetAsync(int year, int month, CancellationToken ct = default) { Calls.Add($"sheet {year}-{month}"); return GetSheet(year, month); }
         public Task<SheetDto> GetReviewAsync(string code, int year, int month, CancellationToken ct = default) { Calls.Add($"review {code} {year}-{month}"); return GetReview(code, year, month); }
@@ -56,6 +57,30 @@ public class EmployeeViewModelTests
         public Task<DownloadedFile> GetReviewPrintAsync(string code, int year, int month, string format, CancellationToken ct = default) => Record($"print {code} {format}", new DownloadedFile("a." + format, new byte[] { 1 }));
         public Task<DownloadedFile> GetTeamPrintAsync(int year, int month, string format, CancellationToken ct = default) => Record($"team {format}", new DownloadedFile("t." + format, new byte[] { 1 }));
         public Task<DownloadedFile> GetApprovedExportAsync(int year, int month, string format, CancellationToken ct = default) => throw new NotSupportedException();
+
+        public List<TeamMemberDto> Team { get; set; } = new();
+        public Dictionary<string, string> RemindRefusals { get; } = new();
+        public string SummaryText { get; set; } = "Šihtarice za Septembar 2026";
+        public Task<TeamSummaryDto> GetTeamSummaryTextAsync(int year, int month, CancellationToken ct = default) =>
+            Record($"summary-text {year}-{month}", new TeamSummaryDto(year, month,
+                new[] { new SummaryGroupDto(null, new[] { new SummaryPersonDto("Amra Adžamija", new[] { "Nema prekovremenih sati niti izostanaka." }, "Šihtarica: Nacrt (nije odobreno)") }) },
+                Array.Empty<SummaryOvertimeDto>(), SummaryText));
+        public Task<DownloadedFile> GetTeamSummaryAsync(int year, int month, string format, CancellationToken ct = default) => Record($"summary {format}", new DownloadedFile("s." + format, new byte[] { 1 }));
+
+        public Task<TeamStatusDto> GetTeamStatusAsync(int year, int month, CancellationToken ct = default)
+        {
+            Calls.Add($"team-status {year}-{month}");
+            return Team.Count == 0
+                ? throw new ApiException(System.Net.HttpStatusCode.NotFound, "no-team", "Nobody reports to you.")
+                : Task.FromResult(new TeamStatusDto(year, month, new DateOnly(year, month, 25), Team));
+        }
+
+        public Task RemindAsync(string code, int year, int month, CancellationToken ct = default)
+        {
+            Calls.Add($"remind {code} {year}-{month}");
+            if (RemindRefusals.TryGetValue(code, out var refusal)) throw new ApiException(System.Net.HttpStatusCode.Conflict, refusal, refusal);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeDialogs : IEmployeeDialogs
@@ -80,6 +105,8 @@ public class EmployeeViewModelTests
     {
         public int SignedOut { get; private set; }
         public void SignOut() => SignedOut++;
+        public List<string> Copied { get; } = new();
+        public Task CopyAsync(string text) { Copied.Add(text); return Task.CompletedTask; }
     }
 
     private static class Sheets
@@ -179,10 +206,6 @@ public class EmployeeViewModelTests
         Assert.AreEqual(9, vm.Month, "the screen still shows September");
         Assert.AreEqual("Septembar 2026.", vm.MonthTitle);
 
-        client.Calls.Clear();
-        await vm.FillStandardDaysCommand.ExecuteAsync(null);
-        StringAssert.Contains(dialogs.Asked.Last(), "Septembar 2026.", "the question names the month it is about");
-        CollectionAssert.AreEqual(new[] { "fill 2026-9" }, client.Calls.Where(c => c.StartsWith("fill")).ToArray());
     }
 
     // ---- submitting and deciding ------------------------------------------------------------------------------------------------------
@@ -289,7 +312,6 @@ public class EmployeeViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         await vm.AddEntryCommand.ExecuteAsync(null);
-        await vm.FillStandardDaysCommand.ExecuteAsync(null);
 
         Assert.AreEqual(0, dialogs.Asked.Count, "no dialog is opened");
         Assert.IsFalse(vm.IsEditable);
@@ -316,6 +338,198 @@ public class EmployeeViewModelTests
         Assert.AreEqual("", vm.ErrorText);
         Assert.AreEqual("", vm.InfoText);
         Assert.IsFalse(vm.IsBusy);
+    }
+
+    // ---- the team -----------------------------------------------------------------------------------------------------------------
+
+    private static TeamMemberDto Member(string code, string name, SheetStatus status, int depth = 0, string? parent = null, bool canRemind = true, string? waiting = null) =>
+        new(code, name, parent, depth, status, waiting, canRemind, null);
+
+    [TestMethod]
+    public async Task TheTeamTab_ShowsTheTreeWithWhoHasNotSubmitted()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        client.Team = new()
+        {
+            Member("Z-002", "Benjamin Bašić", SheetStatus.Submitted, canRemind: false, waiting: "Emir Ferhatbegović"),
+            Member("Z-001", "Amra Adžamija", SheetStatus.Draft, depth: 1, parent: "Z-002"),
+            Member("Z-004", "Damir Dizdarević", SheetStatus.Approved, depth: 1, parent: "Z-002", canRemind: false)
+        };
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        Assert.IsTrue(vm.InTeam);
+        Assert.IsFalse(vm.InMine);
+        Assert.IsTrue(vm.ShowTeamToolbar);
+        Assert.IsFalse(vm.ShowMineToolbar, "the toolbar of the own month is replaced");
+        CollectionAssert.AreEqual(new[] { "Benjamin Bašić", "Amra Adžamija", "Damir Dizdarević" }, vm.Team.Rows.Select(r => r.Name).ToArray());
+        Assert.AreEqual("Predano, čeka: Emir Ferhatbegović", vm.Team.Rows[0].StatusText);
+        Assert.AreEqual("Nije predano", vm.Team.Rows[1].StatusText);
+        Assert.IsTrue(vm.Team.Rows[1].CanRemind);
+        Assert.IsFalse(vm.Team.Rows[2].CanRemind, "approved: nothing to remind");
+        Assert.AreEqual(30, vm.Team.Rows[1].Indent.Left, "one step of the tree for the level below");
+        StringAssert.StartsWith(vm.Team.SummaryText, "Nisu predali: 1 od 3");
+        Assert.IsTrue(vm.Team.HasPeopleToRemind);
+
+        await vm.ShowMineCommand.ExecuteAsync(null);
+        Assert.IsFalse(vm.InTeam);
+        Assert.IsTrue(vm.ShowMineToolbar);
+    }
+
+    [TestMethod]
+    public async Task ChangingTheMonthInTheTeamTab_ReadsTheTeamOfThatMonth_NotTheOwnSheet()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        client.Team = new() { Member("Z-001", "Amra Adžamija", SheetStatus.Draft) };
+        await vm.LoadCommand.ExecuteAsync(null);
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+        client.Calls.Clear();
+
+        await vm.NextMonthCommand.ExecuteAsync(null);
+
+        CollectionAssert.AreEqual(new[] { "team-status 2026-10" }, client.Calls);
+        Assert.AreEqual(10, vm.Month);
+    }
+
+    [TestMethod]
+    public async Task Reminding_AsksTheServerForThatPerson_AndSaysSo()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        client.Team = new() { Member("Z-001", "Amra Adžamija", SheetStatus.Draft), Member("Z-004", "Damir Dizdarević", SheetStatus.Draft) };
+        await vm.LoadCommand.ExecuteAsync(null);
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        await vm.RemindCommand.ExecuteAsync(vm.Team.Rows[0]);
+
+        CollectionAssert.Contains(client.Calls, "remind Z-001 2026-9");
+        Assert.AreEqual("Podsjetnik je poslan: Amra Adžamija.", vm.InfoText);
+        Assert.IsTrue(vm.Team.Rows[0].HasReminder, "the row shows that it was sent");
+        Assert.IsFalse(vm.Team.Rows[1].HasReminder);
+    }
+
+    [TestMethod]
+    public async Task AReminderThatWasRefused_IsExplainedInBosnian()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        client.Team = new() { Member("Z-001", "Amra Adžamija", SheetStatus.Draft) };
+        client.RemindRefusals["Z-001"] = "already-reminded";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        await vm.RemindCommand.ExecuteAsync(vm.Team.Rows[0]);
+
+        Assert.AreEqual("Podsjetnik za Amra Adžamija je već poslan. Pokušajte kasnije.", vm.ErrorText);
+        Assert.IsFalse(vm.Team.Rows[0].HasReminder);
+        Assert.IsFalse(vm.IsBusy);
+    }
+
+    [TestMethod]
+    public async Task RemindingEverybody_SkipsThoseWhoCannotBeReminded_AndThoseAlreadyReminded()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        client.Team = new()
+        {
+            Member("Z-001", "Amra Adžamija", SheetStatus.Draft),
+            Member("Z-002", "Benjamin Bašić", SheetStatus.Approved, canRemind: false),
+            Member("Z-004", "Damir Dizdarević", SheetStatus.Returned),
+            Member("Z-005", "Dino Kadrović", SheetStatus.Draft)
+        };
+        client.RemindRefusals["Z-004"] = "already-reminded";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        await vm.RemindAllCommand.ExecuteAsync(null);
+
+        CollectionAssert.AreEqual(new[] { "remind Z-001 2026-9", "remind Z-004 2026-9", "remind Z-005 2026-9" }, client.Calls.Where(c => c.StartsWith("remind ")).ToArray());
+        Assert.AreEqual("Podsjetnik je poslan: 2.", vm.InfoText);
+        Assert.AreEqual("", vm.ErrorText);
+    }
+
+    [TestMethod]
+    public async Task ANobodyBelow_GivesAnEmptyTreeNotAnError()
+    {
+        var (vm, client, _, _, _) = Create();
+        client.IsApprover = true;
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        Assert.AreEqual("", vm.ErrorText);
+        Assert.IsTrue(vm.Team.IsEmpty);
+        Assert.IsFalse(vm.Team.HasPeopleToRemind);
+    }
+
+    [TestMethod]
+    public async Task TheSummaryMessage_IsShownInsteadOfTheTree_AndCopiedAsItIs()
+    {
+        var (vm, client, _, _, shell) = Create();
+        client.IsApprover = true;
+        client.Team = new() { Member("Z-001", "Amra Adžamija", SheetStatus.Draft) };
+        await vm.LoadCommand.ExecuteAsync(null);
+        await vm.ShowTeamCommand.ExecuteAsync(null);
+
+        await vm.ShowSummaryCommand.ExecuteAsync(null);
+
+        Assert.IsTrue(vm.Team.ShowSummary);
+        Assert.IsFalse(vm.Team.ShowTree);
+        Assert.AreEqual("Šihtarice za Septembar 2026", vm.Team.SummaryBody);
+        Assert.AreEqual("Još nisu odobrene šihtarice: Amra Adžamija.", vm.Team.SummaryNote, "the supervisor sees it before sending");
+
+        await vm.CopySummaryCommand.ExecuteAsync(null);
+        CollectionAssert.AreEqual(new[] { "Šihtarice za Septembar 2026" }, shell.Copied);
+        Assert.AreEqual("Kopirano. Zalijepite u mail.", vm.InfoText);
+
+        client.Calls.Clear();
+        await vm.NextMonthCommand.ExecuteAsync(null);
+        CollectionAssert.Contains(client.Calls, "summary-text 2026-10", "the message follows the month");
+
+        vm.ShowTreeCommand.Execute(null);
+        Assert.IsTrue(vm.Team.ShowTree);
+    }
+
+    [TestMethod]
+    public async Task TheFileExport_IsOfferedOnlyWhenTheServerHasItSwitchedOn()
+    {
+        var (vm, client, _, _, _) = Create();
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.IsFalse(vm.CanExport, "the default of the product");
+
+        var (on, onClient, _, _, _) = Create();
+        onClient.SheetExport = true;
+        await on.LoadCommand.ExecuteAsync(null);
+        Assert.IsTrue(on.CanExport);
+    }
+
+    [TestMethod]
+    public async Task TheSummary_IsSavedLikeAnyPrintout()
+    {
+        var (vm, client, _, saver, _) = Create();
+        client.IsApprover = true;
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.PrintSummaryCommand.ExecuteAsync("xlsx");
+
+        Assert.AreEqual("Sačuvano: C:\\out\\a.xlsx", vm.InfoText);
+    }
+
+    [TestMethod]
+    public void ANudgeIsWordedWithTheNameOfWhoAsked()
+    {
+        var item = new ReminderDto(ReminderType.Nudged, 2026, 9, 1, new DateOnly(2026, 10, 5), "Benjamin Bašić", DateTime.UtcNow);
+        var (title, message) = EmployeeFormat.Reminder(item);
+        StringAssert.Contains(title, "Benjamin Bašić");
+        StringAssert.Contains(message, "Septembar 2026.");
+        StringAssert.Contains(message, "05.10.2026.");
+
+        var first = DailyTaskManager.Avalonia.Background.EmployeeReminders.Signature(new[] { item });
+        var later = DailyTaskManager.Avalonia.Background.EmployeeReminders.Signature(new[] { item with { SentUtc = item.SentUtc!.Value.AddHours(5) } });
+        Assert.AreNotEqual(first, later, "a new request is a new notification, even for the same month");
     }
 
     [TestMethod]

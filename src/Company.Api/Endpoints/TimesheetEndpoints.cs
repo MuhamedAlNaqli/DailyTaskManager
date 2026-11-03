@@ -53,6 +53,6 @@ public static class TimesheetEndpoints
             Run(() => service.RevisionAsync(Identities.EmployeeCode(user)!, Identities.EmployeeCode(user)!, year, month, revision)));
 
         sheet.MapGet("/print/{format}", (int year, int month, string format, ClaimsPrincipal user, PrintService service) =>
-            File(() => service.OwnAsync(Identities.EmployeeCode(user)!, year, month, format)));
+            File(() => service.OwnAsync(Identities.EmployeeCode(user)!, year, month, format))).RequireSheetExport();
     }
 }

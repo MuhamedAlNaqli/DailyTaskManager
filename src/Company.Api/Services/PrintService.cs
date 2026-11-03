@@ -25,9 +25,11 @@ public sealed class PrintService
     private readonly SheetDtoBuilder _builder;
     private readonly WorkflowService _workflow;
     private readonly AuditService _audit;
+    private readonly TeamService _team;
 
-    public PrintService(CompanyDbContext db, TimesheetService sheets, SheetDtoBuilder builder, WorkflowService workflow, AuditService audit)
+    public PrintService(CompanyDbContext db, TimesheetService sheets, SheetDtoBuilder builder, WorkflowService workflow, AuditService audit, TeamService team)
     {
+        _team = team;
         _db = db;
         _sheets = sheets;
         _builder = builder;
@@ -74,6 +76,61 @@ public sealed class PrintService
         _audit.Record("TeamSheetPrinted", "MonthSheet", $"{year}-{month:00}", $"{supervisorCode}: {team.Count} employees, {format}");
         await _db.SaveChangesAsync();
         return await RenderAsync(sheets, year, month, format, single: false, team: true);
+    }
+
+    /// <summary>
+    /// The message a supervisor sends on for approval: for everybody below them, what there is to report (overtime, absences, business
+    /// trips), grouped by the team lead they report to, and the register of overtime. Whatever the status; unapproved sheets are marked.
+    /// </summary>
+    public async Task<PrintedFile> SummaryAsync(string supervisorCode, int year, int month, string format)
+    {
+        CheckFormat(format);
+        var groups = await SummaryGroupsAsync(supervisorCode, year, month, format);
+
+        var isExcel = format.Equals("xlsx", StringComparison.OrdinalIgnoreCase);
+        await Renders.WaitAsync();
+        try
+        {
+            return isExcel
+                ? new PrintedFile(TeamSummary.ToExcel(year, month, groups), ExcelType, $"Pregled_za_odobravanje_{year}-{month:00}.xlsx")
+                : new PrintedFile(TeamSummary.ToPdf(year, month, groups), PdfType, $"Pregled_za_odobravanje_{year}-{month:00}.pdf");
+        }
+        finally
+        {
+            Renders.Release();
+        }
+    }
+
+    /// <summary>The same message as text, for the screen and for copying into a mail</summary>
+    public async Task<TeamSummaryDto> SummaryTextAsync(string supervisorCode, int year, int month) =>
+        TeamSummary.ToDto(year, month, await SummaryGroupsAsync(supervisorCode, year, month, "text"));
+
+    private async Task<IReadOnlyList<SummaryGroup>> SummaryGroupsAsync(string supervisorCode, int year, int month, string format)
+    {
+        var tree = await _team.TreeOfAsync(supervisorCode);
+        if (tree.Count == 0) throw new SheetException(404, "no-team", "Nobody reports to you.");
+
+        var codes = tree.Select(n => n.Person.Code).ToList();
+        var stored = await _db.Sheets.AsNoTracking().WithDetails().Where(s => s.Year == year && s.Month == month && codes.Contains(s.EmployeeCode)).ToListAsync();
+        var supervisor = await _db.Employees.AsNoTracking().Where(e => e.Code == supervisorCode).Select(e => e.Name).FirstAsync();
+        var names = tree.ToDictionary(n => n.Person.Code, n => n.Person.Name);
+
+        var people = new List<(string? Parent, SummaryPerson Person)>();
+        foreach (var node in tree)
+        {
+            var sheet = stored.FirstOrDefault(s => s.EmployeeCode == node.Person.Code) ?? new MonthSheet { EmployeeCode = node.Person.Code, Year = year, Month = month };
+            people.Add((node.ParentCode, new SummaryPerson(node.Person.Name, await _builder.BuildAsync(sheet))));
+        }
+
+        // Direct reports first, then one group for each team lead who has people of their own
+        var grouped = people.GroupBy(p => p.Parent ?? "").OrderBy(g => g.Key == "" ? 0 : 1).ToList();
+        var groups = grouped.Select(g => new SummaryGroup(
+            grouped.Count == 1 ? null : g.Key == "" ? $"Direktno: {supervisor}" : $"Tim: {names[g.Key]}",
+            g.Select(p => p.Person).ToList())).ToList();
+
+        _audit.Record("TeamSummaryPrinted", "MonthSheet", $"{year}-{month:00}", $"{supervisorCode}: {people.Count} employees, {format}");
+        await _db.SaveChangesAsync();
+        return groups;
     }
 
     /// <summary>Every approved timesheet of the month, for finance</summary>

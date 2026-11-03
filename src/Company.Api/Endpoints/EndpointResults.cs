@@ -31,5 +31,10 @@ public static class EndpointResults
         }
     }
 
+    /// <summary>The routes that give a timesheet as a file exist only while <c>Features:SheetExport</c> is on</summary>
+    public static RouteHandlerBuilder RequireSheetExport(this RouteHandlerBuilder builder) =>
+        builder.AddEndpointFilter(async (context, next) =>
+            context.HttpContext.RequestServices.GetRequiredService<CompanyFeatures>().SheetExport ? await next(context) : Results.NotFound());
+
     private static IResult Refusal(SheetException ex) => Results.Json(new ApiErrorDto(ex.Code, ex.Message), statusCode: ex.Status);
 }
