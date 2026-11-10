@@ -82,6 +82,9 @@ public class UpdateService : IUpdateService, IDisposable
                 TmpDownloadFileNameWithExtension = "DailyTaskManager-update.msi"
             };
 
+            // The installer runs after the program has closed; this starts the program again once it is done
+            _sparkleUpdater.PreparingToExit += (_, _) => UpdateRelauncher.Start(_logger);
+
             _logger.LogInformation("UpdateService initialized successfully (current version {Version})", GetCurrentVersion());
             await Task.CompletedTask;
         }

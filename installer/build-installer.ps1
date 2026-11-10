@@ -49,6 +49,11 @@ if ([string]::IsNullOrEmpty($Version)) {
     Write-Host ""
 }
 
+# The program must report the version of the package it came in: the updater compares it with the appcast, and the version fixed in the csproj
+# (4.1.0.0) made every release look newer than the installed one, so the same update was offered and installed again and again
+$AssemblyVersion = "0.0.0.0"
+if ($Version -match '^(\d+)\.(\d+)\.(\d+)') { $AssemblyVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3]).0" }
+
 $MsiOutput = "$OutputPath\DailyTaskManager-v$Version-$RuntimeIdentifier.msi"
 
 Write-Host "Configuration:" -ForegroundColor Yellow
@@ -153,6 +158,9 @@ if (-not $SkipBuild -and -not $SkipPublish) {
         "--self-contained", "true"
         "--output", $PublishPath
         "/p:PublishSingleFile=false"
+        "/p:AssemblyVersion=$AssemblyVersion"
+        "/p:FileVersion=$AssemblyVersion"
+        "/p:InformationalVersion=$Version"
         "/p:PublishTrimmed=false"
         "/p:DebugType=embedded"
         "--verbosity", $(if ($Verbose) { "normal" } else { "quiet" })
